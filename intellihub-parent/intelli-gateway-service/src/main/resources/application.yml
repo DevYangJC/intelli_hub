@@ -46,7 +46,14 @@ spring:
           filters:
             - StripPrefix=1
 
-        # 开放API路由（由API Platform处理认证和转发）
+        # 开放API路由（动态路由，由OpenApiRouteFilter处理，URI仅为占位）
+        - id: open-api-dynamic
+          uri: forward:/open
+          predicates:
+            - Path=/open/**,/external/**
+          order: 0
+
+        # 开放API路由（旧版，带/api前缀）
         - id: open-api-service
           uri: lb://intelli-api-platform-service
           predicates:

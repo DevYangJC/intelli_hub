@@ -101,6 +101,31 @@ public class AppKeyService {
     }
 
     /**
+     * 清除指定AppKey的缓存（用于Pub/Sub通知）
+     *
+     * @param appKey AppKey
+     * @return 操作结果
+     */
+    public Mono<Void> clearCache(String appKey) {
+        String cacheKey = RedisKeyConstants.buildAppKeyInfoKey(appKey);
+        return redisUtil.delete(cacheKey)
+                .doOnSuccess(result -> log.info("清除AppKey缓存 - appKey: {}, result: {}", appKey, result))
+                .then();
+    }
+
+    /**
+     * 清除所有AppKey缓存（用于Pub/Sub通知）
+     *
+     * @return 操作结果
+     */
+    public Mono<Void> clearAllCache() {
+        String pattern = RedisKeyConstants.GATEWAY_APPKEY_INFO_PREFIX + "*";
+        return redisUtil.deleteByPattern(pattern)
+                .doOnSuccess(count -> log.info("清除所有AppKey缓存，删除数量: {}", count))
+                .then();
+    }
+
+    /**
      * 检查应用是否订阅了指定路径的API（通过Dubbo）
      *
      * @param appId 应用ID

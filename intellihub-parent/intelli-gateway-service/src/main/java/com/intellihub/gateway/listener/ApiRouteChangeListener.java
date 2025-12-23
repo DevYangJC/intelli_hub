@@ -2,82 +2,100 @@ package com.intellihub.gateway.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellihub.common.event.ApiRouteChangeEvent;
+import com.intellihub.gateway.service.AppKeyService;
 import com.intellihub.gateway.service.OpenApiRouteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.Message;
-import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
-
 /**
- * API路由变更事件监听器
+ * 路由刷新监听器
  * <p>
- * 监听Redis发布订阅频道，接收API发布/下线事件，刷新网关路由配置
+ * 处理Redis Pub/Sub消息，刷新本地缓存
  * </p>
  *
  * @author intellihub
  * @since 1.0.0
  */
 @Slf4j
-@Component
+@Component("apiRouteChangeListener")
 @RequiredArgsConstructor
-public class ApiRouteChangeListener implements MessageListener {
+public class ApiRouteChangeListener {
 
-    private final OpenApiRouteService routeService;
+    private static final String MSG_REFRESH_ALL = "ALL";
+
+    private final OpenApiRouteService openApiRouteService;
+    private final AppKeyService appKeyService;
     private final ObjectMapper objectMapper;
 
-    @Override
-    public void onMessage(Message message, byte[] pattern) {
+    /**
+     * 处理路由变更消息
+     * <p>
+     * 消息格式：ApiRouteChangeEvent的JSON序列化
+     * </p>
+     */
+    public void onRouteChange(String message) {
+        if (message == null || message.isEmpty()) {
+            log.warn("收到空的路由变更消息");
+            return;
+        }
+
         try {
-            String body = new String(message.getBody(), StandardCharsets.UTF_8);
-            log.debug("收到路由变更事件 - message: {}", body);
-
-            ApiRouteChangeEvent event = objectMapper.readValue(body, ApiRouteChangeEvent.class);
-            handleEvent(event);
-
+            // 解析JSON消息
+            ApiRouteChangeEvent event = objectMapper.readValue(message, ApiRouteChangeEvent.class);
+            
+            switch (event.getEventType()) {
+                case REFRESH_ALL:
+                    log.info("执行全量路由刷新");
+                    openApiRouteService.refreshAllRoutes();
+                    break;
+                    
+                case PUBLISH:
+                case UPDATE:
+                    log.info("API发布/更新，刷新路由 - apiId: {}, path: {}", 
+                            event.getApiId(), event.getPath());
+                    openApiRouteService.refreshRoute(event.getApiId()).subscribe();
+                    break;
+                    
+                case OFFLINE:
+                case DELETE:
+                    log.info("API下线/删除，移除路由 - apiId: {}, path: {}", 
+                            event.getApiId(), event.getPath());
+                    openApiRouteService.removeRouteByApiId(event.getApiId());
+                    break;
+                    
+                default:
+                    log.warn("未知的事件类型: {}", event.getEventType());
+            }
         } catch (Exception e) {
-            log.error("处理路由变更事件失败", e);
+            log.error("处理路由变更消息失败 - message: {}", message, e);
         }
     }
 
     /**
-     * 处理路由变更事件
+     * 处理应用状态变更消息
+     * <p>
+     * 消息格式：
+     * - "ALL" - 清除所有AppKey缓存
+     * - "{appKey}" - 清除指定AppKey缓存
+     * </p>
      */
-    private void handleEvent(ApiRouteChangeEvent event) {
-        log.info("处理路由变更事件 - type: {}, apiId: {}, path: {}",
-                event.getEventType(), event.getApiId(), event.getPath());
+    public void onAppStatusChange(String message) {
+        if (message == null || message.isEmpty()) {
+            log.warn("收到空的应用状态变更消息");
+            return;
+        }
 
-        switch (event.getEventType()) {
-            case PUBLISH:
-            case UPDATE:
-                // 刷新单个API路由
-                routeService.refreshRoute(event.getApiId())
-                        .doOnSuccess(v -> log.info("路由刷新成功 - apiId: {}", event.getApiId()))
-                        .doOnError(e -> log.error("路由刷新失败 - apiId: {}", event.getApiId(), e))
-                        .subscribe();
-                break;
-
-            case OFFLINE:
-            case DELETE:
-                // 移除路由
-                routeService.removeRoute(event.getPath(), event.getMethod());
-                log.info("路由移除成功 - path: {}, method: {}", event.getPath(), event.getMethod());
-                break;
-
-            case REFRESH_ALL:
-                // 全量刷新
-                try {
-                    routeService.refreshAllRoutes();
-                    log.info("全量路由刷新成功");
-                } catch (Exception e) {
-                    log.error("全量路由刷新失败", e);
-                }
-                break;
-
-            default:
-                log.warn("未知的事件类型: {}", event.getEventType());
+        try {
+            if (MSG_REFRESH_ALL.equalsIgnoreCase(message)) {
+                log.info("清除所有AppKey缓存");
+                appKeyService.clearAllCache().subscribe();
+            } else {
+                log.info("清除AppKey缓存 - appKey: {}", message);
+                appKeyService.clearCache(message).subscribe();
+            }
+        } catch (Exception e) {
+            log.error("处理应用状态变更消息失败 - message: {}", message, e);
         }
     }
 }

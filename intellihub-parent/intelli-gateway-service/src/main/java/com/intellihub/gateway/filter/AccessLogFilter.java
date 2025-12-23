@@ -1,5 +1,7 @@
 package com.intellihub.gateway.filter;
 
+import com.intellihub.gateway.service.CallLogReportService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -16,13 +18,19 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * 访问日志过滤器
+ * <p>
+ * 记录访问日志并上报到Governance服务
+ * </p>
  *
  * @author intellihub
  * @since 1.0.0
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class AccessLogFilter implements GlobalFilter, Ordered {
+
+    private final CallLogReportService callLogReportService;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -44,12 +52,26 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
 
         return chain.filter(exchange).then(Mono.fromRunnable(() -> {
             long end = System.currentTimeMillis();
-            long duration = end - start;
+            int duration = (int) (end - start);
             int statusCode = response.getStatusCode() != null ? response.getStatusCode().value() : 0;
+            boolean success = statusCode >= 200 && statusCode < 400;
 
             log.info("[Gateway Access] End Time: {}, URI: {}, Status: {}, Duration: {}ms",
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")),
                     uri, statusCode, duration);
+
+            // 上报调用日志到Governance服务
+            String tenantId = request.getHeaders().getFirst("X-Tenant-Id");
+            String apiId = (String) exchange.getAttributes().get(OpenApiRouteMatchFilter.ATTR_API_ID);
+            String appId = request.getHeaders().getFirst("X-App-Id");
+            String appKey = request.getHeaders().getFirst("X-App-Key");
+            
+            callLogReportService.reportCallLog(
+                    tenantId, apiId, uri, method,
+                    appId, appKey, clientIp,
+                    statusCode, success, duration,
+                    null, userAgent
+            );
         }));
     }
 

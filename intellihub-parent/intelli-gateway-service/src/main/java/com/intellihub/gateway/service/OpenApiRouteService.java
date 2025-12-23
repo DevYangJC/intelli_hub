@@ -202,6 +202,23 @@ public class OpenApiRouteService {
     }
 
     /**
+     * 根据API ID移除路由配置
+     *
+     * @param apiId API ID
+     */
+    public void removeRouteByApiId(String apiId) {
+        String cacheKey = apiIdIndex.remove(apiId);
+        if (cacheKey != null) {
+            ApiRouteDTO removed = localRouteCache.remove(cacheKey);
+            if (removed != null) {
+                log.info("移除路由配置 - apiId: {}, path: {}", apiId, removed.getPath());
+            }
+        } else {
+            log.debug("未找到待移除的路由 - apiId: {}", apiId);
+        }
+    }
+
+    /**
      * 检查路径是否有对应的路由配置
      */
     public boolean hasRoute(String path, String method) {

@@ -281,9 +281,10 @@ public final class RedisKeyConstants {
      * API路由变更事件频道
      * <p>
      * 用途：API发布/下线时通知网关刷新路由缓存
+     * 注意：与ApiRouteChangeEvent.CHANNEL保持一致
      * </p>
      */
-    public static final String CHANNEL_API_ROUTE_CHANGE = "channel:api:route:change";
+    public static final String CHANNEL_API_ROUTE_CHANGE = "api:route:change";
 
     /**
      * 应用状态变更事件频道
@@ -291,7 +292,7 @@ public final class RedisKeyConstants {
      * 用途：应用启用/禁用时通知网关刷新AppKey缓存
      * </p>
      */
-    public static final String CHANNEL_APP_STATUS_CHANGE = "channel:app:status:change";
+    public static final String CHANNEL_APP_STATUS_CHANGE = "app:status:change";
 
     // ==================== 缓存过期时间常量（秒） ====================
 

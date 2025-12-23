@@ -42,6 +42,19 @@
           </el-menu-item>
 
           <div class="menu-divider"></div>
+          <div class="menu-label">监控统计</div>
+
+          <el-menu-item index="stats">
+            <el-icon><TrendCharts /></el-icon>
+            <span>调用统计</span>
+          </el-menu-item>
+
+          <el-menu-item index="logs">
+            <el-icon><Tickets /></el-icon>
+            <span>调用日志</span>
+          </el-menu-item>
+
+          <div class="menu-divider"></div>
           <div class="menu-label">系统设置</div>
 
           <el-sub-menu index="tenant">
@@ -61,11 +74,6 @@
             <el-menu-item index="users-list">用户列表</el-menu-item>
             <el-menu-item index="users-roles">角色权限</el-menu-item>
           </el-sub-menu>
-
-          <el-menu-item index="logs">
-            <el-icon><Document /></el-icon>
-            <span>操作日志</span>
-          </el-menu-item>
 
           <el-menu-item index="settings">
             <el-icon><Setting /></el-icon>
@@ -99,6 +107,8 @@ import {
   Document,
   Setting,
   DataLine,
+  TrendCharts,
+  Tickets,
 } from '@element-plus/icons-vue'
 import DashboardPage from './DashboardPage.vue'
 
@@ -138,6 +148,7 @@ const handleMenuSelect = (index: string) => {
     'tenant-quota': '/console/tenant/quota',
     'users-list': '/console/users/list',
     'users-roles': '/console/users/roles',
+    'stats': '/console/stats',
     'logs': '/console/logs',
     'settings': '/console/settings',
   }

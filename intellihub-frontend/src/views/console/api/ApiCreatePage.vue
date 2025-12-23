@@ -143,12 +143,13 @@
               <el-input v-model="formData.httpBackend.path" placeholder="后端服务实际路径，如：/internal/users/login" />
             </el-form-item>
             <el-form-item label="请求方式">
-              <el-radio-group v-model="formData.httpBackend.method">
+              <el-radio-group v-model="formData.httpBackend.method" @change="backendMethodManualChanged = true">
                 <el-radio-button value="GET">GET</el-radio-button>
                 <el-radio-button value="POST">POST</el-radio-button>
                 <el-radio-button value="PUT">PUT</el-radio-button>
                 <el-radio-button value="DELETE">DELETE</el-radio-button>
               </el-radio-group>
+              <div class="form-tip" v-if="!backendMethodManualChanged">已自动同步请求配置的请求方式</div>
             </el-form-item>
           </template>
 
@@ -231,7 +232,7 @@
           </template>
 
           <el-form-item label="请求方式" prop="method">
-            <el-radio-group v-model="formData.method">
+            <el-radio-group v-model="formData.method" @change="onMethodChange">
               <el-radio-button value="GET">GET</el-radio-button>
               <el-radio-button value="POST">POST</el-radio-button>
               <el-radio-button value="PUT">PUT</el-radio-button>
@@ -441,6 +442,23 @@ const onBackendTypeChange = (type: string) => {
   console.log('后端类型切换为:', type)
   if (type === 'internal') {
     fetchInternalApiList()
+  }
+  // 切换后端类型时，重置手动修改标记
+  backendMethodManualChanged.value = false
+  // 同步请求方式
+  if (type === 'http') {
+    formData.httpBackend.method = formData.method
+  }
+}
+
+// 后端请求方式是否手动修改过
+const backendMethodManualChanged = ref(false)
+
+// 请求方式变化时自动同步到后端配置
+const onMethodChange = (method: string) => {
+  // 如果后端请求方式没有手动修改过，则自动同步
+  if (!backendMethodManualChanged.value && formData.backendType === 'http') {
+    formData.httpBackend.method = method
   }
 }
 

@@ -19,6 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -45,8 +47,9 @@ public class OpenApiRouteFilter implements GlobalFilter, Ordered {
 
     private final OpenApiRouteService routeService;
     private final DubboGenericService dubboGenericService;
-    private final WebClient.Builder webClientBuilder;
+    private final LoadBalancerClient loadBalancerClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final WebClient webClient = WebClient.create();
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -88,34 +91,102 @@ public class OpenApiRouteFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * 转发到HTTP后端
+     * 转发到HTTP后端（使用LoadBalancerClient解析服务名，然后用WebClient调用）
      */
     private Mono<Void> forwardToHttpBackend(ServerWebExchange exchange, GatewayFilterChain chain, ApiRouteDTO route) {
         ServerHttpRequest request = exchange.getRequest();
-
-        // 构建后端URI
-        String backendUri = buildBackendUri(route);
-        log.info("转发请求到后端 - 原路径: {}, 后端地址: {}", request.getPath().value(), backendUri);
+        ServerHttpResponse response = exchange.getResponse();
 
         try {
-            URI uri = URI.create(backendUri);
+            // 解析后端地址
+            String actualUri = resolveBackendUri(route);
+            log.info("转发请求到后端 - 原路径: {}, 后端地址: {}", request.getPath().value(), actualUri);
 
-            // 修改请求，设置新的目标URI
-            ServerHttpRequest modifiedRequest = request.mutate()
-                    .uri(uri)
-                    .method(HttpMethod.valueOf(route.getBackendMethod() != null ? 
-                            route.getBackendMethod() : request.getMethod().name()))
-                    .build();
+            String method = route.getBackendMethod() != null ? route.getBackendMethod() : request.getMethod().name();
+            
+            // 使用WebClient转发请求
+            WebClient.RequestBodySpec requestSpec = webClient
+                    .method(HttpMethod.valueOf(method))
+                    .uri(actualUri)
+                    .headers(headers -> {
+                        // 复制原始请求头（排除Host）
+                        request.getHeaders().forEach((name, values) -> {
+                            if (!"Host".equalsIgnoreCase(name)) {
+                                headers.addAll(name, values);
+                            }
+                        });
+                    });
 
-            // 设置路由URI属性，让Gateway知道转发目标
-            exchange.getAttributes().put(ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR, uri);
+            // 获取缓存的请求体
+            String cachedBody = (String) exchange.getAttributes().get(CacheBodyFilter.ATTR_CACHED_BODY);
+            
+            Mono<String> responseMono;
+            if (cachedBody != null && !cachedBody.isEmpty()) {
+                responseMono = requestSpec.bodyValue(cachedBody)
+                        .retrieve()
+                        .bodyToMono(String.class);
+            } else {
+                responseMono = requestSpec.retrieve().bodyToMono(String.class);
+            }
 
-            // 继续过滤器链
-            return chain.filter(exchange.mutate().request(modifiedRequest).build());
+            return responseMono
+                    .flatMap(body -> {
+                        response.setStatusCode(HttpStatus.OK);
+                        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                        DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
+                        return response.writeWith(Mono.just(buffer));
+                    })
+                    .onErrorResume(e -> {
+                        log.error("转发请求失败 - uri: {}", actualUri, e);
+                        return handleError(response, 502, "后端服务调用失败: " + e.getMessage());
+                    });
         } catch (Exception e) {
             log.error("构建后端URI失败 - route: {}", route, e);
-            return handleError(exchange.getResponse(), 500, "路由配置错误");
+            return handleError(response, 500, "路由配置错误: " + e.getMessage());
         }
+    }
+
+    /**
+     * 解析后端URI（如果是服务名，使用LoadBalancer解析为实际地址）
+     */
+    private String resolveBackendUri(ApiRouteDTO route) {
+        String host = route.getBackendHost();
+        String path = route.getBackendPath();
+        
+        if (host == null || host.isEmpty()) {
+            throw new IllegalArgumentException("后端主机地址为空");
+        }
+        
+        // 去除host中可能存在的协议前缀
+        String cleanHost = host;
+        if (host.startsWith("http://")) {
+            cleanHost = host.substring(7);
+        } else if (host.startsWith("https://")) {
+            cleanHost = host.substring(8);
+        }
+        
+        // 构建路径部分
+        String fullPath = "";
+        if (path != null && !path.isEmpty()) {
+            fullPath = path.startsWith("/") ? path : "/" + path;
+        }
+        
+        // 判断是否是服务名（不包含端口和IP格式）
+        if (!cleanHost.contains(":") && !cleanHost.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
+            // 使用LoadBalancer解析服务名
+            ServiceInstance instance = loadBalancerClient.choose(cleanHost);
+            if (instance == null) {
+                throw new IllegalStateException("服务不可用: " + cleanHost);
+            }
+            return instance.getUri().toString() + fullPath;
+        }
+        
+        // 否则直接使用配置的地址
+        String protocol = route.getBackendProtocol();
+        if (protocol == null || protocol.isEmpty()) {
+            protocol = "http";
+        }
+        return protocol.toLowerCase() + "://" + cleanHost + fullPath;
     }
 
     /**
@@ -195,40 +266,6 @@ public class OpenApiRouteFilter implements GlobalFilter, Ordered {
             log.error("序列化Dubbo响应失败", e);
             return handleError(response, 500, "响应序列化失败");
         }
-    }
-
-    /**
-     * 构建后端URI
-     */
-    private String buildBackendUri(ApiRouteDTO route) {
-        StringBuilder sb = new StringBuilder();
-
-        // 协议
-        String protocol = route.getBackendProtocol();
-        if (protocol == null || protocol.isEmpty()) {
-            protocol = "http";
-        }
-        sb.append(protocol.toLowerCase()).append("://");
-
-        // 主机地址
-        String host = route.getBackendHost();
-        if (host != null && !host.isEmpty()) {
-            // 如果是服务名（不包含端口和IP格式），使用lb://前缀
-            if (!host.contains(":") && !host.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
-                return "lb://" + host + (route.getBackendPath() != null ? route.getBackendPath() : "");
-            }
-            sb.append(host);
-        }
-
-        // 路径
-        if (route.getBackendPath() != null && !route.getBackendPath().isEmpty()) {
-            if (!route.getBackendPath().startsWith("/")) {
-                sb.append("/");
-            }
-            sb.append(route.getBackendPath());
-        }
-
-        return sb.toString();
     }
 
     /**

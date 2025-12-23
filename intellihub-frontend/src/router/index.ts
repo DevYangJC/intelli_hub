@@ -135,12 +135,19 @@ const router = createRouter({
               component: () => import('../views/console/user/RolePermissionPage.vue'),
               meta: { title: '角色权限' }
             },
+            // 统计监控
+            {
+              path: 'stats',
+              name: 'Stats',
+              component: () => import('../views/console/stats/StatsPage.vue'),
+              meta: { title: '调用统计' }
+            },
             // 日志和设置
             {
               path: 'logs',
               name: 'Logs',
-              component: () => import('../views/PlaceholderView.vue'),
-              meta: { title: '操作日志' }
+              component: () => import('../views/console/stats/CallLogsPage.vue'),
+              meta: { title: '调用日志' }
             },
             {
               path: 'settings',

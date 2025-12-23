@@ -150,6 +150,26 @@ public class ReactiveRedisUtil {
     }
 
     /**
+     * 根据模式删除key
+     *
+     * @param pattern 匹配模式，如 "gateway:appkey:info:*"
+     * @return 删除的key数量
+     */
+    public Mono<Long> deleteByPattern(String pattern) {
+        return redisTemplate.keys(pattern)
+                .collectList()
+                .flatMap(keys -> {
+                    if (keys.isEmpty()) {
+                        return Mono.just(0L);
+                    }
+                    return redisTemplate.delete(keys.toArray(new String[0]));
+                })
+                .doOnSuccess(count -> log.debug("根据模式删除key - pattern: {}, count: {}", pattern, count))
+                .doOnError(e -> log.error("根据模式删除key失败 - pattern: {}", pattern, e))
+                .onErrorReturn(0L);
+    }
+
+    /**
      * 设置过期时间
      */
     public Mono<Boolean> expire(String key, Duration timeout) {
