@@ -1,0 +1,72 @@
+package com.intellihub.api.service;
+
+import com.intellihub.api.dto.request.ApiQueryRequest;
+import com.intellihub.api.dto.request.CreateApiRequest;
+import com.intellihub.api.dto.request.UpdateApiRequest;
+import com.intellihub.api.dto.response.ApiInfoResponse;
+import com.intellihub.api.dto.response.ApiRouteResponse;
+import com.intellihub.page.PageData;
+
+import java.util.List;
+
+/**
+ * API信息服务接口
+ *
+ * @author intellihub
+ * @since 1.0.0
+ */
+public interface ApiInfoService {
+
+    /**
+     * 分页查询API列表
+     */
+    PageData<ApiInfoResponse> listApis(String tenantId, ApiQueryRequest request);
+
+    /**
+     * 获取API详情
+     */
+    ApiInfoResponse getApiById(String id);
+
+    /**
+     * 创建API
+     */
+    ApiInfoResponse createApi(String tenantId, String userId, String username, CreateApiRequest request);
+
+    /**
+     * 更新API
+     */
+    ApiInfoResponse updateApi(String id, UpdateApiRequest request);
+
+    /**
+     * 删除API
+     */
+    void deleteApi(String id);
+
+    /**
+     * 发布API
+     */
+    void publishApi(String id);
+
+    /**
+     * 下线API
+     */
+    void offlineApi(String id);
+
+    /**
+     * 废弃API
+     */
+    void deprecateApi(String id);
+
+    /**
+     * 复制API
+     */
+    ApiInfoResponse copyApi(String id, String tenantId, String userId, String username);
+
+    /**
+     * 获取所有已发布API的路由配置
+     * <p>
+     * 供网关动态路由使用
+     * </p>
+     */
+    List<ApiRouteResponse> getPublishedApiRoutes();
+}

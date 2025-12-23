@@ -1,0 +1,156 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: intelli-auth-iam-service
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: dev
+        group: DEFAULT_GROUP
+        # 明确指定 HTTP 端口，避免网关路由到 Dubbo 端口
+        metadata:
+          preserved.register.source: SPRING_CLOUD
+
+  # 数据源配置
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.200.130:3306/intellihub_iam?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: root
+
+  # Redis配置
+  redis:
+    host: 192.168.200.130
+    port: 6379
+    database: 1
+    timeout: 3000ms
+    password: root
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+
+# MyBatis Plus 配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    call-setters-on-nulls: true
+    jdbc-type-for-null: 'null'
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:mapper/**/*.xml
+
+# 认证服务配置
+intellihub:
+  auth:
+    jwt:
+      # HS256算法需要至少256位(32字节)的密钥
+      secret: intellihub-iam-jwt-secret-key-2024
+      access-token-expiration: 7200  # 访问令牌过期时间（秒）
+      refresh-token-expiration: 604800  # 刷新令牌过期时间（秒）
+
+    captcha:
+      enabled: true
+      image:
+        length: 4
+        expiration: 300  # 5分钟
+        width: 120
+        height: 40
+        interfere-count: 5
+        font-size: 20
+
+      sms:
+        length: 6
+        expiration: 300  # 5分钟
+        max-daily-count: 10  # 每天最多10次
+        send-interval: 60  # 发送间隔60秒
+        template-id: SMS_123456789
+        sign-name: IntelliHub
+      email:
+        length: 6
+        expiration: 600  # 10分钟
+        max-daily-count: 20  # 每天最多20次
+        send-interval: 60  # 发送间隔60秒
+        subject: IntelliHub验证码
+        from-name: IntelliHub
+
+    # 注册配置
+    register:
+      default-tenant-id: "2"    # 默认租户ID
+      default-role-id: "5"      # 默认角色ID（普通用户）
+
+    # 多租户配置
+    tenant:
+      enabled: true
+      ignore-tenant-tables:
+        - sys_tenant
+        - sys_tenant_user
+        - sys_role
+        - sys_permission
+        - sys_menu
+        - sys_dict
+        - sys_dict_type
+        - sys_config
+        - sys_region
+        - sys_log
+        - sys_online_user
+        - sys_quartz_job
+        - sys_quartz_log
+        - flyway_schema_history
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# Dubbo 配置
+dubbo:
+  application:
+    # 使用不同的服务名，避免与 Spring Cloud 服务名冲突
+    name: intelli-auth-iam-dubbo
+    qos-enable: false
+  registry:
+    address: nacos://127.0.0.1:8848
+    parameters:
+      namespace: dev
+  protocol:
+    name: dubbo
+    port: 20881
+  scan:
+    base-packages: com.intellihub.auth.dubbo
+
+# 日志配置
+logging:
+  level:
+    com.intellihub.auth: DEBUG
+    org.springframework.security: DEBUG
+
+# SpringDoc OpenAPI配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  info:
+    title: IntelliHub IAM Service API
+    description: 认证与权限管理服务接口文档
+    version: 1.0.0

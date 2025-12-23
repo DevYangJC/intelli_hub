@@ -1,0 +1,106 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: intelli-api-platform-service
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: dev
+        group: DEFAULT_GROUP
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.200.130:3306/intelli_hub_api_platform?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: root
+
+  redis:
+    host: 192.168.200.130
+    port: 6379
+    database: 1
+    timeout: 3000ms
+    password: root
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+
+#  rabbitmq:
+#    host: ${RABBITMQ_HOST:localhost}
+#    port: ${RABBITMQ_PORT:5672}
+#    username: ${RABBITMQ_USERNAME:guest}
+#    password: ${RABBITMQ_PASSWORD:guest}
+#    virtual-host: ${RABBITMQ_VHOST:/}
+#    publisher-confirm-type: correlated
+#    publisher-returns: true
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.intellihub.api.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    call-setters-on-nulls: true
+    jdbc-type-for-null: 'null'
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+      logic-delete-field: deletedAt
+      logic-delete-value: "NOW()"
+      logic-not-delete-value: "NULL"
+
+logging:
+  level:
+    com.vibe.intellihub: debug
+    com.intellihub.common: debug
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+
+# Dubbo 配置
+dubbo:
+  application:
+    name: intelli-api-platform-dubbo
+    qos-enable: false
+  registry:
+    address: nacos://127.0.0.1:8848
+    parameters:
+      namespace: dev
+  protocol:
+    name: dubbo
+    port: 20882
+  scan:
+    base-packages: com.intellihub.api.service.dubbo
+  consumer:
+    check: false
+    timeout: 5000
+
+# SpringDoc OpenAPI配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  info:
+    title: IntelliHub API Platform Service
+    description: API开放平台服务接口文档
+    version: 1.0.0

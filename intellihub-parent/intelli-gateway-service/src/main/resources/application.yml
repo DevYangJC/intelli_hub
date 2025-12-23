@@ -1,0 +1,210 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: intelli-gateway-service
+
+  # Spring Cloud 2020+需要显式导入Nacos配置
+  config:
+    import:
+      - optional:nacos:intelli-gateway-service.yml
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: dev
+        group: DEFAULT_GROUP
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yml
+        namespace: dev
+        group: DEFAULT_GROUP
+
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      # 路由规则
+      routes:
+        # 认证服务路由
+        - id: auth-service
+          uri: lb://intelli-auth-iam-service
+          predicates:
+            - Path=/api/auth/**,/api/iam/**
+          filters:
+            - StripPrefix=1
+
+        # API平台服务路由（管理接口）
+        - id: api-platform-service
+          uri: lb://intelli-api-platform-service
+          predicates:
+            - Path=/api/v1/apis/**,/api/v1/api-groups/**
+          filters:
+            - StripPrefix=1
+
+        # 开放API路由（由API Platform处理认证和转发）
+        - id: open-api-service
+          uri: lb://intelli-api-platform-service
+          predicates:
+            - Path=/api/open/**,/api/external/**
+          filters:
+            - StripPrefix=1
+
+        # 治理服务路由
+        - id: governance-service
+          uri: lb://intelli-governance-service
+          predicates:
+            - Path=/api/governance/**,/api/monitor/**
+          filters:
+            - StripPrefix=1
+
+        # AIGC服务路由
+        - id: aigc-service
+          uri: lb://intelli-aigc-service
+          predicates:
+            - Path=/api/aigc/**,/api/ai/**
+          filters:
+            - StripPrefix=1
+
+        # 应用中心服务路由
+        - id: app-center-service
+          uri: lb://intelli-app-center-service
+          predicates:
+            - Path=/api/app-center/**
+          filters:
+            - StripPrefix=2
+
+        # 搜索服务路由
+        - id: search-service
+          uri: lb://intelli-search-service
+          predicates:
+            - Path=/api/search/**
+          filters:
+            - StripPrefix=1
+
+        # 事件服务路由
+        - id: event-service
+          uri: lb://intelli-event-service
+          predicates:
+            - Path=/api/event/**
+          filters:
+            - StripPrefix=1
+
+        # 日志审计服务路由
+        - id: log-audit-service
+          uri: lb://intelli-log-audit-service
+          predicates:
+            - Path=/api/log/**,/api/audit/**
+          filters:
+            - StripPrefix=1
+
+  # Redis配置
+  redis:
+    host: 192.168.200.130
+    port: 6379
+    database: 0
+    timeout: 3000ms
+    password: root
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+
+# Feign 配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: basic
+      intelli-auth-iam-service:
+        connectTimeout: 3000
+        readTimeout: 3000
+        loggerLevel: full
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+# 网关自定义配置
+intellihub:
+  gateway:
+    auth:
+      enabled: true
+      secret: intellihub-iam-jwt-secret-key-2024
+      token-expiration: 24  # Token有效期（小时）
+
+    rate-limit:
+      enabled: true
+      key-prefix: "rate_limit:"
+      algorithm: SLIDING_WINDOW
+      error-message: "请求过于频繁，请稍后再试"
+
+      # 默认限流配置（每分钟100次请求）
+      default-limit:
+        requests: 100
+        window: 60
+
+      # 特定路径限流配置
+      limits:
+        # 登录接口更严格（每分钟5次）
+        "/api/auth/**":
+          requests: 5
+          window: 60
+        # 搜索接口更宽松（每分钟200次）
+        "/api/search/**":
+          requests: 200
+          window: 60
+        # 上传接口最严格（每分钟10次）
+        "/api/**/upload":
+          requests: 10
+          window: 60
+
+# AppKey认证配置（开放API使用）
+gateway:
+  appkey:
+    enabled: true  # 启用AppKey认证
+    timestamp-tolerance: 300  # 时间戳容差（秒）
+    nonce-expire-seconds: 600  # Nonce过期时间（秒）
+    # 需要AppKey认证的路径
+    auth-paths:
+      - /open/**
+      - /external/**
+    # 跳过认证的路径
+    skip-paths:
+      - /open/health
+      - /open/docs/**
+
+# Dubbo 配置
+dubbo:
+  application:
+    name: intelli-gateway-service
+    qos-enable: false
+  registry:
+    address: nacos://127.0.0.1:8848
+    parameters:
+      namespace: dev
+  consumer:
+    check: false
+    timeout: 5000
+
+# 日志配置
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    com.intellihub.gateway: DEBUG
