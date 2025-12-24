@@ -60,6 +60,35 @@ public class RedisKeyConstants {
      */
     public static final String NONCE_PREFIX = "intellihub:nonce:";
 
+    // ==================== 统计相关 ====================
+
+    /**
+     * 实时统计前缀
+     * 完整Key格式: stats:realtime:{tenantId}:{apiPath}:{hour}:{type}
+     * type: total/success/fail
+     */
+    public static final String STATS_REALTIME_PREFIX = "stats:realtime:";
+
+    /**
+     * 统计类型 - 总数
+     */
+    public static final String STATS_TYPE_TOTAL = "total";
+
+    /**
+     * 统计类型 - 成功数
+     */
+    public static final String STATS_TYPE_SUCCESS = "success";
+
+    /**
+     * 统计类型 - 失败数
+     */
+    public static final String STATS_TYPE_FAIL = "fail";
+
+    /**
+     * 统计数据过期时间 (3小时)
+     */
+    public static final long TTL_STATS = 10800;
+
     // ==================== 消息频道 ====================
 
     /**
@@ -165,6 +194,47 @@ public class RedisKeyConstants {
      */
     public static String buildRateLimitKey(String type, String value) {
         return GATEWAY_RATE_LIMIT_PREFIX + type + ":" + value;
+    }
+
+    // ==================== 统计Key构建方法 ====================
+
+    /**
+     * 构建实时统计Key前缀
+     * @param tenantId 租户ID
+     * @param apiPath API路径或"global"表示全局
+     * @param hour 小时格式 yyyyMMddHH
+     * @return Key前缀 (不含type后缀)
+     */
+    public static String buildStatsKeyPrefix(String tenantId, String apiPath, String hour) {
+        return STATS_REALTIME_PREFIX + tenantId + ":" + apiPath + ":" + hour;
+    }
+
+    /**
+     * 构建实时统计Key - 总数
+     */
+    public static String buildStatsTotalKey(String tenantId, String apiPath, String hour) {
+        return buildStatsKeyPrefix(tenantId, apiPath, hour) + ":" + STATS_TYPE_TOTAL;
+    }
+
+    /**
+     * 构建实时统计Key - 成功数
+     */
+    public static String buildStatsSuccessKey(String tenantId, String apiPath, String hour) {
+        return buildStatsKeyPrefix(tenantId, apiPath, hour) + ":" + STATS_TYPE_SUCCESS;
+    }
+
+    /**
+     * 构建实时统计Key - 失败数
+     */
+    public static String buildStatsFailKey(String tenantId, String apiPath, String hour) {
+        return buildStatsKeyPrefix(tenantId, apiPath, hour) + ":" + STATS_TYPE_FAIL;
+    }
+
+    /**
+     * 构建全局实时统计Key前缀
+     */
+    public static String buildGlobalStatsKeyPrefix(String tenantId, String hour) {
+        return buildStatsKeyPrefix(tenantId, "global", hour);
     }
 
     private RedisKeyConstants() {

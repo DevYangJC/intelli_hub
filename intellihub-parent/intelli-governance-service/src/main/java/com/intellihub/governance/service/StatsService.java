@@ -5,18 +5,21 @@ import com.intellihub.governance.dto.StatsOverviewDTO;
 import com.intellihub.governance.dto.StatsTrendDTO;
 import com.intellihub.governance.entity.ApiCallStatsDaily;
 import com.intellihub.governance.entity.ApiCallStatsHourly;
+import com.intellihub.constants.RedisKeyConstants;
 import com.intellihub.governance.mapper.ApiCallStatsDailyMapper;
 import com.intellihub.governance.mapper.ApiCallStatsHourlyMapper;
+import com.intellihub.redis.util.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 统计查询服务
@@ -31,9 +34,8 @@ public class StatsService {
 
     private final ApiCallStatsHourlyMapper hourlyMapper;
     private final ApiCallStatsDailyMapper dailyMapper;
-    private final StringRedisTemplate redisTemplate;
+    private final RedisUtil redisUtil;
 
-    private static final String STATS_KEY_PREFIX = "stats:realtime:";
     private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHH");
 
     /**
@@ -91,9 +93,9 @@ public class StatsService {
 
         // 当前小时QPS（从Redis获取实时数据）
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
-        String globalKey = STATS_KEY_PREFIX + tenantId + ":global:" + hour + ":total";
-        String value = redisTemplate.opsForValue().get(globalKey);
-        long currentHourCount = value != null ? Long.parseLong(value) : 0;
+        String globalKey = RedisKeyConstants.buildStatsTotalKey(tenantId, "global", hour);
+        Object value = redisUtil.get(globalKey);
+        long currentHourCount = value != null ? Long.parseLong(value.toString()) : 0;
         // 假设已过去的分钟数
         int minutesPassed = LocalDateTime.now().getMinute();
         if (minutesPassed > 0) {
@@ -171,6 +173,51 @@ public class StatsService {
         dto.setSuccessRates(successRates);
 
         return dto;
+    }
+
+    /**
+     * 获取实时统计数据（供告警检测使用）
+     */
+    public Map<String, Object> getRealtimeStats(String tenantId, String apiId) {
+        Map<String, Object> stats = new HashMap<>();
+        String hour = LocalDateTime.now().format(HOUR_FORMATTER);
+        
+        String apiPath = apiId != null ? apiId : "global";
+        
+        // 获取实时统计 (Key格式参见 RedisKeyConstants.STATS_REALTIME_PREFIX)
+        Object totalObj = redisUtil.get(RedisKeyConstants.buildStatsTotalKey(tenantId, apiPath, hour));
+        Object successObj = redisUtil.get(RedisKeyConstants.buildStatsSuccessKey(tenantId, apiPath, hour));
+        Object failObj = redisUtil.get(RedisKeyConstants.buildStatsFailKey(tenantId, apiPath, hour));
+        
+        long totalCount = totalObj != null ? Long.parseLong(totalObj.toString()) : 0;
+        long successCount = successObj != null ? Long.parseLong(successObj.toString()) : 0;
+        long failCount = failObj != null ? Long.parseLong(failObj.toString()) : 0;
+        
+        stats.put("totalCount", totalCount);
+        stats.put("successCount", successCount);
+        stats.put("failCount", failCount);
+        stats.put("errorRate", totalCount > 0 ? (failCount * 100.0 / totalCount) : 0.0);
+        
+        // 从数据库获取平均延迟
+        LocalDateTime hourStart = LocalDateTime.now().withMinute(0).withSecond(0).withNano(0);
+        LambdaQueryWrapper<ApiCallStatsHourly> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApiCallStatsHourly::getTenantId, tenantId)
+               .eq(ApiCallStatsHourly::getStatTime, hourStart);
+        if (apiId != null) {
+            wrapper.eq(ApiCallStatsHourly::getApiId, apiId);
+        }
+        
+        List<ApiCallStatsHourly> hourlyStats = hourlyMapper.selectList(wrapper);
+        if (!hourlyStats.isEmpty()) {
+            int avgLatency = hourlyStats.stream()
+                    .mapToInt(s -> s.getAvgLatency() != null ? s.getAvgLatency() : 0)
+                    .sum() / hourlyStats.size();
+            stats.put("avgLatency", avgLatency);
+        } else {
+            stats.put("avgLatency", 0);
+        }
+        
+        return stats;
     }
 
     /**

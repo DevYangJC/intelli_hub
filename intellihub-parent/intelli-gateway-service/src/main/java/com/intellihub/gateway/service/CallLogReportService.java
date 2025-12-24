@@ -1,5 +1,6 @@
 package com.intellihub.gateway.service;
 
+import com.intellihub.constants.RedisKeyConstants;
 import com.intellihub.kafka.constant.KafkaTopics;
 import com.intellihub.kafka.producer.KafkaMessageProducer;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -31,7 +33,6 @@ public class CallLogReportService {
     private final ReactiveStringRedisTemplate redisTemplate;
     private final KafkaMessageProducer kafkaMessageProducer;
 
-    private static final String STATS_KEY_PREFIX = "stats:realtime:";
     private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHH");
 
     /**
@@ -75,34 +76,36 @@ public class CallLogReportService {
 
     /**
      * 更新实时统计
+     * Key格式参见 {@link RedisKeyConstants#STATS_REALTIME_PREFIX}
      */
     private void updateRealtimeStats(String tenantId, String apiPath, Boolean success, Integer latency) {
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
         String tenant = tenantId != null ? tenantId : "default";
+        Duration ttl = Duration.ofSeconds(RedisKeyConstants.TTL_STATS);
 
         // 总调用数
-        String totalKey = STATS_KEY_PREFIX + tenant + ":" + apiPath + ":" + hour + ":total";
+        String totalKey = RedisKeyConstants.buildStatsTotalKey(tenant, apiPath, hour);
         redisTemplate.opsForValue().increment(totalKey)
-                .flatMap(v -> redisTemplate.expire(totalKey, java.time.Duration.ofHours(3)))
+                .flatMap(v -> redisTemplate.expire(totalKey, ttl))
                 .subscribe();
 
         // 成功/失败数
         if (Boolean.TRUE.equals(success)) {
-            String successKey = STATS_KEY_PREFIX + tenant + ":" + apiPath + ":" + hour + ":success";
+            String successKey = RedisKeyConstants.buildStatsSuccessKey(tenant, apiPath, hour);
             redisTemplate.opsForValue().increment(successKey)
-                    .flatMap(v -> redisTemplate.expire(successKey, java.time.Duration.ofHours(3)))
+                    .flatMap(v -> redisTemplate.expire(successKey, ttl))
                     .subscribe();
         } else {
-            String failKey = STATS_KEY_PREFIX + tenant + ":" + apiPath + ":" + hour + ":fail";
+            String failKey = RedisKeyConstants.buildStatsFailKey(tenant, apiPath, hour);
             redisTemplate.opsForValue().increment(failKey)
-                    .flatMap(v -> redisTemplate.expire(failKey, java.time.Duration.ofHours(3)))
+                    .flatMap(v -> redisTemplate.expire(failKey, ttl))
                     .subscribe();
         }
 
         // 全局统计
-        String globalKey = STATS_KEY_PREFIX + tenant + ":global:" + hour + ":total";
+        String globalKey = RedisKeyConstants.buildStatsTotalKey(tenant, "global", hour);
         redisTemplate.opsForValue().increment(globalKey)
-                .flatMap(v -> redisTemplate.expire(globalKey, java.time.Duration.ofHours(3)))
+                .flatMap(v -> redisTemplate.expire(globalKey, ttl))
                 .subscribe();
     }
 }
