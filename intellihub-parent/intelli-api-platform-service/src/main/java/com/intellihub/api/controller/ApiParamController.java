@@ -3,7 +3,7 @@ package com.intellihub.api.controller;
 import com.intellihub.api.dto.request.ApiParamRequest;
 import com.intellihub.api.dto.response.ApiParamResponse;
 import com.intellihub.api.service.ApiParamService;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

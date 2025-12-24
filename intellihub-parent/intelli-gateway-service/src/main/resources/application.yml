@@ -123,6 +123,15 @@ spring:
         max-idle: 8
         min-idle: 0
 
+  # Kafka配置
+  kafka:
+    bootstrap-servers: localhost:9093
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: 1
+      retries: 3
+
 # Feign 配置
 feign:
   client:

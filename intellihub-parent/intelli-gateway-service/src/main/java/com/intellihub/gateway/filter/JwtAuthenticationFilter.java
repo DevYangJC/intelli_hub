@@ -6,7 +6,7 @@ import com.intellihub.gateway.config.JwtConfig;
 import com.intellihub.gateway.config.WhiteListConfig;
 import com.intellihub.gateway.dto.UserContext;
 import com.intellihub.gateway.util.JwtUtil;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;

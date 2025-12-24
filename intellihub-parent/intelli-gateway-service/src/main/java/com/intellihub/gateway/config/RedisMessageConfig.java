@@ -1,6 +1,6 @@
 package com.intellihub.gateway.config;
 
-import com.intellihub.common.constants.RedisKeyConstants;
+import com.intellihub.constants.RedisKeyConstants;
 import com.intellihub.gateway.listener.ApiRouteChangeListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

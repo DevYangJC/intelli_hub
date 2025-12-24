@@ -1,6 +1,6 @@
 package com.intellihub.governance.controller;
 
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import com.intellihub.governance.dto.CallLogDTO;
 import com.intellihub.governance.service.CallLogService;
 import lombok.RequiredArgsConstructor;

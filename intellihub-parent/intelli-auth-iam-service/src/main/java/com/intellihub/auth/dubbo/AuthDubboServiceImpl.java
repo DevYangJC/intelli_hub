@@ -1,8 +1,8 @@
 package com.intellihub.auth.dubbo;
 
-import com.intellihub.common.dubbo.AuthDubboService;
-import com.intellihub.common.dubbo.UserInfoDTO;
-import com.intellihub.common.dubbo.ValidateTokenResponse;
+import com.intellihub.dubbo.AuthDubboService;
+import com.intellihub.dubbo.UserInfoDTO;
+import com.intellihub.dubbo.ValidateTokenResponse;
 import com.intellihub.auth.entity.IamPermission;
 import com.intellihub.auth.entity.IamRole;
 import com.intellihub.auth.entity.IamTenant;

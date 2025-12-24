@@ -1,9 +1,9 @@
 package com.intellihub.api.controller;
 
-import com.intellihub.common.context.UserContextHolder;
+import com.intellihub.context.UserContextHolder;
 import com.intellihub.api.dto.response.ApiGroupResponse;
 import com.intellihub.api.service.ApiGroupService;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

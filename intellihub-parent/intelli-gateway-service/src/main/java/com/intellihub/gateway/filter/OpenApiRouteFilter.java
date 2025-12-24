@@ -2,10 +2,10 @@ package com.intellihub.gateway.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellihub.gateway.config.FilterOrderConfig;
-import com.intellihub.common.dubbo.ApiRouteDTO;
+import com.intellihub.dubbo.ApiRouteDTO;
 import com.intellihub.gateway.service.DubboGenericService;
 import com.intellihub.gateway.service.OpenApiRouteService;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;

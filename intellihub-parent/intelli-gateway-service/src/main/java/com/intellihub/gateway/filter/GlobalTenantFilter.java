@@ -1,7 +1,7 @@
 package com.intellihub.gateway.filter;
 
-import com.intellihub.common.constants.RedisKeyConstants;
-import com.intellihub.common.dubbo.TenantDubboService;
+import com.intellihub.constants.RedisKeyConstants;
+import com.intellihub.dubbo.TenantDubboService;
 import com.intellihub.gateway.config.FilterOrderConfig;
 import com.intellihub.gateway.config.WhiteListConfig;
 import com.intellihub.gateway.util.ReactiveRedisUtil;

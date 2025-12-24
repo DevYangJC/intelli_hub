@@ -1,7 +1,7 @@
 package com.intellihub.gateway.exception;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import io.netty.channel.ConnectTimeoutException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;

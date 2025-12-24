@@ -1,6 +1,6 @@
 package com.intellihub.gateway.filter;
 
-import com.intellihub.common.dubbo.ApiRouteDTO;
+import com.intellihub.dubbo.ApiRouteDTO;
 import com.intellihub.gateway.service.OpenApiRouteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,7 +1,8 @@
 package com.intellihub.governance.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
+import com.intellihub.context.UserContextHolder;
 import com.intellihub.governance.dto.StatsOverviewDTO;
 import com.intellihub.governance.dto.StatsTrendDTO;
 import com.intellihub.governance.entity.ApiCallLog;
@@ -36,8 +37,8 @@ public class StatsController {
      * 获取统计概览
      */
     @GetMapping("/overview")
-    public ApiResponse<StatsOverviewDTO> getOverview(
-            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") String tenantId) {
+    public ApiResponse<StatsOverviewDTO> getOverview() {
+        String tenantId = UserContextHolder.getTenantIdStr();
         StatsOverviewDTO overview = statsService.getOverview(tenantId);
         return ApiResponse.success(overview);
     }
@@ -47,9 +48,9 @@ public class StatsController {
      */
     @GetMapping("/trend/hourly")
     public ApiResponse<StatsTrendDTO> getHourlyTrend(
-            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") String tenantId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+        String tenantId = UserContextHolder.getTenantIdStr();
         StatsTrendDTO trend = statsService.getHourlyTrend(tenantId, startTime, endTime);
         return ApiResponse.success(trend);
     }
@@ -59,9 +60,9 @@ public class StatsController {
      */
     @GetMapping("/trend/daily")
     public ApiResponse<StatsTrendDTO> getDailyTrend(
-            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") String tenantId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+        String tenantId = UserContextHolder.getTenantIdStr();
         StatsTrendDTO trend = statsService.getDailyTrend(tenantId, startDate, endDate);
         return ApiResponse.success(trend);
     }
@@ -71,10 +72,10 @@ public class StatsController {
      */
     @GetMapping("/api/{apiPath}")
     public ApiResponse<StatsTrendDTO> getApiTrend(
-            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") String tenantId,
             @PathVariable String apiPath,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+        String tenantId = UserContextHolder.getTenantIdStr();
         // 解码路径
         String decodedPath = "/" + apiPath.replace("_", "/");
         StatsTrendDTO trend = statsService.getApiHourlyTrend(tenantId, decodedPath, startTime, endTime);
@@ -86,8 +87,8 @@ public class StatsController {
      */
     @GetMapping("/top")
     public ApiResponse<List<ApiCallStatsDaily>> getTopApis(
-            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") String tenantId,
             @RequestParam(defaultValue = "10") int limit) {
+        String tenantId = UserContextHolder.getTenantIdStr();
         List<ApiCallStatsDaily> topApis = statsService.getTopApis(tenantId, limit);
         return ApiResponse.success(topApis);
     }
@@ -97,7 +98,6 @@ public class StatsController {
      */
     @GetMapping("/logs")
     public ApiResponse<IPage<ApiCallLog>> getCallLogs(
-            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") String tenantId,
             @RequestParam(required = false) String apiId,
             @RequestParam(required = false) String appId,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
@@ -105,6 +105,7 @@ public class StatsController {
             @RequestParam(required = false) Boolean success,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
+        String tenantId = UserContextHolder.getTenantIdStr();
         IPage<ApiCallLog> logs = callLogService.pageCallLogs(
                 tenantId, apiId, appId, startTime, endTime, success, page, size);
         return ApiResponse.success(logs);
@@ -114,8 +115,8 @@ public class StatsController {
      * 获取实时调用数
      */
     @GetMapping("/realtime")
-    public ApiResponse<Long> getRealtimeCount(
-            @RequestHeader(value = "X-Tenant-Id", defaultValue = "1") String tenantId) {
+    public ApiResponse<Long> getRealtimeCount() {
+        String tenantId = UserContextHolder.getTenantIdStr();
         Long count = callLogService.getGlobalRealtimeCount(tenantId);
         return ApiResponse.success(count);
     }

@@ -1,8 +1,8 @@
 package com.intellihub.gateway.service;
 
-import com.intellihub.common.constants.RedisKeyConstants;
-import com.intellihub.common.dubbo.AppCenterDubboService;
-import com.intellihub.common.dubbo.AppKeyInfoDTO;
+import com.intellihub.constants.RedisKeyConstants;
+import com.intellihub.dubbo.AppCenterDubboService;
+import com.intellihub.dubbo.AppKeyInfoDTO;
 import com.intellihub.gateway.util.ReactiveRedisUtil;
 import com.intellihub.gateway.vo.AppKeyInfo;
 import lombok.extern.slf4j.Slf4j;

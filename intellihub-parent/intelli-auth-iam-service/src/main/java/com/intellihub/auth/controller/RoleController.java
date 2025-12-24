@@ -8,7 +8,7 @@ import com.intellihub.auth.dto.response.PermissionResponse;
 import com.intellihub.auth.dto.response.RoleResponse;
 import com.intellihub.auth.service.RoleService;
 import com.intellihub.auth.util.JwtUtil;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

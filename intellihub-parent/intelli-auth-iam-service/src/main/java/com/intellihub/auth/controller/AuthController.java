@@ -7,7 +7,7 @@ import com.intellihub.auth.dto.request.RegisterRequest;
 import com.intellihub.auth.dto.request.VerifyTokenRequest;
 import com.intellihub.auth.dto.response.*;
 import com.intellihub.auth.service.AuthService;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

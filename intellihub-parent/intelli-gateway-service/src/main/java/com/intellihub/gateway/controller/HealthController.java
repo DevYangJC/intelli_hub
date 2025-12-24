@@ -1,6 +1,6 @@
 package com.intellihub.gateway.controller;
 
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

@@ -36,22 +36,16 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
-        <!-- MyBatis Plus -->
+        <!-- MyBatis Helper Starter (包含MyBatis-Plus、MySQL、分页、自动填充) -->
         <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <groupId>com.intellihub</groupId>
+            <artifactId>mybatis-helper-spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- MySQL -->
+        <!-- Redis Cache Starter (包含Redis、序列化、工具类) -->
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-        </dependency>
-
-        <!-- Redis -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <groupId>com.intellihub</groupId>
+            <artifactId>redis-cache-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- JWT -->
@@ -70,10 +64,20 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- 按依赖矩阵引入 Common -->
+        <!-- IntelliHub Common -->
         <dependency>
             <groupId>com.intellihub</groupId>
-            <artifactId>intelli-common</artifactId>
+            <artifactId>common-dubbo-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.intellihub</groupId>
+            <artifactId>common-helper</artifactId>
+        </dependency>
+
+        <!-- AOP Starter (API日志切面) -->
+        <dependency>
+            <groupId>com.intellihub</groupId>
+            <artifactId>aop-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- Lombok -->

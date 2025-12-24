@@ -10,8 +10,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <!-- 公共模块 -->
-        <module>intelli-common</module>
+        <!-- 内部支撑模块 -->
+        <module>inner-intergration</module>
 
         <!-- 业务服务模块 -->
         <module>intelli-gateway-service</module>
@@ -38,7 +38,6 @@
         <lombok.version>1.18.24</lombok.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <mysql.version>8.0.33</mysql.version>
-        <intelli-common.version>1.0.0-SNAPSHOT</intelli-common.version>
         <springdoc.version>1.7.0</springdoc.version>
         <jjwt.version>0.11.5</jjwt.version>
         <hutool.version>5.8.22</hutool.version>
@@ -98,6 +97,44 @@
                 <artifactId>mybatis-plus-boot-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-core</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <!-- IntelliHub Starters -->
+            <dependency>
+                <groupId>com.intellihub</groupId>
+                <artifactId>common-dubbo-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.intellihub</groupId>
+                <artifactId>common-helper</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.intellihub</groupId>
+                <artifactId>mybatis-helper-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.intellihub</groupId>
+                <artifactId>redis-cache-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.intellihub</groupId>
+                <artifactId>aop-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.intellihub</groupId>
+                <artifactId>kafka-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- MySQL -->
             <dependency>
@@ -118,12 +155,6 @@
                         <artifactId>junit-vintage-engine</artifactId>
                     </exclusion>
                 </exclusions>
-            </dependency>
-
-            <dependency>
-                <groupId>com.intellihub</groupId>
-                <artifactId>intelli-common</artifactId>
-                <version>${intelli-common.version}</version>
             </dependency>
 
             <!-- Apache Commons Lang3 -->

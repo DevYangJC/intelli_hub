@@ -6,7 +6,7 @@ import com.intellihub.auth.dto.request.TenantQueryRequest;
 import com.intellihub.auth.dto.request.UpdateTenantRequest;
 import com.intellihub.auth.dto.response.TenantResponse;
 import com.intellihub.auth.service.TenantService;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import com.intellihub.page.PageData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

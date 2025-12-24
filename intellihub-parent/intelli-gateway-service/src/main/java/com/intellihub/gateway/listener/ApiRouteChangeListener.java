@@ -1,7 +1,7 @@
 package com.intellihub.gateway.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.intellihub.common.event.ApiRouteChangeEvent;
+import com.intellihub.event.ApiRouteChangeEvent;
 import com.intellihub.gateway.service.AppKeyService;
 import com.intellihub.gateway.service.OpenApiRouteService;
 import lombok.RequiredArgsConstructor;

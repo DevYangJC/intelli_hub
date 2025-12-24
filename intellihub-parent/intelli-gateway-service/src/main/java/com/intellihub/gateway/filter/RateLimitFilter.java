@@ -3,7 +3,7 @@ package com.intellihub.gateway.filter;
 import com.intellihub.gateway.config.FilterOrderConfig;
 import com.intellihub.gateway.config.RateLimitConfig;
 import com.intellihub.gateway.service.RateLimitService;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

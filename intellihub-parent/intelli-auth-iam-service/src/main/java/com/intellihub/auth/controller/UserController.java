@@ -6,7 +6,7 @@ import com.intellihub.auth.dto.request.UpdateUserRequest;
 import com.intellihub.auth.dto.request.UserQueryRequest;
 import com.intellihub.auth.dto.response.UserInfoResponse;
 import com.intellihub.auth.service.UserService;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import com.intellihub.page.PageData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

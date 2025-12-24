@@ -9,31 +9,28 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-        namespace: ${NACOS_NAMESPACE:}
+        server-addr: 127.0.0.1:8848
+        namespace: dev
         group: DEFAULT_GROUP
       config:
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-        namespace: ${NACOS_NAMESPACE:}
-        group: DEFAULT_GROUP
+        server-addr: 127.0.0.1:8848
         file-extension: yml
-        shared-configs:
-          - data-id: common.yml
-            group: DEFAULT_GROUP
-            refresh: true
+        namespace: dev
+        group: DEFAU
+
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:intelli_hub_governance}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    url: jdbc:mysql://192.168.200.130:3306/intelli_hub_governance?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: root
 
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    database: ${REDIS_DATABASE:1}
-    password: ${REDIS_PASSWORD:}
-    timeout: 10s
+    host: 192.168.200.130
+    port: 6379
+    database: 2
+    timeout: 3000ms
+    password: root
     lettuce:
       pool:
         max-active: 8
@@ -41,14 +38,15 @@ spring:
         max-idle: 8
         min-idle: 0
 
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
-    virtual-host: ${RABBITMQ_VHOST:/}
-    publisher-confirm-type: correlated
-    publisher-returns: true
+  kafka:
+    bootstrap-servers: localhost:9093
+    consumer:
+      group-id: governance-call-log-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: true
+      auto-commit-interval: 1000
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml

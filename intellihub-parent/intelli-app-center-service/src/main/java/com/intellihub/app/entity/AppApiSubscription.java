@@ -1,7 +1,7 @@
 package com.intellihub.app.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.intellihub.common.enums.SubscriptionStatus;
+import com.intellihub.enums.SubscriptionStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;

@@ -1,7 +1,8 @@
 package com.intellihub.gateway.controller;
 
+
+import com.intellihub.ApiResponse;
 import com.intellihub.gateway.service.OpenApiRouteService;
-import com.intellihub.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +34,7 @@ public class RouteController {
      */
     @PostMapping("/refresh")
     public Mono<ApiResponse<String>> refreshRoutes() {
-        return Mono.fromRunnable(() -> openApiRouteService.refreshAllRoutes())
+        return Mono.fromRunnable(openApiRouteService::refreshAllRoutes)
                 .thenReturn(ApiResponse.success("路由刷新成功，共加载 " + openApiRouteService.getRouteCacheSize() + " 条路由"));
     }
 
@@ -45,7 +46,7 @@ public class RouteController {
      */
     @PostMapping("/open-api/refresh")
     public Mono<ApiResponse<String>> refreshOpenApiRoutes() {
-        return Mono.fromRunnable(() -> openApiRouteService.refreshAllRoutes())
+        return Mono.fromRunnable(openApiRouteService::refreshAllRoutes)
                 .thenReturn(ApiResponse.success("开放API路由刷新成功，共加载 " + openApiRouteService.getRouteCacheSize() + " 条路由"));
     }
 

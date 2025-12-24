@@ -1,13 +1,13 @@
 package com.intellihub.api.controller;
 
 import com.intellihub.api.dto.response.ApiRouteResponse;
-import com.intellihub.common.context.UserContextHolder;
+import com.intellihub.context.UserContextHolder;
 import com.intellihub.api.dto.request.ApiQueryRequest;
 import com.intellihub.api.dto.request.CreateApiRequest;
 import com.intellihub.api.dto.request.UpdateApiRequest;
 import com.intellihub.api.dto.response.ApiInfoResponse;
 import com.intellihub.api.service.ApiInfoService;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import com.intellihub.page.PageData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

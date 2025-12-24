@@ -2,8 +2,8 @@ package com.intellihub.auth.dubbo;
 
 import com.intellihub.auth.entity.IamTenant;
 import com.intellihub.auth.mapper.IamTenantMapper;
-import com.intellihub.common.dubbo.TenantDubboService;
-import com.intellihub.common.dubbo.TenantInfoDTO;
+import com.intellihub.dubbo.TenantInfoDTO;
+import com.intellihub.dubbo.TenantDubboService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboService;

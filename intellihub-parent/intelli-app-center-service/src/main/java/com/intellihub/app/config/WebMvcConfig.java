@@ -1,6 +1,6 @@
 package com.intellihub.app.config;
 
-import com.intellihub.common.interceptor.UserContextInterceptor;
+import com.intellihub.interceptor.UserContextInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;

@@ -1,7 +1,7 @@
 package com.intellihub.gateway.service;
 
-import com.intellihub.common.dubbo.ApiPlatformDubboService;
-import com.intellihub.common.dubbo.ApiRouteDTO;
+import com.intellihub.dubbo.ApiPlatformDubboService;
+import com.intellihub.dubbo.ApiRouteDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;

@@ -1,8 +1,8 @@
 package com.intellihub.app.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.intellihub.common.enums.AppStatus;
-import com.intellihub.common.enums.AppType;
+import com.intellihub.enums.AppStatus;
+import com.intellihub.enums.AppType;
 import lombok.Data;
 
 import java.time.LocalDateTime;

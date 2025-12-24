@@ -1,6 +1,7 @@
 package com.intellihub.gateway.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intellihub.kafka.constant.KafkaTopics;
+import com.intellihub.kafka.producer.KafkaMessageProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
@@ -12,12 +13,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 调用日志上报服务
  * <p>
- * 将API调用日志异步上报到Redis，由Governance服务消费
+ * 将API调用日志异步上报到Kafka，由Governance服务消费
  * </p>
  *
  * @author intellihub
@@ -29,9 +29,8 @@ import java.util.concurrent.TimeUnit;
 public class CallLogReportService {
 
     private final ReactiveStringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final KafkaMessageProducer kafkaMessageProducer;
 
-    private static final String CALL_LOG_QUEUE = "call_log:queue";
     private static final String STATS_KEY_PREFIX = "stats:realtime:";
     private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHH");
 
@@ -61,13 +60,10 @@ public class CallLogReportService {
                 logData.put("userAgent", userAgent);
                 logData.put("requestTime", LocalDateTime.now().toString());
 
-                String logJson = objectMapper.writeValueAsString(logData);
+                // 2. 发送到Kafka（供Governance服务消费）
+                kafkaMessageProducer.send(KafkaTopics.CALL_LOG, logData);
 
-                // 2. 推送到Redis队列（供Governance服务消费）
-                redisTemplate.opsForList().rightPush(CALL_LOG_QUEUE, logJson)
-                        .subscribe();
-
-                // 3. 更新实时统计
+                // 3. 更新实时统计（Redis）
                 updateRealtimeStats(tenantId, apiPath, success, latency);
 
                 log.debug("调用日志上报成功 - path: {}, latency: {}ms", apiPath, latency);

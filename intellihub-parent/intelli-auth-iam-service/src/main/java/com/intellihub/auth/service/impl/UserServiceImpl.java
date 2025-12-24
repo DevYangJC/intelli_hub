@@ -11,7 +11,7 @@ import com.intellihub.auth.dto.response.UserInfoResponse;
 import com.intellihub.auth.entity.*;
 import com.intellihub.auth.mapper.*;
 import com.intellihub.auth.service.UserService;
-import com.intellihub.constants.ResponseStatus;
+import com.intellihub.constants.ResultCode;
 import com.intellihub.exception.BusinessException;
 import com.intellihub.page.PageData;
 import lombok.RequiredArgsConstructor;
@@ -96,7 +96,7 @@ public class UserServiceImpl implements UserService {
         // 检查用户名是否已存在
         IamUser existingUser = userMapper.selectByUsernameAndTenantId(request.getUsername(), tenantId);
         if (existingUser != null) {
-            throw new BusinessException(ResponseStatus.DATA_EXISTS.getCode(), "用户名已存在");
+            throw new BusinessException(ResultCode.DATA_EXISTS.getCode(), "用户名已存在");
         }
 
         // 创建用户
@@ -131,7 +131,7 @@ public class UserServiceImpl implements UserService {
     public UserInfoResponse getUserById(String id) {
         IamUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException(ResponseStatus.DATA_NOT_FOUND);
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
         return convertToUserInfoResponse(user);
     }
@@ -141,7 +141,7 @@ public class UserServiceImpl implements UserService {
     public UserInfoResponse updateUser(String id, UpdateUserRequest request) {
         IamUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException(ResponseStatus.DATA_NOT_FOUND);
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
         // 更新用户信息
@@ -180,7 +180,7 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(String id) {
         IamUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException(ResponseStatus.DATA_NOT_FOUND);
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
         // 软删除
@@ -195,7 +195,7 @@ public class UserServiceImpl implements UserService {
     public void enableUser(String id) {
         IamUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException(ResponseStatus.DATA_NOT_FOUND);
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
         user.setStatus("active");
@@ -208,7 +208,7 @@ public class UserServiceImpl implements UserService {
     public void disableUser(String id) {
         IamUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException(ResponseStatus.DATA_NOT_FOUND);
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
         user.setStatus("inactive");
@@ -219,7 +219,7 @@ public class UserServiceImpl implements UserService {
     public String resetPassword(String id) {
         IamUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException(ResponseStatus.DATA_NOT_FOUND);
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
         // 生成随机密码
@@ -237,7 +237,7 @@ public class UserServiceImpl implements UserService {
     public void assignRoles(String id, AssignRolesRequest request) {
         IamUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException(ResponseStatus.DATA_NOT_FOUND);
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
         // 删除现有角色关联

@@ -1,14 +1,14 @@
 package com.intellihub.gateway.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.intellihub.common.constants.RedisKeyConstants;
+import com.intellihub.constants.RedisKeyConstants;
 import com.intellihub.gateway.config.FilterOrderConfig;
-import com.intellihub.common.dubbo.ApiRouteDTO;
-import com.intellihub.common.util.SignatureUtil;
+import com.intellihub.dubbo.ApiRouteDTO;
+import com.intellihub.util.SignatureUtil;
 import com.intellihub.gateway.config.AppKeyConfig;
 import com.intellihub.gateway.service.AppKeyService;
 import com.intellihub.gateway.vo.AppKeyInfo;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;

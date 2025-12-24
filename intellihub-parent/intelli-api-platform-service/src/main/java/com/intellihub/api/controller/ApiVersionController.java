@@ -3,7 +3,7 @@ package com.intellihub.api.controller;
 import com.intellihub.api.dto.request.CreateApiVersionRequest;
 import com.intellihub.api.dto.response.ApiVersionResponse;
 import com.intellihub.api.service.ApiVersionService;
-import com.intellihub.common.ApiResponse;
+import com.intellihub.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
