@@ -111,7 +111,7 @@
             <el-table-column label="成功率" width="100" align="right">
               <template #default="{ row }">
                 <span :class="getSuccessRateClass(row)">
-                  {{ ((row.successCount / row.totalCount) * 100).toFixed(1) }}%
+                  {{ row.totalCount > 0 ? ((row.successCount / row.totalCount) * 100).toFixed(1) : '100.0' }}%
                 </span>
               </template>
             </el-table-column>
@@ -236,6 +236,7 @@ const getMethodTagType = (method: string) => {
 
 // 获取成功率样式类
 const getSuccessRateClass = (row: TopApiStats) => {
+  if (!row.totalCount || row.totalCount === 0) return 'success-rate-high'
   const rate = (row.successCount / row.totalCount) * 100
   if (rate >= 99) return 'success-rate-high'
   if (rate >= 95) return 'success-rate-mid'

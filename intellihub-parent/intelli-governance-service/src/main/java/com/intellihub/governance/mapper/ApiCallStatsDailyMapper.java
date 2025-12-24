@@ -19,11 +19,19 @@ import java.util.List;
 public interface ApiCallStatsDailyMapper extends BaseMapper<ApiCallStatsDaily> {
 
     /**
-     * 查询日期范围内的统计趋势
+     * 查询日期范围内的统计趋势（按日期聚合）
      */
-    @Select("SELECT * FROM api_call_stats_daily " +
+    @Select("SELECT stat_date, tenant_id, " +
+            "SUM(total_count) as total_count, " +
+            "SUM(success_count) as success_count, " +
+            "SUM(fail_count) as fail_count, " +
+            "AVG(avg_latency) as avg_latency, " +
+            "MAX(max_latency) as max_latency, " +
+            "MIN(min_latency) as min_latency " +
+            "FROM api_call_stats_daily " +
             "WHERE tenant_id = #{tenantId} " +
             "AND stat_date >= #{startDate} AND stat_date <= #{endDate} " +
+            "GROUP BY stat_date, tenant_id " +
             "ORDER BY stat_date ASC")
     List<ApiCallStatsDaily> selectTrend(
             @Param("tenantId") String tenantId,

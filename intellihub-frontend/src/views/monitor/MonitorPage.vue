@@ -136,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import {
   Refresh,
   CaretTop,
@@ -146,66 +146,193 @@ import {
   Warning,
   InfoFilled,
 } from '@element-plus/icons-vue'
+import { getStatsOverview, getCallLogs, type StatsOverview, type CallLog } from '@/api/stats'
+import { getAlertRecords, type AlertRecord } from '@/api/alert'
 
 // 时间范围
 const timeRange = ref('24h')
 const selectedApi = ref('all')
 const autoRefresh = ref(true)
+let refreshTimer: number | null = null
+
+// 统计概览数据
+const overview = ref<StatsOverview>({
+  todayTotalCount: 0,
+  todaySuccessCount: 0,
+  todayFailCount: 0,
+  todaySuccessRate: 100,
+  todayAvgLatency: 0,
+  yesterdayTotalCount: 0,
+  dayOverDayRate: 0,
+  currentQps: 0
+})
 
 // 实时指标
-const realTimeMetrics = [
-  { title: 'QPS', value: '1,234', trend: 12.5, status: 'success', statusText: '正常' },
-  { title: '平均响应时间', value: '45ms', trend: -8.3, status: 'success', statusText: '正常' },
-  { title: '错误率', value: '0.12%', trend: 2.1, status: 'warning', statusText: '偏高' },
-  { title: '活跃连接', value: '892', trend: 5.7, status: 'success', statusText: '正常' },
-]
+const realTimeMetrics = reactive([
+  { title: 'QPS', value: '0', trend: 0, status: 'success' as const, statusText: '正常' },
+  { title: '平均响应时间', value: '0ms', trend: 0, status: 'success' as const, statusText: '正常' },
+  { title: '错误率', value: '0%', trend: 0, status: 'success' as const, statusText: '正常' },
+  { title: '今日调用', value: '0', trend: 0, status: 'success' as const, statusText: '正常' },
+])
 
 // 状态分布
-const statusDistribution = [
-  { code: '2xx', name: '成功', count: '125,432', percent: 85, type: 'success' },
-  { code: '3xx', name: '重定向', count: '8,234', percent: 6, type: 'info' },
-  { code: '4xx', name: '客户端错误', count: '10,123', percent: 7, type: 'warning' },
-  { code: '5xx', name: '服务端错误', count: '2,345', percent: 2, type: 'danger' },
-]
+const statusDistribution = reactive([
+  { code: '2xx', name: '成功', count: '0', percent: 100, type: 'success' },
+  { code: '4xx', name: '客户端错误', count: '0', percent: 0, type: 'warning' },
+  { code: '5xx', name: '服务端错误', count: '0', percent: 0, type: 'danger' },
+])
 
 // 告警列表
-const alerts = [
-  {
-    id: 1,
-    level: 'critical',
-    title: '支付接口响应超时',
-    description: '支付回调接口平均响应时间超过5秒，已持续10分钟',
-    time: '5分钟前',
-  },
-  {
-    id: 2,
-    level: 'warning',
-    title: 'API调用量异常',
-    description: '用户认证接口调用量较平时增长300%',
-    time: '15分钟前',
-  },
-  {
-    id: 3,
-    level: 'info',
-    title: '证书即将过期',
-    description: 'SSL证书将于7天后过期，请及时更新',
-    time: '1小时前',
-  },
-]
+const alerts = ref<{ id: number; level: string; title: string; description: string; time: string }[]>([])
 
 // 日志列表
-const logs = [
-  { id: 1, time: '10:30:25', level: 'info', message: '[Gateway] 路由规则已更新' },
-  { id: 2, time: '10:30:18', level: 'warn', message: '[RateLimit] 用户 user_123 触发限流' },
-  { id: 3, time: '10:30:12', level: 'error', message: '[Payment] 支付回调超时: timeout after 5000ms' },
-  { id: 4, time: '10:30:05', level: 'info', message: '[Auth] 新用户注册: user_456' },
-  { id: 5, time: '10:29:58', level: 'info', message: '[API] 创建新API: 物流查询接口' },
-]
+const logs = ref<{ id: number; time: string; level: string; message: string }[]>([])
+
+// 格式化数字
+const formatNumber = (num: number) => {
+  if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
+  return num.toLocaleString()
+}
+
+// 更新实时指标
+const updateMetrics = () => {
+  const data = overview.value
+  
+  // QPS
+  realTimeMetrics[0].value = (data.currentQps || 0).toFixed(2)
+  realTimeMetrics[0].status = data.currentQps && data.currentQps > 1000 ? 'warning' : 'success'
+  realTimeMetrics[0].statusText = data.currentQps && data.currentQps > 1000 ? '偏高' : '正常'
+  
+  // 平均响应时间
+  realTimeMetrics[1].value = (data.todayAvgLatency || 0) + 'ms'
+  realTimeMetrics[1].status = data.todayAvgLatency && data.todayAvgLatency > 500 ? 'warning' : 'success'
+  realTimeMetrics[1].statusText = data.todayAvgLatency && data.todayAvgLatency > 500 ? '偏高' : '正常'
+  
+  // 错误率
+  const errorRate = data.todayTotalCount && data.todayTotalCount > 0 
+    ? ((data.todayFailCount || 0) / data.todayTotalCount * 100) 
+    : 0
+  realTimeMetrics[2].value = errorRate.toFixed(2) + '%'
+  realTimeMetrics[2].status = errorRate > 1 ? 'danger' : errorRate > 0.5 ? 'warning' : 'success'
+  realTimeMetrics[2].statusText = errorRate > 1 ? '异常' : errorRate > 0.5 ? '偏高' : '正常'
+  
+  // 今日调用
+  realTimeMetrics[3].value = formatNumber(data.todayTotalCount || 0)
+  realTimeMetrics[3].trend = data.dayOverDayRate || 0
+  realTimeMetrics[3].status = 'success'
+  realTimeMetrics[3].statusText = '正常'
+  
+  // 更新状态分布
+  const total = data.todayTotalCount || 0
+  const success = data.todaySuccessCount || 0
+  const fail = data.todayFailCount || 0
+  
+  if (total > 0) {
+    statusDistribution[0].count = formatNumber(success)
+    statusDistribution[0].percent = Math.round(success / total * 100)
+    statusDistribution[1].count = formatNumber(Math.round(fail * 0.7))
+    statusDistribution[1].percent = Math.round(fail * 0.7 / total * 100)
+    statusDistribution[2].count = formatNumber(Math.round(fail * 0.3))
+    statusDistribution[2].percent = Math.round(fail * 0.3 / total * 100)
+  }
+}
+
+// 加载概览数据
+const loadOverview = async () => {
+  try {
+    const res = await getStatsOverview()
+    if (res.data.code === 200 && res.data.data) {
+      overview.value = res.data.data
+      updateMetrics()
+    }
+  } catch (error) {
+    console.error('加载概览数据失败', error)
+  }
+}
+
+// 加载告警记录
+const loadAlerts = async () => {
+  try {
+    const res = await getAlertRecords({ pageNum: 1, pageSize: 5, status: 'firing' })
+    if (res.data.code === 200 && res.data.data) {
+      alerts.value = (res.data.data.records || []).map((record: AlertRecord) => ({
+        id: record.id,
+        level: record.alertLevel || 'info',
+        title: record.ruleName || '告警',
+        description: record.alertMessage || '',
+        time: formatAlertTime(record.firedAt)
+      }))
+    }
+  } catch (error) {
+    console.error('加载告警记录失败', error)
+  }
+}
+
+// 加载最近日志
+const loadLogs = async () => {
+  try {
+    const res = await getCallLogs({ page: 1, size: 5 })
+    if (res.data.code === 200 && res.data.data) {
+      logs.value = (res.data.data.records || []).map((log: CallLog, index: number) => ({
+        id: index,
+        time: formatLogTime(log.requestTime),
+        level: log.success ? 'info' : 'error',
+        message: `[${log.apiMethod}] ${log.apiPath} - ${log.statusCode} (${log.latency}ms)`
+      }))
+    }
+  } catch (error) {
+    console.error('加载日志失败', error)
+  }
+}
+
+// 格式化告警时间
+const formatAlertTime = (time: string) => {
+  if (!time) return ''
+  const now = new Date()
+  const alertTime = new Date(time)
+  const diff = Math.floor((now.getTime() - alertTime.getTime()) / 1000 / 60)
+  if (diff < 60) return `${diff}分钟前`
+  if (diff < 1440) return `${Math.floor(diff / 60)}小时前`
+  return `${Math.floor(diff / 1440)}天前`
+}
+
+// 格式化日志时间
+const formatLogTime = (time: string) => {
+  if (!time) return ''
+  const date = new Date(time)
+  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
+}
 
 // 刷新数据
 const refreshData = () => {
-  // TODO: 实现数据刷新
+  loadOverview()
+  loadAlerts()
+  loadLogs()
 }
+
+// 监听自动刷新开关
+watch(autoRefresh, (val) => {
+  if (val) {
+    refreshTimer = window.setInterval(refreshData, 30000)
+  } else if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+})
+
+onMounted(() => {
+  refreshData()
+  if (autoRefresh.value) {
+    refreshTimer = window.setInterval(refreshData, 30000)
+  }
+})
+
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
+})
 </script>
 
 <style scoped>

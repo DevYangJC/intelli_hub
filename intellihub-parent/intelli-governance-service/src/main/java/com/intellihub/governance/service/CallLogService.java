@@ -3,6 +3,7 @@ package com.intellihub.governance.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.intellihub.constants.RedisKeyConstants;
 import com.intellihub.governance.dto.CallLogDTO;
 import com.intellihub.governance.entity.ApiCallLog;
 import com.intellihub.governance.mapper.ApiCallLogMapper;
@@ -32,7 +33,6 @@ public class CallLogService {
     private final ApiCallLogMapper callLogMapper;
     private final StringRedisTemplate redisTemplate;
 
-    private static final String STATS_KEY_PREFIX = "stats:realtime:";
     private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHH");
 
     /**
@@ -63,34 +63,35 @@ public class CallLogService {
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
         String tenantId = dto.getTenantId() != null ? dto.getTenantId() : "default";
         String apiPath = dto.getApiPath();
+        long ttlSeconds = RedisKeyConstants.TTL_STATS;
 
         // 总调用数
-        String totalKey = STATS_KEY_PREFIX + tenantId + ":" + apiPath + ":" + hour + ":total";
+        String totalKey = RedisKeyConstants.buildStatsTotalKey(tenantId, apiPath, hour);
         redisTemplate.opsForValue().increment(totalKey);
-        redisTemplate.expire(totalKey, 3, TimeUnit.HOURS);
+        redisTemplate.expire(totalKey, ttlSeconds, TimeUnit.SECONDS);
 
         // 成功/失败数
         if (Boolean.TRUE.equals(dto.getSuccess())) {
-            String successKey = STATS_KEY_PREFIX + tenantId + ":" + apiPath + ":" + hour + ":success";
+            String successKey = RedisKeyConstants.buildStatsSuccessKey(tenantId, apiPath, hour);
             redisTemplate.opsForValue().increment(successKey);
-            redisTemplate.expire(successKey, 3, TimeUnit.HOURS);
+            redisTemplate.expire(successKey, ttlSeconds, TimeUnit.SECONDS);
         } else {
-            String failKey = STATS_KEY_PREFIX + tenantId + ":" + apiPath + ":" + hour + ":fail";
+            String failKey = RedisKeyConstants.buildStatsFailKey(tenantId, apiPath, hour);
             redisTemplate.opsForValue().increment(failKey);
-            redisTemplate.expire(failKey, 3, TimeUnit.HOURS);
+            redisTemplate.expire(failKey, ttlSeconds, TimeUnit.SECONDS);
         }
 
         // 延迟统计（使用List存储，后续计算P95/P99）
         if (dto.getLatency() != null) {
-            String latencyKey = STATS_KEY_PREFIX + tenantId + ":" + apiPath + ":" + hour + ":latency";
+            String latencyKey = RedisKeyConstants.buildStatsKeyPrefix(tenantId, apiPath, hour) + ":latency";
             redisTemplate.opsForList().rightPush(latencyKey, String.valueOf(dto.getLatency()));
-            redisTemplate.expire(latencyKey, 3, TimeUnit.HOURS);
+            redisTemplate.expire(latencyKey, ttlSeconds, TimeUnit.SECONDS);
         }
 
         // 全局统计
-        String globalTotalKey = STATS_KEY_PREFIX + tenantId + ":global:" + hour + ":total";
+        String globalTotalKey = RedisKeyConstants.buildStatsTotalKey(tenantId, "global", hour);
         redisTemplate.opsForValue().increment(globalTotalKey);
-        redisTemplate.expire(globalTotalKey, 3, TimeUnit.HOURS);
+        redisTemplate.expire(globalTotalKey, ttlSeconds, TimeUnit.SECONDS);
     }
 
     /**
@@ -130,7 +131,7 @@ public class CallLogService {
      */
     public Long getRealtimeCount(String tenantId, String apiPath) {
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
-        String key = STATS_KEY_PREFIX + tenantId + ":" + apiPath + ":" + hour + ":total";
+        String key = RedisKeyConstants.buildStatsTotalKey(tenantId, apiPath, hour);
         String value = redisTemplate.opsForValue().get(key);
         return value != null ? Long.parseLong(value) : 0L;
     }
@@ -140,7 +141,7 @@ public class CallLogService {
      */
     public Long getGlobalRealtimeCount(String tenantId) {
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
-        String key = STATS_KEY_PREFIX + tenantId + ":global:" + hour + ":total";
+        String key = RedisKeyConstants.buildStatsTotalKey(tenantId, "global", hour);
         String value = redisTemplate.opsForValue().get(key);
         return value != null ? Long.parseLong(value) : 0L;
     }

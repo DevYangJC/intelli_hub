@@ -1,7 +1,8 @@
 package com.intellihub.governance.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.intellihub.common.model.Result;
+import com.intellihub.ApiResponse;
+import com.intellihub.context.UserContextHolder;
 import com.intellihub.governance.entity.AlertRecord;
 import com.intellihub.governance.service.AlertRecordService;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
  * @since 1.0.0
  */
 @RestController
-@RequestMapping("/api/v1/alert/records")
+@RequestMapping("/governance/v1/alert/records")
 @RequiredArgsConstructor
 public class AlertRecordController {
 
@@ -27,8 +28,7 @@ public class AlertRecordController {
      * 分页查询告警记录
      */
     @GetMapping
-    public Result<IPage<AlertRecord>> listRecords(
-            @RequestHeader(value = "X-Tenant-Id", defaultValue = "default") String tenantId,
+    public ApiResponse<IPage<AlertRecord>> listRecords(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String alertLevel,
             @RequestParam(required = false) Long ruleId,
@@ -36,29 +36,30 @@ public class AlertRecordController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
+        String tenantId = UserContextHolder.getTenantIdStr();
         IPage<AlertRecord> page = alertRecordService.listRecords(tenantId, status, alertLevel, 
                 ruleId, startTime, endTime, pageNum, pageSize);
-        return Result.success(page);
+        return ApiResponse.success(page);
     }
 
     /**
      * 获取告警统计
      */
     @GetMapping("/stats")
-    public Result<AlertRecordService.AlertStats> getAlertStats(
-            @RequestHeader(value = "X-Tenant-Id", defaultValue = "default") String tenantId,
+    public ApiResponse<AlertRecordService.AlertStats> getAlertStats(
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+        String tenantId = UserContextHolder.getTenantIdStr();
         AlertRecordService.AlertStats stats = alertRecordService.getAlertStats(tenantId, startTime, endTime);
-        return Result.success(stats);
+        return ApiResponse.success(stats);
     }
 
     /**
      * 手动恢复告警
      */
     @PostMapping("/{id}/resolve")
-    public Result<Void> resolveAlert(@PathVariable Long id) {
+    public ApiResponse<Void> resolveAlert(@PathVariable Long id) {
         alertRecordService.resolveAlert(id);
-        return Result.success();
+        return ApiResponse.success(null);
     }
 }

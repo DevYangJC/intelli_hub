@@ -19,11 +19,19 @@ import java.util.List;
 public interface ApiCallStatsHourlyMapper extends BaseMapper<ApiCallStatsHourly> {
 
     /**
-     * 查询时间范围内的统计趋势
+     * 查询时间范围内的统计趋势（按时间点聚合）
      */
-    @Select("SELECT * FROM api_call_stats_hourly " +
+    @Select("SELECT stat_time, tenant_id, " +
+            "SUM(total_count) as total_count, " +
+            "SUM(success_count) as success_count, " +
+            "SUM(fail_count) as fail_count, " +
+            "AVG(avg_latency) as avg_latency, " +
+            "MAX(max_latency) as max_latency, " +
+            "MIN(min_latency) as min_latency " +
+            "FROM api_call_stats_hourly " +
             "WHERE tenant_id = #{tenantId} " +
             "AND stat_time >= #{startTime} AND stat_time <= #{endTime} " +
+            "GROUP BY stat_time, tenant_id " +
             "ORDER BY stat_time ASC")
     List<ApiCallStatsHourly> selectTrend(
             @Param("tenantId") String tenantId,

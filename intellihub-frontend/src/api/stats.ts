@@ -71,14 +71,14 @@ export interface PageResult<T> {
  * 获取统计概览
  */
 export function getStatsOverview() {
-  return request.get<StatsOverview>('/governance/v1/stats/overview')
+  return request.get<StatsOverview>('/api/governance/v1/stats/overview')
 }
 
 /**
  * 获取小时趋势
  */
 export function getHourlyTrend(startTime: string, endTime: string) {
-  return request.get<StatsTrend>('/governance/v1/stats/trend/hourly', {
+  return request.get<StatsTrend>('/api/governance/v1/stats/trend/hourly', {
     params: { startTime, endTime }
   })
 }
@@ -87,7 +87,7 @@ export function getHourlyTrend(startTime: string, endTime: string) {
  * 获取天趋势
  */
 export function getDailyTrend(startDate: string, endDate: string) {
-  return request.get<StatsTrend>('/governance/v1/stats/trend/daily', {
+  return request.get<StatsTrend>('/api/governance/v1/stats/trend/daily', {
     params: { startDate, endDate }
   })
 }
@@ -98,7 +98,7 @@ export function getDailyTrend(startDate: string, endDate: string) {
 export function getApiTrend(apiPath: string, startTime: string, endTime: string) {
   // 将路径中的/替换为_
   const encodedPath = apiPath.replace(/^\//, '').replace(/\//g, '_')
-  return request.get<StatsTrend>(`/governance/v1/stats/api/${encodedPath}`, {
+  return request.get<StatsTrend>(`/api/governance/v1/stats/api/${encodedPath}`, {
     params: { startTime, endTime }
   })
 }
@@ -107,7 +107,7 @@ export function getApiTrend(apiPath: string, startTime: string, endTime: string)
  * 获取Top N API
  */
 export function getTopApis(limit: number = 10) {
-  return request.get<TopApiStats[]>('/governance/v1/stats/top', {
+  return request.get<TopApiStats[]>('/api/governance/v1/stats/top', {
     params: { limit }
   })
 }
@@ -124,12 +124,12 @@ export function getCallLogs(params: {
   page?: number
   size?: number
 }) {
-  return request.get<PageResult<CallLog>>('/governance/v1/stats/logs', { params })
+  return request.get<PageResult<CallLog>>('/api/governance/v1/stats/logs', { params })
 }
 
 /**
  * 获取实时调用数
  */
 export function getRealtimeCount() {
-  return request.get<number>('/governance/v1/stats/realtime')
+  return request.get<number>('/api/governance/v1/stats/realtime')
 }
