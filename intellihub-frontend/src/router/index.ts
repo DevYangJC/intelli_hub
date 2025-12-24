@@ -142,12 +142,25 @@ const router = createRouter({
               component: () => import('../views/console/stats/StatsPage.vue'),
               meta: { title: '调用统计' }
             },
-            // 日志和设置
+            // 日志
             {
               path: 'logs',
               name: 'Logs',
               component: () => import('../views/console/stats/CallLogsPage.vue'),
               meta: { title: '调用日志' }
+            },
+            // 告警管理
+            {
+              path: 'alert/rules',
+              name: 'AlertRules',
+              component: () => import('../views/console/alert/AlertRulesPage.vue'),
+              meta: { title: '告警规则' }
+            },
+            {
+              path: 'alert/records',
+              name: 'AlertRecords',
+              component: () => import('../views/console/alert/AlertRecordsPage.vue'),
+              meta: { title: '告警历史' }
             },
             {
               path: 'settings',

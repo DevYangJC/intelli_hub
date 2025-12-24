@@ -54,6 +54,15 @@
             <span>调用日志</span>
           </el-menu-item>
 
+          <el-sub-menu index="alert">
+            <template #title>
+              <el-icon><Bell /></el-icon>
+              <span>告警管理</span>
+            </template>
+            <el-menu-item index="alert-rules">告警规则</el-menu-item>
+            <el-menu-item index="alert-records">告警历史</el-menu-item>
+          </el-sub-menu>
+
           <div class="menu-divider"></div>
           <div class="menu-label">系统设置</div>
 
@@ -109,6 +118,7 @@ import {
   DataLine,
   TrendCharts,
   Tickets,
+  Bell,
 } from '@element-plus/icons-vue'
 import DashboardPage from './DashboardPage.vue'
 
@@ -150,6 +160,8 @@ const handleMenuSelect = (index: string) => {
     'users-roles': '/console/users/roles',
     'stats': '/console/stats',
     'logs': '/console/logs',
+    'alert-rules': '/console/alert/rules',
+    'alert-records': '/console/alert/records',
     'settings': '/console/settings',
   }
   
