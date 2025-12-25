@@ -36,7 +36,7 @@ public class AlertRecordController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         IPage<AlertRecord> page = alertRecordService.listRecords(tenantId, status, alertLevel, 
                 ruleId, startTime, endTime, pageNum, pageSize);
         return ApiResponse.success(page);
@@ -49,7 +49,7 @@ public class AlertRecordController {
     public ApiResponse<AlertRecordService.AlertStats> getAlertStats(
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         AlertRecordService.AlertStats stats = alertRecordService.getAlertStats(tenantId, startTime, endTime);
         return ApiResponse.success(stats);
     }

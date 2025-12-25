@@ -97,49 +97,49 @@ export function getAlertRules(params?: {
   pageNum?: number
   pageSize?: number
 }) {
-  return request.get<PageResult<AlertRule>>('/api/governance/v1/alert/rules', { params })
+  return request.get<PageResult<AlertRule>>('/governance/v1/alert/rules', { params })
 }
 
 /**
  * 获取告警规则详情
  */
 export function getAlertRule(id: number) {
-  return request.get<AlertRule>(`/api/governance/v1/alert/rules/${id}`)
+  return request.get<AlertRule>(`/governance/v1/alert/rules/${id}`)
 }
 
 /**
  * 创建告警规则
  */
 export function createAlertRule(data: AlertRule) {
-  return request.post<AlertRule>('/api/governance/v1/alert/rules', data)
+  return request.post<AlertRule>('/governance/v1/alert/rules', data)
 }
 
 /**
  * 更新告警规则
  */
 export function updateAlertRule(id: number, data: AlertRule) {
-  return request.put<AlertRule>(`/api/governance/v1/alert/rules/${id}`, data)
+  return request.put<AlertRule>(`/governance/v1/alert/rules/${id}`, data)
 }
 
 /**
  * 删除告警规则
  */
 export function deleteAlertRule(id: number) {
-  return request.delete(`/api/governance/v1/alert/rules/${id}`)
+  return request.delete(`/governance/v1/alert/rules/${id}`)
 }
 
 /**
  * 启用告警规则
  */
 export function enableAlertRule(id: number) {
-  return request.post(`/api/governance/v1/alert/rules/${id}/enable`)
+  return request.post(`/governance/v1/alert/rules/${id}/enable`)
 }
 
 /**
  * 禁用告警规则
  */
 export function disableAlertRule(id: number) {
-  return request.post(`/api/governance/v1/alert/rules/${id}/disable`)
+  return request.post(`/governance/v1/alert/rules/${id}/disable`)
 }
 
 /**
@@ -154,7 +154,7 @@ export function getAlertRecords(params?: {
   pageNum?: number
   pageSize?: number
 }) {
-  return request.get<PageResult<AlertRecord>>('/api/governance/v1/alert/records', { params })
+  return request.get<PageResult<AlertRecord>>('/governance/v1/alert/records', { params })
 }
 
 /**
@@ -164,12 +164,12 @@ export function getAlertStats(params?: {
   startTime?: string
   endTime?: string
 }) {
-  return request.get<AlertStats>('/api/governance/v1/alert/records/stats', { params })
+  return request.get<AlertStats>('/governance/v1/alert/records/stats', { params })
 }
 
 /**
  * 手动恢复告警
  */
 export function resolveAlert(id: number) {
-  return request.post(`/api/governance/v1/alert/records/${id}/resolve`)
+  return request.post(`/governance/v1/alert/records/${id}/resolve`)
 }

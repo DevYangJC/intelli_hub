@@ -39,7 +39,7 @@ spring:
         min-idle: 0
 
   kafka:
-    bootstrap-servers: localhost:9093
+    bootstrap-servers: 192.168.200.130:9092
     consumer:
       group-id: governance-call-log-group
       auto-offset-reset: earliest

@@ -125,7 +125,7 @@ spring:
 
   # Kafka配置
   kafka:
-    bootstrap-servers: localhost:9093
+    bootstrap-servers: 192.168.200.130:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer

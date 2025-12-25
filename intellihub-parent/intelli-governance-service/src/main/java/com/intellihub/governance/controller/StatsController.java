@@ -38,7 +38,7 @@ public class StatsController {
      */
     @GetMapping("/overview")
     public ApiResponse<StatsOverviewDTO> getOverview() {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         StatsOverviewDTO overview = statsService.getOverview(tenantId);
         return ApiResponse.success(overview);
     }
@@ -50,7 +50,7 @@ public class StatsController {
     public ApiResponse<StatsTrendDTO> getHourlyTrend(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         StatsTrendDTO trend = statsService.getHourlyTrend(tenantId, startTime, endTime);
         return ApiResponse.success(trend);
     }
@@ -62,7 +62,7 @@ public class StatsController {
     public ApiResponse<StatsTrendDTO> getDailyTrend(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         StatsTrendDTO trend = statsService.getDailyTrend(tenantId, startDate, endDate);
         return ApiResponse.success(trend);
     }
@@ -75,7 +75,7 @@ public class StatsController {
             @PathVariable String apiPath,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         // 解码路径
         String decodedPath = "/" + apiPath.replace("_", "/");
         StatsTrendDTO trend = statsService.getApiHourlyTrend(tenantId, decodedPath, startTime, endTime);
@@ -88,7 +88,7 @@ public class StatsController {
     @GetMapping("/top")
     public ApiResponse<List<ApiCallStatsDaily>> getTopApis(
             @RequestParam(defaultValue = "10") int limit) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         List<ApiCallStatsDaily> topApis = statsService.getTopApis(tenantId, limit);
         return ApiResponse.success(topApis);
     }
@@ -105,7 +105,7 @@ public class StatsController {
             @RequestParam(required = false) Boolean success,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         IPage<ApiCallLog> logs = callLogService.pageCallLogs(
                 tenantId, apiId, appId, startTime, endTime, success, page, size);
         return ApiResponse.success(logs);
@@ -116,7 +116,7 @@ public class StatsController {
      */
     @GetMapping("/realtime")
     public ApiResponse<Long> getRealtimeCount() {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         Long count = callLogService.getGlobalRealtimeCount(tenantId);
         return ApiResponse.success(count);
     }

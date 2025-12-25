@@ -2,6 +2,7 @@ package com.intellihub.governance.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.intellihub.ApiResponse;
+import com.intellihub.constants.ResultCode;
 import com.intellihub.context.UserContextHolder;
 import com.intellihub.governance.dto.AlertRuleDTO;
 import com.intellihub.governance.entity.AlertRule;
@@ -29,8 +30,8 @@ public class AlertRuleController {
      */
     @PostMapping
     public ApiResponse<AlertRule> createRule(@RequestBody @Valid AlertRuleDTO dto) {
-        String tenantId = UserContextHolder.getTenantIdStr();
-        String userId = UserContextHolder.getUserIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
+        String userId = UserContextHolder.getCurrentUserId();
         AlertRule rule = alertRuleService.createRule(tenantId, dto, userId);
         return ApiResponse.success(rule);
     }
@@ -41,7 +42,7 @@ public class AlertRuleController {
     @PutMapping("/{id}")
     public ApiResponse<AlertRule> updateRule(@PathVariable Long id,
                                               @RequestBody @Valid AlertRuleDTO dto) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         AlertRule rule = alertRuleService.updateRule(id, tenantId, dto);
         return ApiResponse.success(rule);
     }
@@ -51,7 +52,7 @@ public class AlertRuleController {
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteRule(@PathVariable Long id) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         alertRuleService.deleteRule(id, tenantId);
         return ApiResponse.success(null);
     }
@@ -61,10 +62,10 @@ public class AlertRuleController {
      */
     @GetMapping("/{id}")
     public ApiResponse<AlertRule> getRule(@PathVariable Long id) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         AlertRule rule = alertRuleService.getRuleById(id, tenantId);
         if (rule == null) {
-            return ApiResponse.fail("告警规则不存在");
+            return ApiResponse.failed(ResultCode.THE_ALARM_RULE_DOES_NOT_EXIST);
         }
         return ApiResponse.success(rule);
     }
@@ -78,7 +79,7 @@ public class AlertRuleController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         IPage<AlertRule> page = alertRuleService.listRules(tenantId, ruleType, status, pageNum, pageSize);
         return ApiResponse.success(page);
     }
@@ -88,7 +89,7 @@ public class AlertRuleController {
      */
     @PostMapping("/{id}/enable")
     public ApiResponse<Void> enableRule(@PathVariable Long id) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         alertRuleService.enableRule(id, tenantId);
         return ApiResponse.success(null);
     }
@@ -98,7 +99,7 @@ public class AlertRuleController {
      */
     @PostMapping("/{id}/disable")
     public ApiResponse<Void> disableRule(@PathVariable Long id) {
-        String tenantId = UserContextHolder.getTenantIdStr();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         alertRuleService.disableRule(id, tenantId);
         return ApiResponse.success(null);
     }

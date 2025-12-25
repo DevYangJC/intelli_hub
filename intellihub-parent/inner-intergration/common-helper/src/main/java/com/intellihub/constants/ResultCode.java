@@ -22,6 +22,7 @@ public enum ResultCode {
     DATA_EXISTS(4011, "记录已存在"),
     OPERATION_FAILED(4020, "操作失败"),
     VALIDATION_ERROR(4022, "数据验证失败"),
+    THE_ALARM_RULE_DOES_NOT_EXIST(4023, "告警规则不存在"),
 
     // 认证相关
     ACCOUNT_INCORRECT(4100, "用户名或密码错误"),

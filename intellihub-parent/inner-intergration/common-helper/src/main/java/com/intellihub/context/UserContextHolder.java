@@ -21,15 +21,7 @@ public class UserContextHolder {
         return CONTEXT.get();
     }
 
-    public static Long getUserId() {
-        UserContext context = get();
-        return context != null ? context.getUserId() : null;
-    }
 
-    public static Long getTenantId() {
-        UserContext context = get();
-        return context != null ? context.getTenantId() : null;
-    }
 
     public static String getUsername() {
         UserContext context = get();
@@ -73,10 +65,5 @@ public class UserContextHolder {
 
     public static void clear() {
         CONTEXT.remove();
-    }
-
-    public static String getTenantIdStr() {
-        UserContext context = get();
-        return context != null ? context.getTenantIdStr() : null;
     }
 }

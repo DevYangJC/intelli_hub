@@ -13,10 +13,10 @@ public enum SubscriptionStatus {
 
     PENDING(0, "待审批"),
     ACTIVE(1, "生效中"),
-    APPROVED(1, "已通过"),
-    REJECTED(2, "已拒绝"),
-    EXPIRED(3, "已过期"),
-    CANCELLED(4, "已取消");
+    APPROVED(2, "已通过"),
+    REJECTED(3, "已拒绝"),
+    EXPIRED(4, "已过期"),
+    CANCELLED(5, "已取消");
 
     private final int code;
     private final String desc;
