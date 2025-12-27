@@ -52,10 +52,14 @@ service.interceptors.request.use(
 
 // 清除认证信息的辅助函数
 const clearAuthAndRedirect = () => {
+  // 1. 清除 LocalStorage
   localStorage.removeItem('token')
   localStorage.removeItem('refreshToken')
   localStorage.removeItem('user')
-  router.push({ path: '/', query: { login: 'required' } })
+  
+  // 2. 触发未授权事件，让 App.vue 处理 UI 状态更新和跳转
+  // 这样可以避免在 request.ts 中引入 store 和 router 导致的循环依赖问题
+  window.dispatchEvent(new CustomEvent('auth:unauthorized'))
 }
 
 // 响应拦截器
@@ -68,7 +72,7 @@ service.interceptors.response.use(
       ElMessage.error(res.message || '请求失败')
 
       // Token无效或过期
-      if (res.code === 4105 || res.code === 4106 || res.code === 4003) {
+      if (res.code === 401 || res.code === 4105 || res.code === 4106 || res.code === 4003) {
         clearAuthAndRedirect()
       } else if (res.message === "Token无效或已过期") {
         // 租户无效或过期

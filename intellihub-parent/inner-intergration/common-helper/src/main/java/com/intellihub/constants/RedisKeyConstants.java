@@ -89,6 +89,62 @@ public class RedisKeyConstants {
      */
     public static final long TTL_STATS = 10800;
 
+    // ==================== 告警相关 ====================
+
+    /**
+     * 告警请求记录前缀 (List类型)
+     * 完整Key格式: alert:requests:{tenantId}:{hour}
+     * 存储每个请求的JSON详情
+     */
+    public static final String ALERT_REQUESTS_PREFIX = "alert:requests:";
+
+    /**
+     * 告警统计汇总前缀 (Hash类型)
+     * 完整Key格式: alert:stats:{tenantId}:{hour}
+     * 字段: totalCount, successCount, failCount, latencySum
+     */
+    public static final String ALERT_STATS_PREFIX = "alert:stats:";
+
+    /**
+     * 告警数据过期时间 (1小时)
+     */
+    public static final long TTL_ALERT_DATA = 3600;
+
+    /**
+     * QPS 统计前缀 (每分钟独立统计)
+     * 完整Key格式: alert:qps:{tenantId}:{minute}
+     * minute 格式: yyyyMMddHHmm
+     */
+    public static final String ALERT_QPS_PREFIX = "alert:qps:";
+
+    /**
+     * QPS 数据过期时间 (5分钟)
+     */
+    public static final long TTL_QPS_DATA = 300;
+
+    /**
+     * 构建告警请求记录Key
+     */
+    public static String buildAlertRequestsKey(String tenantId, String hour) {
+        return ALERT_REQUESTS_PREFIX + tenantId + ":" + hour;
+    }
+
+    /**
+     * 构建告警统计汇总Key
+     */
+    public static String buildAlertStatsKey(String tenantId, String hour) {
+        return ALERT_STATS_PREFIX + tenantId + ":" + hour;
+    }
+
+    /**
+     * 构建 QPS 统计Key（每分钟独立）
+     * @param tenantId 租户ID
+     * @param minute 分钟标识，格式 yyyyMMddHHmm
+     */
+    public static String buildQpsKey(String tenantId, String minute) {
+        return ALERT_QPS_PREFIX + tenantId + ":" + minute;
+    }
+
     // ==================== 消息频道 ====================
 
     /**

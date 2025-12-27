@@ -15,6 +15,8 @@
           class="search-input"
           size="large"
           clearable
+          @keyup.enter="handleSearch"
+          @clear="handleSearch"
         >
           <template #prefix>
             <el-icon><Search /></el-icon>
@@ -36,34 +38,34 @@
       </div>
 
       <!-- API列表 -->
-      <div class="api-grid">
+      <div class="api-grid" v-loading="loading">
         <el-row :gutter="24">
-          <el-col :xs="24" :sm="12" :lg="8" :xl="6" v-for="api in filteredApis" :key="api.id">
+          <el-col :xs="24" :sm="12" :lg="8" :xl="6" v-for="(api, index) in apiList" :key="api.id">
             <el-card class="api-card" shadow="hover" @click="viewApiDetail(api)">
               <div class="api-card-header">
-                <div class="api-icon" :style="{ background: api.iconBg }">
-                  <el-icon :size="24"><component :is="api.icon" /></el-icon>
+                <div class="api-icon" :style="{ background: getIconBg(index) }">
+                  <el-icon :size="24"><Link /></el-icon>
                 </div>
-                <el-tag :type="api.status === 'stable' ? 'success' : 'warning'" size="small">
-                  {{ api.status === 'stable' ? '稳定' : '测试中' }}
+                <el-tag :type="api.status === 'published' ? 'success' : 'warning'" size="small">
+                  {{ api.status === 'published' ? '已发布' : api.status === 'draft' ? '草稿' : '已下线' }}
                 </el-tag>
               </div>
               <h3 class="api-name">{{ api.name }}</h3>
-              <p class="api-desc">{{ api.description }}</p>
+              <p class="api-desc">{{ api.description || '暂无描述' }}</p>
               <div class="api-meta">
                 <span class="meta-item">
                   <el-icon><Connection /></el-icon>
-                  {{ api.calls }}次调用
+                  {{ formatCalls(api.totalCalls || 0) }}次调用
                 </span>
                 <span class="meta-item">
-                  <el-icon><Star /></el-icon>
-                  {{ api.rating }}
+                  <el-tag size="small" :type="api.method === 'GET' ? 'success' : api.method === 'POST' ? 'primary' : 'warning'">
+                    {{ api.method }}
+                  </el-tag>
                 </span>
               </div>
               <div class="api-tags">
-                <el-tag v-for="tag in api.tags" :key="tag" size="small" type="info">
-                  {{ tag }}
-                </el-tag>
+                <el-tag size="small" type="info">{{ api.groupName || '未分组' }}</el-tag>
+                <el-tag size="small" type="info">v{{ api.version || '1.0' }}</el-tag>
               </div>
             </el-card>
           </el-col>
@@ -71,10 +73,10 @@
       </div>
 
       <!-- 空状态 -->
-      <el-empty v-if="filteredApis.length === 0" description="暂无匹配的API" />
+      <el-empty v-if="!loading && apiList.length === 0" description="暂无匹配的API" />
 
       <!-- 分页 -->
-      <div class="pagination-wrapper" v-if="filteredApis.length > 0">
+      <div class="pagination-wrapper" v-if="apiList.length > 0">
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
@@ -82,6 +84,8 @@
           :page-sizes="[12, 24, 48]"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @current-change="handlePageChange"
+          @size-change="handlePageChange"
         />
       </div>
     </div>
@@ -89,21 +93,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Search,
   Connection,
   Star,
-  User,
-  ShoppingCart,
-  Location,
-  Message,
-  Picture,
-  Document,
-  DataAnalysis,
-  Coin,
+  Link,
 } from '@element-plus/icons-vue'
+import { publicApiApi, apiGroupApi, type ApiInfoResponse, type ApiGroupResponse } from '@/api/apiManage'
 
 const router = useRouter()
 
@@ -113,153 +111,99 @@ const selectedCategory = ref('')
 const sortBy = ref('newest')
 const currentPage = ref(1)
 const pageSize = ref(12)
+const loading = ref(false)
 
-// 分类列表
-const categories = [
-  { label: '全部分类', value: '' },
-  { label: '用户认证', value: 'auth' },
-  { label: '支付服务', value: 'payment' },
-  { label: '数据分析', value: 'analytics' },
-  { label: '消息推送', value: 'message' },
-  { label: '地图定位', value: 'location' },
-  { label: '图像处理', value: 'image' },
-  { label: '文档服务', value: 'document' },
+// 分类列表（从后端获取）
+const categories = ref<{ label: string; value: string }[]>([{ label: '全部分类', value: '' }])
+
+// API列表
+const apiList = ref<ApiInfoResponse[]>([])
+const totalApis = ref(0)
+
+// 图标背景颜色列表
+const iconBgList = [
+  'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+  'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+  'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+  'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+  'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+  'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+  'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
 ]
 
-// 模拟API数据
-const apiList = ref([
-  {
-    id: '1',
-    name: '用户认证服务',
-    description: '提供OAuth2.0、JWT等多种认证方式，支持单点登录和多因素认证',
-    icon: User,
-    iconBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    category: 'auth',
-    status: 'stable',
-    calls: '125.3K',
-    rating: 4.8,
-    tags: ['OAuth2.0', 'JWT', 'SSO'],
-  },
-  {
-    id: '2',
-    name: '支付网关接口',
-    description: '集成微信、支付宝、银联等主流支付渠道，支持退款和对账',
-    icon: Coin,
-    iconBg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    category: 'payment',
-    status: 'stable',
-    calls: '89.7K',
-    rating: 4.9,
-    tags: ['微信支付', '支付宝', '银联'],
-  },
-  {
-    id: '3',
-    name: '数据统计分析',
-    description: '实时数据采集、多维度分析、可视化报表，助力业务决策',
-    icon: DataAnalysis,
-    iconBg: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    category: 'analytics',
-    status: 'stable',
-    calls: '67.2K',
-    rating: 4.7,
-    tags: ['实时分析', '报表', 'BI'],
-  },
-  {
-    id: '4',
-    name: '消息推送服务',
-    description: '支持APP推送、短信、邮件等多渠道消息触达，高到达率',
-    icon: Message,
-    iconBg: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-    category: 'message',
-    status: 'stable',
-    calls: '156.8K',
-    rating: 4.6,
-    tags: ['APP推送', '短信', '邮件'],
-  },
-  {
-    id: '5',
-    name: '地图定位服务',
-    description: '提供地理编码、路径规划、POI搜索等位置服务能力',
-    icon: Location,
-    iconBg: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    category: 'location',
-    status: 'stable',
-    calls: '45.1K',
-    rating: 4.5,
-    tags: ['地理编码', '路径规划', 'POI'],
-  },
-  {
-    id: '6',
-    name: '图像识别处理',
-    description: 'AI驱动的图像识别、OCR文字提取、图片压缩裁剪等功能',
-    icon: Picture,
-    iconBg: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-    category: 'image',
-    status: 'beta',
-    calls: '32.4K',
-    rating: 4.4,
-    tags: ['OCR', 'AI识别', '图片处理'],
-  },
-  {
-    id: '7',
-    name: '文档转换服务',
-    description: '支持PDF、Word、Excel等格式互转，在线预览和编辑',
-    icon: Document,
-    iconBg: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-    category: 'document',
-    status: 'stable',
-    calls: '28.9K',
-    rating: 4.3,
-    tags: ['PDF', 'Word', '格式转换'],
-  },
-  {
-    id: '8',
-    name: '电商订单接口',
-    description: '订单创建、查询、状态流转，支持分布式事务和库存管理',
-    icon: ShoppingCart,
-    iconBg: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
-    category: 'payment',
-    status: 'stable',
-    calls: '78.5K',
-    rating: 4.7,
-    tags: ['订单管理', '库存', '事务'],
-  },
-])
+// 获取图标背景
+const getIconBg = (index: number) => iconBgList[index % iconBgList.length]
 
-// 过滤后的API列表
-const filteredApis = computed(() => {
-  let result = [...apiList.value]
-  
-  // 关键词搜索
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(api => 
-      api.name.toLowerCase().includes(keyword) ||
-      api.description.toLowerCase().includes(keyword)
-    )
-  }
-  
-  // 分类筛选
-  if (selectedCategory.value) {
-    result = result.filter(api => api.category === selectedCategory.value)
-  }
-  
-  // 排序
-  if (sortBy.value === 'popular') {
-    result.sort((a, b) => parseFloat(b.calls) - parseFloat(a.calls))
-  } else if (sortBy.value === 'rating') {
-    result.sort((a, b) => b.rating - a.rating)
-  }
-  
-  return result
-})
+// 格式化调用次数
+const formatCalls = (calls: number) => {
+  if (calls >= 10000) return (calls / 10000).toFixed(1) + 'w'
+  if (calls >= 1000) return (calls / 1000).toFixed(1) + 'k'
+  return calls.toString()
+}
 
-const totalApis = computed(() => filteredApis.value.length)
+// 加载分类列表
+const loadCategories = async () => {
+  try {
+    const res = await apiGroupApi.list()
+    if (res.code === 200 && res.data) {
+      categories.value = [
+        { label: '全部分类', value: '' },
+        ...res.data.map((g: ApiGroupResponse) => ({ label: g.name, value: g.id }))
+      ]
+    }
+  } catch (error) {
+    console.error('加载分类失败', error)
+  }
+}
+
+// 加载API列表
+const loadApiList = async () => {
+  loading.value = true
+  try {
+    const res = await publicApiApi.list({
+      keyword: searchKeyword.value || undefined,
+      groupId: selectedCategory.value || undefined,
+      page: currentPage.value,
+      size: pageSize.value
+    })
+    if (res.code === 200 && res.data) {
+      apiList.value = res.data.records || []
+      totalApis.value = res.data.total || 0
+    }
+  } catch (error) {
+    console.error('加载API列表失败', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 搜索
+const handleSearch = () => {
+  currentPage.value = 1
+  loadApiList()
+}
+
+// 分页变化
+const handlePageChange = () => {
+  loadApiList()
+}
 
 // 查看API详情
-const viewApiDetail = (api: typeof apiList.value[0]) => {
+const viewApiDetail = (api: ApiInfoResponse) => {
   router.push(`/api-market/${api.id}`)
 }
+
+// 监听筛选变化
+watch([selectedCategory, sortBy], () => {
+  currentPage.value = 1
+  loadApiList()
+})
+
+onMounted(() => {
+  loadCategories()
+  loadApiList()
+})
 </script>
 
 <style scoped>

@@ -247,8 +247,8 @@ const getSuccessRateClass = (row: TopApiStats) => {
 const loadOverview = async () => {
   try {
     const res = await getStatsOverview()
-    if (res.data.code === 200 && res.data.data) {
-      overview.value = res.data.data
+    if (res.code === 200 && res.data) {
+      overview.value = res.data
       updatePieChart()
     }
   } catch (error) {
@@ -272,8 +272,8 @@ const loadTrendData = async () => {
       res = await getDailyTrend(startDate, endDate)
     }
     
-    if (res.data.code === 200 && res.data.data) {
-      updateTrendChart(res.data.data)
+    if (res.code === 200 && res.data) {
+      updateTrendChart(res.data)
     }
   } catch (error) {
     console.error('加载趋势数据失败', error)
@@ -284,8 +284,8 @@ const loadTrendData = async () => {
 const loadTopApis = async () => {
   try {
     const res = await getTopApis(10)
-    if (res.data.code === 200 && res.data.data) {
-      topApis.value = res.data.data
+    if (res.code === 200 && res.data) {
+      topApis.value = res.data
     }
   } catch (error) {
     console.error('加载Top API失败', error)
@@ -296,8 +296,8 @@ const loadTopApis = async () => {
 const loadRecentLogs = async () => {
   try {
     const res = await getCallLogs({ page: 1, size: 10 })
-    if (res.data.code === 200 && res.data.data) {
-      recentLogs.value = res.data.data.records || []
+    if (res.code === 200 && res.data) {
+      recentLogs.value = res.data.records || []
     }
   } catch (error) {
     console.error('加载最近调用失败', error)

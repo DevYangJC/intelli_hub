@@ -1,7 +1,7 @@
 package com.intellihub.governance.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.intellihub.ApiResponse;
+import com.intellihub.page.PageData;
 import com.intellihub.constants.ResultCode;
 import com.intellihub.context.UserContextHolder;
 import com.intellihub.governance.dto.AlertRuleDTO;
@@ -74,13 +74,13 @@ public class AlertRuleController {
      * 分页查询告警规则
      */
     @GetMapping
-    public ApiResponse<IPage<AlertRule>> listRules(
+    public ApiResponse<PageData<AlertRule>> listRules(
             @RequestParam(required = false) String ruleType,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
         String tenantId = UserContextHolder.getCurrentTenantId();
-        IPage<AlertRule> page = alertRuleService.listRules(tenantId, ruleType, status, pageNum, pageSize);
+        PageData<AlertRule> page = alertRuleService.listRules(tenantId, ruleType, status, pageNum, pageSize);
         return ApiResponse.success(page);
     }
 

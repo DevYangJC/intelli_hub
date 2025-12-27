@@ -5,6 +5,7 @@ import com.intellihub.api.entity.ApiBackend;
 import com.intellihub.api.entity.ApiInfo;
 import com.intellihub.api.mapper.ApiBackendMapper;
 import com.intellihub.api.mapper.ApiInfoMapper;
+import com.intellihub.dubbo.ApiCallCountDTO;
 import com.intellihub.dubbo.ApiPlatformDubboService;
 import com.intellihub.dubbo.ApiRouteDTO;
 import lombok.RequiredArgsConstructor;
@@ -180,5 +181,52 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
         }
 
         return dto;
+    }
+
+    /**
+     * 批量更新API调用次数
+     * <p>
+     * 根据传入的调用统计列表，更新 api_info 表的 today_calls 和 total_calls 字段
+     * </p>
+     *
+     * @param callCounts API调用次数统计列表
+     * @return 更新成功的记录数
+     */
+    @Override
+    public int batchUpdateApiCallCounts(List<ApiCallCountDTO> callCounts) {
+        if (callCounts == null || callCounts.isEmpty()) {
+            log.info("[调用次数同步] 无需更新的API调用次数");
+            return 0;
+        }
+
+        log.info("[调用次数同步] 开始批量更新API调用次数，共 {} 条", callCounts.size());
+        int successCount = 0;
+
+        for (ApiCallCountDTO dto : callCounts) {
+            try {
+                // 查询API是否存在
+                ApiInfo apiInfo = apiInfoMapper.selectById(dto.getApiId());
+                if (apiInfo == null) {
+                    log.warn("[调用次数同步] API不存在，跳过: apiId={}", dto.getApiId());
+                    continue;
+                }
+
+                // 更新调用次数
+                apiInfo.setTodayCalls(dto.getTodayCalls() != null ? dto.getTodayCalls() : 0L);
+                apiInfo.setTotalCalls(dto.getTotalCalls() != null ? dto.getTotalCalls() : 0L);
+                
+                int affected = apiInfoMapper.updateById(apiInfo);
+                if (affected > 0) {
+                    successCount++;
+                    log.debug("[调用次数同步] API调用次数更新成功: apiId={}, todayCalls={}, totalCalls={}", 
+                            dto.getApiId(), dto.getTodayCalls(), dto.getTotalCalls());
+                }
+            } catch (Exception e) {
+                log.error("[调用次数同步] 更新API调用次数失败: apiId={}", dto.getApiId(), e);
+            }
+        }
+
+        log.info("[调用次数同步] API调用次数批量更新完成，成功 {} / {} 条", successCount, callCounts.size());
+        return successCount;
     }
 }

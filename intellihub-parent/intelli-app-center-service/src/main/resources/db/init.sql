@@ -5,6 +5,8 @@
 
 CREATE DATABASE IF NOT EXISTS `intelli_hub_app_center` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+use  `intelli_hub_app_center`;
+
 -- 应用信息表
 CREATE TABLE IF NOT EXISTS `app_info` (
     `id` VARCHAR(32) NOT NULL COMMENT '应用ID',

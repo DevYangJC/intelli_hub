@@ -28,7 +28,7 @@ spring:
   redis:
     host: 192.168.200.130
     port: 6379
-    database: 2
+    database: 0
     timeout: 3000ms
     password: root
     lettuce:
@@ -79,3 +79,16 @@ management:
   endpoint:
     health:
       show-details: always
+
+# Dubbo 配置（作为消费者调用其他服务）
+dubbo:
+  application:
+    name: intelli-governance-service
+    qos-enable: false
+  registry:
+    address: nacos://127.0.0.1:8848
+    parameters:
+      namespace: dev
+  consumer:
+    check: false
+    timeout: 10000

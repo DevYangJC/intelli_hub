@@ -113,6 +113,12 @@
         <el-descriptions-item label="错误信息" :span="2" v-if="currentLog.errorMessage">
           <span class="error-msg">{{ currentLog.errorMessage }}</span>
         </el-descriptions-item>
+        <el-descriptions-item label="请求体" :span="2" v-if="currentLog.requestBody">
+          <el-input type="textarea" :rows="4" :value="currentLog.requestBody" readonly />
+        </el-descriptions-item>
+        <el-descriptions-item label="响应体" :span="2" v-if="currentLog.responseBody">
+          <el-input type="textarea" :rows="4" :value="currentLog.responseBody" readonly />
+        </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>
@@ -178,6 +184,9 @@ const loadData = async () => {
       size: pagination.size
     }
     
+    if (filterForm.apiPath) {
+      params.apiPath = filterForm.apiPath
+    }
     if (filterForm.appId) {
       params.appId = filterForm.appId
     }
@@ -190,9 +199,9 @@ const loadData = async () => {
     }
     
     const res = await getCallLogs(params)
-    if (res.data.code === 200 && res.data.data) {
-      logList.value = res.data.data.records || []
-      pagination.total = res.data.data.total || 0
+    if (res.code === 200 && res.data) {
+      logList.value = res.data.records || []
+      pagination.total = res.data.total || 0
     }
   } catch (error) {
     console.error('加载日志失败', error)

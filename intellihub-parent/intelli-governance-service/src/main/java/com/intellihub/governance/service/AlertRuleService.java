@@ -1,8 +1,8 @@
 package com.intellihub.governance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.intellihub.page.PageData;
 import com.intellihub.governance.dto.AlertRuleDTO;
 import com.intellihub.governance.entity.AlertRule;
 import com.intellihub.governance.mapper.AlertRuleMapper;
@@ -99,7 +99,7 @@ public class AlertRuleService {
     /**
      * 分页查询告警规则
      */
-    public IPage<AlertRule> listRules(String tenantId, String ruleType, String status, 
+    public PageData<AlertRule> listRules(String tenantId, String ruleType, String status, 
                                        int pageNum, int pageSize) {
         LambdaQueryWrapper<AlertRule> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AlertRule::getTenantId, tenantId);
@@ -113,7 +113,8 @@ public class AlertRuleService {
         
         wrapper.orderByDesc(AlertRule::getCreatedAt);
         
-        return alertRuleMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        Page<AlertRule> page = alertRuleMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        return PageData.of(page.getRecords(), page.getTotal(), page.getSize(), page.getCurrent());
     }
 
     /**

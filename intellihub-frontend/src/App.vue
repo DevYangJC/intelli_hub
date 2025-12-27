@@ -1,14 +1,30 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
+import { ElMessage } from 'element-plus'
 
 // 初始化认证状态
 const authStore = useAuthStore()
+const router = useRouter()
+
+const handleUnauthorized = () => {
+  authStore.clearAuth()
+  router.push({ path: '/', query: { login: 'required' } })
+  // 避免重复提示，这里可以根据需要决定是否显示
+  // ElMessage.warning('登录已过期，请重新登录')
+}
 
 onMounted(() => {
   // 初始化认证状态，检查本地存储的用户信息
   authStore.initAuth()
+  
+  // 监听未授权事件
+  window.addEventListener('auth:unauthorized', handleUnauthorized)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('auth:unauthorized', handleUnauthorized)
 })
 </script>
 

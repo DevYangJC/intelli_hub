@@ -1,15 +1,18 @@
 package com.intellihub.governance.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.intellihub.ApiResponse;
+import com.intellihub.page.PageData;
 import com.intellihub.context.UserContextHolder;
+import com.intellihub.governance.dto.AlertRecordDetailDTO;
 import com.intellihub.governance.entity.AlertRecord;
+import com.intellihub.governance.entity.AlertRequestDetail;
 import com.intellihub.governance.service.AlertRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 告警记录控制器
@@ -28,7 +31,7 @@ public class AlertRecordController {
      * 分页查询告警记录
      */
     @GetMapping
-    public ApiResponse<IPage<AlertRecord>> listRecords(
+    public ApiResponse<PageData<AlertRecord>> listRecords(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String alertLevel,
             @RequestParam(required = false) Long ruleId,
@@ -37,7 +40,7 @@ public class AlertRecordController {
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
         String tenantId = UserContextHolder.getCurrentTenantId();
-        IPage<AlertRecord> page = alertRecordService.listRecords(tenantId, status, alertLevel, 
+        PageData<AlertRecord> page = alertRecordService.listRecords(tenantId, status, alertLevel, 
                 ruleId, startTime, endTime, pageNum, pageSize);
         return ApiResponse.success(page);
     }
@@ -61,5 +64,14 @@ public class AlertRecordController {
     public ApiResponse<Void> resolveAlert(@PathVariable Long id) {
         alertRecordService.resolveAlert(id);
         return ApiResponse.success(null);
+    }
+
+    /**
+     * 获取告警详情（包含触发告警的请求列表）
+     */
+    @GetMapping("/{id}/details")
+    public ApiResponse<AlertRecordDetailDTO> getAlertDetails(@PathVariable Long id) {
+        AlertRecordDetailDTO details = alertRecordService.getAlertDetails(id);
+        return ApiResponse.success(details);
     }
 }

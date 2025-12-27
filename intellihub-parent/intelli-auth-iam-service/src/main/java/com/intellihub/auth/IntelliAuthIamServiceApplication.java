@@ -6,7 +6,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
-@SpringBootApplication(scanBasePackages = {"com.intellihub.auth"})
+@SpringBootApplication(scanBasePackages = {"com.intellihub"})
 @EnableDiscoveryClient
 @EnableDubbo
 @MapperScan("com.intellihub.auth.mapper")

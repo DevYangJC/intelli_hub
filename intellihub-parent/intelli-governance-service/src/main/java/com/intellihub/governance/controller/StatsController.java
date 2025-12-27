@@ -1,7 +1,7 @@
 package com.intellihub.governance.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.intellihub.ApiResponse;
+import com.intellihub.page.PageData;
 import com.intellihub.context.UserContextHolder;
 import com.intellihub.governance.dto.StatsOverviewDTO;
 import com.intellihub.governance.dto.StatsTrendDTO;
@@ -97,8 +97,9 @@ public class StatsController {
      * 分页查询调用日志
      */
     @GetMapping("/logs")
-    public ApiResponse<IPage<ApiCallLog>> getCallLogs(
+    public ApiResponse<PageData<ApiCallLog>> getCallLogs(
             @RequestParam(required = false) String apiId,
+            @RequestParam(required = false) String apiPath,
             @RequestParam(required = false) String appId,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
@@ -106,8 +107,8 @@ public class StatsController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         String tenantId = UserContextHolder.getCurrentTenantId();
-        IPage<ApiCallLog> logs = callLogService.pageCallLogs(
-                tenantId, apiId, appId, startTime, endTime, success, page, size);
+        PageData<ApiCallLog> logs = callLogService.pageCallLogs(
+                tenantId, apiId, apiPath, appId, startTime, endTime, success, page, size);
         return ApiResponse.success(logs);
     }
 

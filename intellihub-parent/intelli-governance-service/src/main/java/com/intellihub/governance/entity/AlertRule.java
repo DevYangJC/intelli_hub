@@ -1,6 +1,8 @@
 package com.intellihub.governance.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -16,7 +18,8 @@ import java.time.LocalDateTime;
 @TableName("alert_rule")
 public class AlertRule {
 
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
@@ -35,7 +38,16 @@ public class AlertRule {
     private String ruleType;
 
     /**
-     * API ID(为空表示全局)
+     * API路径(为空表示全局统计)
+     * <p>
+     * 对应 Redis Key 中的 apiPath 部分:
+     * stats:realtime:{tenantId}:{apiPath}:{hour}:{type}
+     * </p>
+     * <p>
+     * 示例:
+     * - 空/null: 使用 "global" 查询全局统计
+     * - "/api/user": 查询特定 API 的统计
+     * </p>
      */
     private String apiId;
 

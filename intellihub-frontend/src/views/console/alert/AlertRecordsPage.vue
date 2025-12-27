@@ -119,18 +119,20 @@
             {{ row.resolvedAt ? formatDateTime(row.resolvedAt) : '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="handleViewDetails(row)">
+              详情
+            </el-button>
             <el-button 
               v-if="row.status === 'firing'" 
-              type="primary" 
+              type="warning" 
               link 
               size="small" 
               @click="handleResolve(row)"
             >
-              手动恢复
+              恢复
             </el-button>
-            <span v-else class="resolved-text">-</span>
           </template>
         </el-table-column>
       </el-table>
@@ -148,6 +150,65 @@
         />
       </div>
     </el-card>
+
+    <!-- 告警详情弹窗 -->
+    <el-dialog v-model="detailsDialogVisible" title="告警详情" width="900px" destroy-on-close>
+      <div v-loading="detailsLoading">
+        <!-- 告警基本信息 -->
+        <el-descriptions :column="2" border class="alert-info">
+          <el-descriptions-item label="规则名称">{{ alertDetails?.record?.ruleName }}</el-descriptions-item>
+          <el-descriptions-item label="告警级别">
+            <el-tag :color="getLevelColor(alertDetails?.record?.alertLevel || '')" effect="dark" size="small">
+              {{ getLevelLabel(alertDetails?.record?.alertLevel || '') }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="当前值">{{ alertDetails?.record?.currentValue }}</el-descriptions-item>
+          <el-descriptions-item label="阈值">{{ alertDetails?.record?.thresholdValue }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="alertDetails?.record?.status === 'firing' ? 'danger' : 'success'" size="small">
+              {{ alertDetails?.record?.status === 'firing' ? '触发中' : '已恢复' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="触发时间">{{ formatDateTime(alertDetails?.record?.firedAt) }}</el-descriptions-item>
+          <el-descriptions-item label="告警内容" :span="2">{{ alertDetails?.record?.alertMessage }}</el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 触发请求列表 -->
+        <div class="request-list-header">
+          <h4>触发告警的请求 ({{ alertDetails?.requestCount || 0 }} 条)</h4>
+        </div>
+        <el-table :data="alertDetails?.requestDetails || []" max-height="400" stripe size="small">
+          <el-table-column prop="apiPath" label="API路径" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="statusCode" label="状态码" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.statusCode >= 400 ? 'danger' : 'success'" size="small">
+                {{ row.statusCode || '-' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="latency" label="延迟" width="80" align="center">
+            <template #default="{ row }">
+              <span :class="{ 'high-latency': row.latency > 500 }">{{ row.latency }}ms</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="success" label="结果" width="70" align="center">
+            <template #default="{ row }">
+              <el-icon v-if="row.success" color="#67c23a"><CircleCheck /></el-icon>
+              <el-icon v-else color="#f56c6c"><CircleClose /></el-icon>
+            </template>
+          </el-table-column>
+          <el-table-column prop="errorMessage" label="错误信息" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="requestTime" label="请求时间" width="160">
+            <template #default="{ row }">
+              {{ formatDateTime(row.requestTime) }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button @click="detailsDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -158,10 +219,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getAlertRecords,
   getAlertStats,
+  getAlertDetails,
   resolveAlert,
   ALERT_LEVELS,
   type AlertRecord,
-  type AlertStats
+  type AlertStats,
+  type AlertRecordDetail
 } from '@/api/alert'
 
 // 数据
@@ -175,6 +238,11 @@ const stats = ref<AlertStats>({
   warning: 0,
   info: 0
 })
+
+// 告警详情弹窗
+const detailsDialogVisible = ref(false)
+const detailsLoading = ref(false)
+const alertDetails = ref<AlertRecordDetail | null>(null)
 
 const pagination = reactive({
   pageNum: 1,
@@ -201,8 +269,8 @@ const loadStats = async () => {
       params.endTime = filterForm.timeRange[1]
     }
     const res = await getAlertStats(params)
-    if (res.data.code === 200 && res.data.data) {
-      stats.value = res.data.data
+    if (res.code === 200 && res.data) {
+      stats.value = res.data
     }
   } catch (error) {
     console.error('加载告警统计失败', error)
@@ -229,9 +297,9 @@ const loadRecords = async () => {
     }
     
     const res = await getAlertRecords(params)
-    if (res.data.code === 200 && res.data.data) {
-      records.value = res.data.data.records || []
-      pagination.total = res.data.data.total || 0
+    if (res.code === 200 && res.data) {
+      records.value = res.data.records || []
+      pagination.total = res.data.total || 0
     }
   } catch (error) {
     console.error('加载告警记录失败', error)
@@ -263,6 +331,36 @@ const handleResolve = async (row: AlertRecord) => {
     loadStats()
   } catch (error) {
     ElMessage.error('操作失败')
+  }
+}
+
+// 查看告警详情
+const handleViewDetails = async (row: AlertRecord) => {
+  detailsDialogVisible.value = true
+  detailsLoading.value = true
+  alertDetails.value = null
+  
+  try {
+    const res = await getAlertDetails(row.id) as any
+    console.log('告警详情API响应:', res)
+    
+    // 响应拦截器已经处理过，res 就是 { code, data, message }
+    if (res && res.data) {
+      alertDetails.value = res.data
+      console.log('设置告警详情:', alertDetails.value)
+    } else if (res && !res.code) {
+      // 如果响应直接是数据（没有 code 包装）
+      alertDetails.value = res
+      console.log('设置告警详情(直接数据):', alertDetails.value)
+    } else {
+      console.warn('告警详情响应格式异常:', res)
+      ElMessage.warning('告警详情数据为空')
+    }
+  } catch (error) {
+    console.error('获取告警详情失败', error)
+    ElMessage.error('获取告警详情失败')
+  } finally {
+    detailsLoading.value = false
   }
 }
 
@@ -396,5 +494,25 @@ onUnmounted(() => {
 
 .resolved-text {
   color: #c0c4cc;
+}
+
+.alert-info {
+  margin-bottom: 20px;
+}
+
+.request-list-header {
+  margin: 16px 0 12px;
+  
+  h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #303133;
+  }
+}
+
+.high-latency {
+  color: #f56c6c;
+  font-weight: 500;
 }
 </style>

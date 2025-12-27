@@ -69,4 +69,12 @@ public interface ApiInfoService {
      * </p>
      */
     List<ApiRouteResponse> getPublishedApiRoutes();
+
+    /**
+     * 分页查询公开API列表（跨租户，用于API市场）
+     * <p>
+     * 只返回已发布且公开的API
+     * </p>
+     */
+    PageData<ApiInfoResponse> listPublicApis(ApiQueryRequest request);
 }

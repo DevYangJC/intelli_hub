@@ -1,8 +1,8 @@
 package com.intellihub.governance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.intellihub.page.PageData;
 import com.intellihub.constants.RedisKeyConstants;
 import com.intellihub.governance.dto.CallLogDTO;
 import com.intellihub.governance.entity.ApiCallLog;
@@ -37,18 +37,19 @@ public class CallLogService {
 
     /**
      * 保存调用日志（异步）
+     * <p>
+     * 注意：Redis 实时统计由 Gateway 负责写入，这里只保存到数据库
+     * 避免 Gateway 和 Governance 双重写入导致统计数据翻倍
+     * </p>
      */
     @Async
     public void saveCallLog(CallLogDTO dto) {
         try {
-            // 1. 保存到数据库
+            // 保存到数据库
             ApiCallLog apiCallLog = new ApiCallLog();
             BeanUtils.copyProperties(dto, apiCallLog);
             apiCallLog.setCreatedAt(LocalDateTime.now());
             callLogMapper.insert(apiCallLog);
-
-            // 2. 更新实时统计
-            updateRealtimeStats(dto);
 
             log.info("调用日志保存成功 - path: {}, latency: {}ms", dto.getApiPath(), dto.getLatency());
         } catch (Exception e) {
@@ -88,16 +89,27 @@ public class CallLogService {
             redisTemplate.expire(latencyKey, ttlSeconds, TimeUnit.SECONDS);
         }
 
-        // 全局统计
+        // 全局统计 - 总数
         String globalTotalKey = RedisKeyConstants.buildStatsTotalKey(tenantId, "global", hour);
         redisTemplate.opsForValue().increment(globalTotalKey);
         redisTemplate.expire(globalTotalKey, ttlSeconds, TimeUnit.SECONDS);
+
+        // 全局统计 - 成功/失败数（供告警检测使用）
+        if (Boolean.TRUE.equals(dto.getSuccess())) {
+            String globalSuccessKey = RedisKeyConstants.buildStatsSuccessKey(tenantId, "global", hour);
+            redisTemplate.opsForValue().increment(globalSuccessKey);
+            redisTemplate.expire(globalSuccessKey, ttlSeconds, TimeUnit.SECONDS);
+        } else {
+            String globalFailKey = RedisKeyConstants.buildStatsFailKey(tenantId, "global", hour);
+            redisTemplate.opsForValue().increment(globalFailKey);
+            redisTemplate.expire(globalFailKey, ttlSeconds, TimeUnit.SECONDS);
+        }
     }
 
     /**
      * 分页查询调用日志
      */
-    public IPage<ApiCallLog> pageCallLogs(String tenantId, String apiId, String appId,
+    public PageData<ApiCallLog> pageCallLogs(String tenantId, String apiId, String apiPath, String appId,
                                           LocalDateTime startTime, LocalDateTime endTime,
                                           Boolean success, int page, int size) {
         LambdaQueryWrapper<ApiCallLog> wrapper = new LambdaQueryWrapper<>();
@@ -107,6 +119,9 @@ public class CallLogService {
         }
         if (StringUtils.hasText(apiId)) {
             wrapper.eq(ApiCallLog::getApiId, apiId);
+        }
+        if (StringUtils.hasText(apiPath)) {
+            wrapper.like(ApiCallLog::getApiPath, apiPath);
         }
         if (StringUtils.hasText(appId)) {
             wrapper.eq(ApiCallLog::getAppId, appId);
@@ -122,8 +137,8 @@ public class CallLogService {
         }
         
         wrapper.orderByDesc(ApiCallLog::getRequestTime);
-        
-        return callLogMapper.selectPage(new Page<>(page, size), wrapper);
+        Page<ApiCallLog> apiCallLogPage = callLogMapper.selectPage(new Page<>(page, size), wrapper);
+        return PageData.of(apiCallLogPage.getRecords(), apiCallLogPage.getTotal(), apiCallLogPage.getSize(), apiCallLogPage.getCurrent());
     }
 
     /**

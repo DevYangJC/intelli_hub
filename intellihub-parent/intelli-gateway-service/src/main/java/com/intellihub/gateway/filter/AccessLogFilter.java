@@ -66,11 +66,17 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
             String appId = request.getHeaders().getFirst("X-App-Id");
             String appKey = request.getHeaders().getFirst("X-App-Key");
             
+            // 获取错误信息（从 exchange 属性中获取，由异常处理器设置）
+            String errorMessage = (String) exchange.getAttributes().get("errorMessage");
+            if (!success && errorMessage == null) {
+                errorMessage = "HTTP " + statusCode;
+            }
+            
             callLogReportService.reportCallLog(
                     tenantId, apiId, uri, method,
                     appId, appKey, clientIp,
                     statusCode, success, duration,
-                    null, userAgent
+                    errorMessage, userAgent
             );
         }));
     }

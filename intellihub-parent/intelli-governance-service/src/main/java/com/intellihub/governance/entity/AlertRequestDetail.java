@@ -1,6 +1,8 @@
 package com.intellihub.governance.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
@@ -8,28 +10,32 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * API调用日志实体
+ * 告警请求详情实体
+ * <p>
+ * 存储触发告警的具体请求信息
+ * </p>
  *
  * @author intellihub
  * @since 1.0.0
  */
 @Data
-@TableName("api_call_log")
-public class ApiCallLog {
+@TableName("alert_request_detail")
+public class AlertRequestDetail {
 
-    @TableId(type = IdType.ASSIGN_ID)
+    @TableId(type = IdType.AUTO)
     @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
-     * 租户ID
+     * 关联的告警记录ID
      */
-    private String tenantId;
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long alertRecordId;
 
     /**
-     * API ID
+     * 请求ID(UUID)
      */
-    private String apiId;
+    private String requestId;
 
     /**
      * API路径
@@ -39,22 +45,7 @@ public class ApiCallLog {
     /**
      * 请求方法
      */
-    private String apiMethod;
-
-    /**
-     * 应用ID
-     */
-    private String appId;
-
-    /**
-     * AppKey
-     */
-    private String appKey;
-
-    /**
-     * 客户端IP
-     */
-    private String clientIp;
+    private String method;
 
     /**
      * 响应状态码
@@ -67,14 +58,9 @@ public class ApiCallLog {
     private Boolean success;
 
     /**
-     * 响应时间(ms)
+     * 响应延迟(ms)
      */
     private Integer latency;
-
-    /**
-     * 请求时间
-     */
-    private LocalDateTime requestTime;
 
     /**
      * 错误信息
@@ -82,23 +68,17 @@ public class ApiCallLog {
     private String errorMessage;
 
     /**
-     * User-Agent
+     * 客户端IP
      */
-    private String userAgent;
+    private String clientIp;
 
     /**
-     * 请求体(可选)
+     * 请求时间
      */
-    private String requestBody;
-
-    /**
-     * 响应体(可选)
-     */
-    private String responseBody;
+    private LocalDateTime requestTime;
 
     /**
      * 创建时间
      */
-    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 }

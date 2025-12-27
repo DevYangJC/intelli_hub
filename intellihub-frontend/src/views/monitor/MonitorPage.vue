@@ -44,20 +44,12 @@
             <template #header>
               <div class="card-header">
                 <span>API调用趋势</span>
-                <el-select v-model="selectedApi" placeholder="选择API" size="small" style="width: 200px">
-                  <el-option label="全部API" value="all" />
-                  <el-option label="用户认证接口" value="auth" />
-                  <el-option label="订单查询接口" value="order" />
-                  <el-option label="支付回调接口" value="payment" />
+                <el-select v-model="selectedApi" placeholder="选择API" size="small" style="width: 200px" @change="loadTrendData">
+                  <el-option v-for="api in apiList" :key="api.value" :label="api.label" :value="api.value" />
                 </el-select>
               </div>
             </template>
-            <div class="chart-container">
-              <div class="chart-placeholder">
-                <el-icon :size="48" color="#ddd"><TrendCharts /></el-icon>
-                <p>API调用趋势图表</p>
-              </div>
-            </div>
+            <div ref="trendChartRef" class="chart-container"></div>
           </el-card>
         </el-col>
         <el-col :xs="24" :lg="8">
@@ -65,20 +57,7 @@
             <template #header>
               <span>响应状态分布</span>
             </template>
-            <div class="chart-container">
-              <div class="status-list">
-                <div v-for="status in statusDistribution" :key="status.code" class="status-item">
-                  <div class="status-info">
-                    <span class="status-code" :class="status.type">{{ status.code }}</span>
-                    <span class="status-name">{{ status.name }}</span>
-                  </div>
-                  <div class="status-bar-wrapper">
-                    <div class="status-bar" :class="status.type" :style="{ width: status.percent + '%' }"></div>
-                  </div>
-                  <span class="status-value">{{ status.count }}</span>
-                </div>
-              </div>
-            </div>
+            <div ref="statusChartRef" class="chart-container"></div>
           </el-card>
         </el-col>
       </el-row>
@@ -136,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import {
   Refresh,
   CaretTop,
@@ -146,14 +125,24 @@ import {
   Warning,
   InfoFilled,
 } from '@element-plus/icons-vue'
-import { getStatsOverview, getCallLogs, type StatsOverview, type CallLog } from '@/api/stats'
+import { getStatsOverview, getCallLogs, getHourlyTrend, getTopApis, type StatsOverview, type CallLog, type StatsTrend, type TopApiStats } from '@/api/stats'
 import { getAlertRecords, type AlertRecord } from '@/api/alert'
+import * as echarts from 'echarts'
 
 // 时间范围
 const timeRange = ref('24h')
 const selectedApi = ref('all')
 const autoRefresh = ref(true)
 let refreshTimer: number | null = null
+
+// 图表实例
+const trendChartRef = ref<HTMLElement | null>(null)
+const statusChartRef = ref<HTMLElement | null>(null)
+let trendChart: echarts.ECharts | null = null
+let statusChart: echarts.ECharts | null = null
+
+// API列表
+const apiList = ref<{ value: string; label: string }[]>([{ value: 'all', label: '全部API' }])
 
 // 统计概览数据
 const overview = ref<StatsOverview>({
@@ -175,11 +164,11 @@ const realTimeMetrics = reactive([
   { title: '今日调用', value: '0', trend: 0, status: 'success' as const, statusText: '正常' },
 ])
 
-// 状态分布
-const statusDistribution = reactive([
-  { code: '2xx', name: '成功', count: '0', percent: 100, type: 'success' },
-  { code: '4xx', name: '客户端错误', count: '0', percent: 0, type: 'warning' },
-  { code: '5xx', name: '服务端错误', count: '0', percent: 0, type: 'danger' },
+// 状态分布数据
+const statusData = ref([
+  { name: '成功 (2xx)', value: 0, itemStyle: { color: '#52c41a' } },
+  { name: '客户端错误 (4xx)', value: 0, itemStyle: { color: '#faad14' } },
+  { name: '服务端错误 (5xx)', value: 0, itemStyle: { color: '#ff4d4f' } }
 ])
 
 // 告警列表
@@ -224,26 +213,75 @@ const updateMetrics = () => {
   realTimeMetrics[3].statusText = '正常'
   
   // 更新状态分布
-  const total = data.todayTotalCount || 0
   const success = data.todaySuccessCount || 0
   const fail = data.todayFailCount || 0
   
-  if (total > 0) {
-    statusDistribution[0].count = formatNumber(success)
-    statusDistribution[0].percent = Math.round(success / total * 100)
-    statusDistribution[1].count = formatNumber(Math.round(fail * 0.7))
-    statusDistribution[1].percent = Math.round(fail * 0.7 / total * 100)
-    statusDistribution[2].count = formatNumber(Math.round(fail * 0.3))
-    statusDistribution[2].percent = Math.round(fail * 0.3 / total * 100)
+  statusData.value = [
+    { name: '成功 (2xx)', value: success, itemStyle: { color: '#52c41a' } },
+    { name: '客户端错误 (4xx)', value: Math.round(fail * 0.7), itemStyle: { color: '#faad14' } },
+    { name: '服务端错误 (5xx)', value: Math.round(fail * 0.3), itemStyle: { color: '#ff4d4f' } }
+  ]
+  
+  renderStatusChart()
+}
+
+// 渲染状态分布饼图
+const renderStatusChart = () => {
+  if (!statusChartRef.value) return
+  
+  if (!statusChart) {
+    statusChart = echarts.init(statusChartRef.value)
   }
+  
+  const option: echarts.EChartsOption = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c} ({d}%)'
+    },
+    legend: {
+      orient: 'vertical',
+      right: '10%',
+      top: 'center',
+      itemWidth: 12,
+      itemHeight: 12,
+      textStyle: { fontSize: 12 }
+    },
+    series: [
+      {
+        name: '状态分布',
+        type: 'pie',
+        radius: ['45%', '70%'],
+        center: ['35%', '50%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 6,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: false
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 14,
+            fontWeight: 'bold'
+          }
+        },
+        data: statusData.value
+      }
+    ]
+  }
+  
+  statusChart.setOption(option)
 }
 
 // 加载概览数据
 const loadOverview = async () => {
   try {
     const res = await getStatsOverview()
-    if (res.data.code === 200 && res.data.data) {
-      overview.value = res.data.data
+    if (res.code === 200 && res.data) {
+      overview.value = res.data
       updateMetrics()
     }
   } catch (error) {
@@ -255,8 +293,8 @@ const loadOverview = async () => {
 const loadAlerts = async () => {
   try {
     const res = await getAlertRecords({ pageNum: 1, pageSize: 5, status: 'firing' })
-    if (res.data.code === 200 && res.data.data) {
-      alerts.value = (res.data.data.records || []).map((record: AlertRecord) => ({
+    if (res.code === 200 && res.data) {
+      alerts.value = (res.data.records || []).map((record: AlertRecord) => ({
         id: record.id,
         level: record.alertLevel || 'info',
         title: record.ruleName || '告警',
@@ -273,8 +311,8 @@ const loadAlerts = async () => {
 const loadLogs = async () => {
   try {
     const res = await getCallLogs({ page: 1, size: 5 })
-    if (res.data.code === 200 && res.data.data) {
-      logs.value = (res.data.data.records || []).map((log: CallLog, index: number) => ({
+    if (res.code === 200 && res.data) {
+      logs.value = (res.data.records || []).map((log: CallLog, index: number) => ({
         id: index,
         time: formatLogTime(log.requestTime),
         level: log.success ? 'info' : 'error',
@@ -304,12 +342,142 @@ const formatLogTime = (time: string) => {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
 }
 
+// 获取时间范围
+const getTimeRange = () => {
+  const now = new Date()
+  let startTime: Date
+  
+  switch (timeRange.value) {
+    case '1h':
+      startTime = new Date(now.getTime() - 60 * 60 * 1000)
+      break
+    case '6h':
+      startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000)
+      break
+    case '24h':
+      startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      break
+    case '7d':
+      startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      break
+    default:
+      startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  }
+  
+  const formatDate = (date: Date) => {
+    return date.toISOString().slice(0, 19).replace('T', ' ')
+  }
+  
+  return {
+    startTime: formatDate(startTime),
+    endTime: formatDate(now)
+  }
+}
+
+// 加载 API 列表
+const loadApiList = async () => {
+  try {
+    const res = await getTopApis(50)
+    if (res.code === 200 && res.data) {
+      const apis = res.data as TopApiStats[]
+      apiList.value = [
+        { value: 'all', label: '全部API' },
+        ...apis.map(api => ({ value: api.apiPath, label: api.apiPath }))
+      ]
+    }
+  } catch (error) {
+    console.error('加载API列表失败', error)
+  }
+}
+
+// 加载趋势数据
+const loadTrendData = async () => {
+  try {
+    const { startTime, endTime } = getTimeRange()
+    const res = await getHourlyTrend(startTime, endTime)
+    if (res.code === 200 && res.data) {
+      renderTrendChart(res.data)
+    }
+  } catch (error) {
+    console.error('加载趋势数据失败', error)
+  }
+}
+
+// 渲染趋势图表
+const renderTrendChart = (data: StatsTrend) => {
+  if (!trendChartRef.value) return
+  
+  if (!trendChart) {
+    trendChart = echarts.init(trendChartRef.value)
+  }
+  
+  const option: echarts.EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' }
+    },
+    legend: {
+      data: ['调用量', '成功', '失败'],
+      top: 10
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: data.timePoints.map(t => {
+        const date = new Date(t)
+        return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`
+      })
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: [
+      {
+        name: '调用量',
+        type: 'line',
+        smooth: true,
+        data: data.totalCounts,
+        itemStyle: { color: '#667eea' },
+        areaStyle: { color: 'rgba(102, 126, 234, 0.1)' }
+      },
+      {
+        name: '成功',
+        type: 'line',
+        smooth: true,
+        data: data.successCounts,
+        itemStyle: { color: '#52c41a' }
+      },
+      {
+        name: '失败',
+        type: 'line',
+        smooth: true,
+        data: data.failCounts,
+        itemStyle: { color: '#ff4d4f' }
+      }
+    ]
+  }
+  
+  trendChart.setOption(option)
+}
+
 // 刷新数据
 const refreshData = () => {
   loadOverview()
   loadAlerts()
   loadLogs()
+  loadTrendData()
 }
+
+// 监听时间范围变化
+watch(timeRange, () => {
+  loadTrendData()
+})
 
 // 监听自动刷新开关
 watch(autoRefresh, (val) => {
@@ -321,17 +489,28 @@ watch(autoRefresh, (val) => {
   }
 })
 
-onMounted(() => {
+// 窗口大小变化时重绘图表
+const handleResize = () => {
+  trendChart?.resize()
+  statusChart?.resize()
+}
+
+onMounted(async () => {
+  await loadApiList()
   refreshData()
   if (autoRefresh.value) {
     refreshTimer = window.setInterval(refreshData, 30000)
   }
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   if (refreshTimer) {
     clearInterval(refreshTimer)
   }
+  window.removeEventListener('resize', handleResize)
+  trendChart?.dispose()
+  statusChart?.dispose()
 })
 </script>
 

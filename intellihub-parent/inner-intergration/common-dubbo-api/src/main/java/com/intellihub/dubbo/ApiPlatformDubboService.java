@@ -51,4 +51,15 @@ public interface ApiPlatformDubboService {
      * @return API路由
      */
     ApiRouteDTO matchRouteByPath(String requestPath, String method);
+
+    /**
+     * 批量更新API调用次数
+     * <p>
+     * 由Governance服务调用，同步调用统计数据到API表
+     * </p>
+     *
+     * @param callCounts API调用次数统计列表
+     * @return 更新成功的记录数
+     */
+    int batchUpdateApiCallCounts(List<ApiCallCountDTO> callCounts);
 }

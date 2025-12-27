@@ -223,9 +223,9 @@ const loadRules = async () => {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize
     })
-    if (res.data.code === 200 && res.data.data) {
-      rules.value = res.data.data.records || []
-      pagination.total = res.data.data.total || 0
+    if (res.code === 200 && res.data) {
+      rules.value = res.data.records || []
+      pagination.total = res.data.total || 0
     }
   } catch (error) {
     console.error('加载规则列表失败', error)
@@ -277,13 +277,25 @@ const handleSubmit = async () => {
   
   submitting.value = true
   try {
-    form.notifyChannels = selectedChannels.value.join(',')
+    // 只提交必要的字段，不包含 tenantId 等上下文字段
+    const payload = {
+      name: form.name,
+      ruleType: form.ruleType,
+      apiId: form.apiId,
+      apiPath: form.apiPath,
+      threshold: form.threshold,
+      operator: form.operator,
+      duration: form.duration,
+      notifyChannels: selectedChannels.value.join(','),
+      notifyTargets: form.notifyTargets,
+      status: form.status
+    }
     
     if (isEdit.value && form.id) {
-      await updateAlertRule(form.id, form)
+      await updateAlertRule(form.id, payload as AlertRule)
       ElMessage.success('更新成功')
     } else {
-      await createAlertRule(form)
+      await createAlertRule(payload as AlertRule)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false

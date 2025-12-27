@@ -5,6 +5,7 @@ import com.intellihub.app.entity.AppApiSubscription;
 import com.intellihub.app.entity.AppInfo;
 import com.intellihub.app.mapper.AppApiSubscriptionMapper;
 import com.intellihub.app.mapper.AppInfoMapper;
+import com.intellihub.dubbo.AppCallCountDTO;
 import com.intellihub.dubbo.AppCenterDubboService;
 import com.intellihub.dubbo.AppKeyInfoDTO;
 import com.intellihub.enums.SubscriptionStatus;
@@ -147,5 +148,51 @@ public class AppCenterDubboServiceImpl implements AppCenterDubboService {
         }
         
         return dto;
+    }
+
+    /**
+     * 批量更新App配额使用
+     * <p>
+     * 根据传入的调用统计列表，更新 app_info 表的 quota_used 字段
+     * </p>
+     *
+     * @param callCounts App调用次数统计列表
+     * @return 更新成功的记录数
+     */
+    @Override
+    public int batchUpdateAppQuotaUsed(List<AppCallCountDTO> callCounts) {
+        if (callCounts == null || callCounts.isEmpty()) {
+            log.info("[配额同步] 无需更新的App配额");
+            return 0;
+        }
+
+        log.info("[配额同步] 开始批量更新App配额使用，共 {} 条", callCounts.size());
+        int successCount = 0;
+
+        for (AppCallCountDTO dto : callCounts) {
+            try {
+                // 查询App是否存在
+                AppInfo appInfo = appInfoMapper.selectById(dto.getAppId());
+                if (appInfo == null) {
+                    log.warn("[配额同步] App不存在，跳过: appId={}", dto.getAppId());
+                    continue;
+                }
+
+                // 更新配额使用
+                appInfo.setQuotaUsed(dto.getQuotaUsed() != null ? dto.getQuotaUsed() : 0L);
+                
+                int affected = appInfoMapper.updateById(appInfo);
+                if (affected > 0) {
+                    successCount++;
+                    log.debug("[配额同步] App配额更新成功: appId={}, quotaUsed={}", 
+                            dto.getAppId(), dto.getQuotaUsed());
+                }
+            } catch (Exception e) {
+                log.error("[配额同步] 更新App配额失败: appId={}", dto.getAppId(), e);
+            }
+        }
+
+        log.info("[配额同步] App配额批量更新完成，成功 {} / {} 条", successCount, callCounts.size());
+        return successCount;
     }
 }

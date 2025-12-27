@@ -135,3 +135,26 @@ CREATE TABLE alert_record (
     INDEX idx_rule (rule_id),
     INDEX idx_fired_at (fired_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警记录表';
+
+-- =============================================
+-- 6. 告警请求详情表
+-- 存储触发告警的具体请求信息
+-- =============================================
+DROP TABLE IF EXISTS alert_request_detail;
+CREATE TABLE alert_request_detail (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    alert_record_id BIGINT NOT NULL COMMENT '关联的告警记录ID',
+    request_id VARCHAR(64) COMMENT '请求ID(UUID)',
+    api_path VARCHAR(255) NOT NULL COMMENT 'API路径',
+    method VARCHAR(10) COMMENT '请求方法',
+    status_code INT COMMENT '响应状态码',
+    success TINYINT(1) COMMENT '是否成功',
+    latency INT COMMENT '响应延迟(ms)',
+    error_message VARCHAR(500) COMMENT '错误信息',
+    client_ip VARCHAR(50) COMMENT '客户端IP',
+    request_time DATETIME COMMENT '请求时间',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_alert_record_id (alert_record_id),
+    INDEX idx_api_path (api_path(100)),
+    INDEX idx_request_time (request_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警请求详情表';

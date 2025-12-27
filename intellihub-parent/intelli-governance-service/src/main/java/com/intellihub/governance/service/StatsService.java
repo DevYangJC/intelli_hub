@@ -8,9 +8,9 @@ import com.intellihub.governance.entity.ApiCallStatsHourly;
 import com.intellihub.constants.RedisKeyConstants;
 import com.intellihub.governance.mapper.ApiCallStatsDailyMapper;
 import com.intellihub.governance.mapper.ApiCallStatsHourlyMapper;
-import com.intellihub.redis.util.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -23,6 +23,10 @@ import java.util.Map;
 
 /**
  * 统计查询服务
+ * <p>
+ * 注意：实时统计数据由 Gateway 使用 StringRedisTemplate 写入，
+ * 因此这里也必须使用 StringRedisTemplate 读取，避免序列化不匹配。
+ * </p>
  *
  * @author intellihub
  * @since 1.0.0
@@ -34,9 +38,10 @@ public class StatsService {
 
     private final ApiCallStatsHourlyMapper hourlyMapper;
     private final ApiCallStatsDailyMapper dailyMapper;
-    private final RedisUtil redisUtil;
+    private final StringRedisTemplate stringRedisTemplate;
 
     private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHH");
+    private static final DateTimeFormatter MINUTE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
 
     /**
      * 获取统计概览
@@ -91,18 +96,9 @@ public class StatsService {
             overview.setDayOverDayRate(todayTotal > 0 ? 100.0 : 0.0);
         }
 
-        // 当前小时QPS（从Redis获取实时数据）
-        String hour = LocalDateTime.now().format(HOUR_FORMATTER);
-        String globalKey = RedisKeyConstants.buildStatsTotalKey(tenantId, "global", hour);
-        Object value = redisUtil.get(globalKey);
-        long currentHourCount = value != null ? Long.parseLong(value.toString()) : 0;
-        // 假设已过去的分钟数
-        int minutesPassed = LocalDateTime.now().getMinute();
-        if (minutesPassed > 0) {
-            overview.setCurrentQps(currentHourCount * 1.0 / (minutesPassed * 60));
-        } else {
-            overview.setCurrentQps(0.0);
-        }
+        // 当前 QPS（从分钟级 Redis Key 获取）
+        double currentQps = getQps(tenantId);
+        overview.setCurrentQps(currentQps);
 
         return overview;
     }
@@ -177,47 +173,114 @@ public class StatsService {
 
     /**
      * 获取实时统计数据（供告警检测使用）
+     * <p>
+     * 从 Redis Hash 获取当前小时的实时统计数据
+     * </p>
+     * <p>
+     * Redis Key 格式: alert:stats:{tenantId}:{hour} (Hash类型)
+     * 字段: totalCount, successCount, failCount, latencySum
+     * </p>
      */
     public Map<String, Object> getRealtimeStats(String tenantId, String apiId) {
         Map<String, Object> stats = new HashMap<>();
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
         
-        String apiPath = apiId != null ? apiId : "global";
+        // 构建 Redis Key（新结构使用 Hash）
+        String statsKey = RedisKeyConstants.buildAlertStatsKey(tenantId, hour);
         
-        // 获取实时统计 (Key格式参见 RedisKeyConstants.STATS_REALTIME_PREFIX)
-        Object totalObj = redisUtil.get(RedisKeyConstants.buildStatsTotalKey(tenantId, apiPath, hour));
-        Object successObj = redisUtil.get(RedisKeyConstants.buildStatsSuccessKey(tenantId, apiPath, hour));
-        Object failObj = redisUtil.get(RedisKeyConstants.buildStatsFailKey(tenantId, apiPath, hour));
+        log.info("[实时统计] 查询Redis Hash Key: {}", statsKey);
         
-        long totalCount = totalObj != null ? Long.parseLong(totalObj.toString()) : 0;
-        long successCount = successObj != null ? Long.parseLong(successObj.toString()) : 0;
-        long failCount = failObj != null ? Long.parseLong(failObj.toString()) : 0;
+        // 从 Hash 获取所有字段
+        Map<Object, Object> hashData = stringRedisTemplate.opsForHash().entries(statsKey);
+        log.info("[实时统计] HGETALL {} => {}", statsKey, hashData);
+        
+        if (hashData.isEmpty()) {
+            log.info("[实时统计] Hash为空，返回零值");
+            stats.put("totalCount", 0L);
+            stats.put("successCount", 0L);
+            stats.put("failCount", 0L);
+            stats.put("errorRate", 0.0);
+            stats.put("avgLatency", 0);
+            return stats;
+        }
+        
+        long totalCount = parseLong(hashData.get("totalCount"));
+        long successCount = parseLong(hashData.get("successCount"));
+        long failCount = parseLong(hashData.get("failCount"));
+        long latencySum = parseLong(hashData.get("latencySum"));
         
         stats.put("totalCount", totalCount);
         stats.put("successCount", successCount);
         stats.put("failCount", failCount);
         stats.put("errorRate", totalCount > 0 ? (failCount * 100.0 / totalCount) : 0.0);
         
-        // 从数据库获取平均延迟
-        LocalDateTime hourStart = LocalDateTime.now().withMinute(0).withSecond(0).withNano(0);
-        LambdaQueryWrapper<ApiCallStatsHourly> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApiCallStatsHourly::getTenantId, tenantId)
-               .eq(ApiCallStatsHourly::getStatTime, hourStart);
-        if (apiId != null) {
-            wrapper.eq(ApiCallStatsHourly::getApiId, apiId);
-        }
+        // 计算平均延迟
+        int avgLatency = totalCount > 0 ? (int) (latencySum / totalCount) : 0;
+        stats.put("avgLatency", avgLatency);
         
-        List<ApiCallStatsHourly> hourlyStats = hourlyMapper.selectList(wrapper);
-        if (!hourlyStats.isEmpty()) {
-            int avgLatency = hourlyStats.stream()
-                    .mapToInt(s -> s.getAvgLatency() != null ? s.getAvgLatency() : 0)
-                    .sum() / hourlyStats.size();
-            stats.put("avgLatency", avgLatency);
-        } else {
-            stats.put("avgLatency", 0);
-        }
-        
+        log.info("[实时统计] 返回数据: totalCount={}, successCount={}, failCount={}, avgLatency={}ms", 
+                totalCount, successCount, failCount, avgLatency);
         return stats;
+    }
+    
+    /**
+     * 获取告警相关的请求详情列表
+     */
+    public List<String> getAlertRequests(String tenantId, String hour) {
+        String requestsKey = RedisKeyConstants.buildAlertRequestsKey(tenantId, hour);
+        log.info("[实时统计] 获取请求列表 Key: {}", requestsKey);
+        
+        List<String> requests = stringRedisTemplate.opsForList().range(requestsKey, 0, -1);
+        log.info("[实时统计] LRANGE {} => 获取到{}条记录", requestsKey, requests != null ? requests.size() : 0);
+        return requests != null ? requests : new java.util.ArrayList<>();
+    }
+    
+    /**
+     * 删除告警相关的Redis数据（告警触发后调用，避免重复告警）
+     */
+    public void deleteAlertData(String tenantId, String hour) {
+        String statsKey = RedisKeyConstants.buildAlertStatsKey(tenantId, hour);
+        String requestsKey = RedisKeyConstants.buildAlertRequestsKey(tenantId, hour);
+        
+        log.info("[实时统计] 删除告警数据: statsKey={}, requestsKey={}", statsKey, requestsKey);
+        stringRedisTemplate.delete(statsKey);
+        stringRedisTemplate.delete(requestsKey);
+    }
+    
+    private long parseLong(Object value) {
+        if (value == null) return 0;
+        try {
+            return Long.parseLong(value.toString());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * 获取上一分钟的 QPS（固定窗口）
+     * <p>
+     * QPS = 上一分钟的请求总数 / 60
+     * </p>
+     * <p>
+     * Redis Key: alert:qps:{tenantId}:{minute}
+     * minute 格式: yyyyMMddHHmm
+     * </p>
+     */
+    public double getQps(String tenantId) {
+        // 获取上一分钟的时间标识
+        LocalDateTime lastMinute = LocalDateTime.now().minusMinutes(1);
+        String minute = lastMinute.format(MINUTE_FORMATTER);
+        String qpsKey = RedisKeyConstants.buildQpsKey(tenantId, minute);
+        
+        log.info("[QPS统计] 查询 Key: {}", qpsKey);
+        
+        String countStr = stringRedisTemplate.opsForValue().get(qpsKey);
+        long count = countStr != null ? Long.parseLong(countStr) : 0;
+        
+        double qps = count / 60.0;
+        log.info("[QPS统计] minute={}, count={}, QPS={}/s", minute, count, qps);
+        
+        return qps;
     }
 
     /**

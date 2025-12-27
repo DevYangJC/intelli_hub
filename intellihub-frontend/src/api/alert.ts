@@ -2,7 +2,7 @@ import request from './request'
 
 // 告警规则
 export interface AlertRule {
-  id?: number
+  id?: number | string  // Long ID 可能是 string
   tenantId?: string
   name: string
   ruleType: string
@@ -21,9 +21,9 @@ export interface AlertRule {
 
 // 告警记录
 export interface AlertRecord {
-  id: number
+  id: number | string  // Long ID 可能是 string（防止精度丢失）
   tenantId: string
-  ruleId: number
+  ruleId: number | string
   ruleName: string
   apiId?: string
   apiPath?: string
@@ -36,6 +36,29 @@ export interface AlertRecord {
   resolvedAt?: string
   notified: boolean
   createdAt: string
+}
+
+// 告警请求详情
+export interface AlertRequestDetail {
+  id: number | string  // Long ID 可能是 string
+  alertRecordId: number | string
+  requestId?: string
+  apiPath: string
+  method?: string
+  statusCode?: number
+  success?: boolean
+  latency?: number
+  errorMessage?: string
+  clientIp?: string
+  requestTime?: string
+  createdAt?: string
+}
+
+// 告警详情（包含请求列表）
+export interface AlertRecordDetail {
+  record: AlertRecord
+  requestDetails: AlertRequestDetail[]
+  requestCount: number
 }
 
 // 告警统计
@@ -103,7 +126,7 @@ export function getAlertRules(params?: {
 /**
  * 获取告警规则详情
  */
-export function getAlertRule(id: number) {
+export function getAlertRule(id: number | string) {
   return request.get<AlertRule>(`/governance/v1/alert/rules/${id}`)
 }
 
@@ -117,28 +140,28 @@ export function createAlertRule(data: AlertRule) {
 /**
  * 更新告警规则
  */
-export function updateAlertRule(id: number, data: AlertRule) {
+export function updateAlertRule(id: number | string, data: AlertRule) {
   return request.put<AlertRule>(`/governance/v1/alert/rules/${id}`, data)
 }
 
 /**
  * 删除告警规则
  */
-export function deleteAlertRule(id: number) {
+export function deleteAlertRule(id: number | string) {
   return request.delete(`/governance/v1/alert/rules/${id}`)
 }
 
 /**
  * 启用告警规则
  */
-export function enableAlertRule(id: number) {
+export function enableAlertRule(id: number | string) {
   return request.post(`/governance/v1/alert/rules/${id}/enable`)
 }
 
 /**
  * 禁用告警规则
  */
-export function disableAlertRule(id: number) {
+export function disableAlertRule(id: number | string) {
   return request.post(`/governance/v1/alert/rules/${id}/disable`)
 }
 
@@ -148,7 +171,7 @@ export function disableAlertRule(id: number) {
 export function getAlertRecords(params?: {
   status?: string
   alertLevel?: string
-  ruleId?: number
+  ruleId?: number | string
   startTime?: string
   endTime?: string
   pageNum?: number
@@ -170,6 +193,13 @@ export function getAlertStats(params?: {
 /**
  * 手动恢复告警
  */
-export function resolveAlert(id: number) {
+export function resolveAlert(id: number | string) {
   return request.post(`/governance/v1/alert/records/${id}/resolve`)
+}
+
+/**
+ * 获取告警详情（包含触发告警的请求列表）
+ */
+export function getAlertDetails(id: number | string) {
+  return request.get<AlertRecordDetail>(`/governance/v1/alert/records/${id}/details`)
 }

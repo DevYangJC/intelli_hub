@@ -477,4 +477,50 @@ public class ApiInfoServiceImpl implements ApiInfoService {
             return route;
         }).collect(Collectors.toList());
     }
+
+    @Override
+    public PageData<ApiInfoResponse> listPublicApis(ApiQueryRequest request) {
+        log.info("查询公开API列表（跨租户）- request: {}", request);
+
+        LambdaQueryWrapper<ApiInfo> wrapper = new LambdaQueryWrapper<>();
+        // 只查询已发布的API
+        wrapper.eq(ApiInfo::getStatus, "published");
+
+        // 关键词搜索
+        if (StringUtils.hasText(request.getKeyword())) {
+            wrapper.and(w -> w
+                    .like(ApiInfo::getName, request.getKeyword())
+                    .or()
+                    .like(ApiInfo::getDescription, request.getKeyword())
+                    .or()
+                    .like(ApiInfo::getPath, request.getKeyword())
+            );
+        }
+
+        // 分组筛选
+        if (StringUtils.hasText(request.getGroupId())) {
+            wrapper.eq(ApiInfo::getGroupId, request.getGroupId());
+        }
+
+        // 请求方法筛选
+        if (StringUtils.hasText(request.getMethod())) {
+            wrapper.eq(ApiInfo::getMethod, request.getMethod());
+        }
+
+        wrapper.orderByDesc(ApiInfo::getPublishedAt);
+
+        IPage<ApiInfo> page = apiInfoMapper.selectPage(
+                new Page<>(request.getPage(), request.getSize()),
+                wrapper
+        );
+
+        List<ApiInfoResponse> records = page.getRecords().stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+
+        PageData<ApiInfoResponse> pageData = new PageData<>(page.getCurrent(), page.getSize());
+        pageData.setTotal(page.getTotal());
+        pageData.setRecords(records);
+        return pageData;
+    }
 }

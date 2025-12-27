@@ -156,7 +156,7 @@
                 <span>请求信息</span>
               </div>
             </template>
-            
+
             <h4>请求URL</h4>
             <div class="code-block">
               <code>{{ apiDetail.method }} {{ apiDetail.fullPath }}</code>

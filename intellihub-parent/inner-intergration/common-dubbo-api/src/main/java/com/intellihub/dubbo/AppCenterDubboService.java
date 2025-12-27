@@ -42,4 +42,15 @@ public interface AppCenterDubboService {
      * @return 是否订阅
      */
     boolean checkSubscriptionByApiId(String appId, String apiId);
+
+    /**
+     * 批量更新App配额使用
+     * <p>
+     * 由Governance服务调用，同步调用统计数据到App表
+     * </p>
+     *
+     * @param callCounts App调用次数统计列表
+     * @return 更新成功的记录数
+     */
+    int batchUpdateAppQuotaUsed(java.util.List<AppCallCountDTO> callCounts);
 }

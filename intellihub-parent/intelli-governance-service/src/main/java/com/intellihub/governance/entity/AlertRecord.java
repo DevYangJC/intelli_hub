@@ -1,6 +1,8 @@
 package com.intellihub.governance.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -16,7 +18,8 @@ import java.time.LocalDateTime;
 @TableName("alert_record")
 public class AlertRecord {
 
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
@@ -27,6 +30,7 @@ public class AlertRecord {
     /**
      * 规则ID
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long ruleId;
 
     /**

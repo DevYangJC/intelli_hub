@@ -354,6 +354,19 @@ export const apiVersionApi = {
   },
 }
 
+// 公开API接口（API市场）
+export const publicApiApi = {
+  // 获取公开API列表（跨租户）
+  list(params?: ApiQueryRequest): Promise<ApiResponse<PageData<ApiInfoResponse>>> {
+    return request.get('/v1/public/apis/list', { params })
+  },
+
+  // 获取公开API详情
+  getById(id: string): Promise<ApiResponse<ApiInfoResponse>> {
+    return request.get(`/v1/public/apis/${id}/detail`)
+  },
+}
+
 // API后端配置接口
 export const apiBackendApi = {
   // 获取后端配置

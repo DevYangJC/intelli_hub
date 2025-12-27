@@ -1,20 +1,25 @@
 package com.intellihub.governance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.intellihub.page.PageData;
 import com.intellihub.governance.entity.AlertRecord;
+import com.intellihub.governance.entity.AlertRequestDetail;
 import com.intellihub.governance.entity.AlertRule;
 import com.intellihub.governance.mapper.AlertRecordMapper;
+import com.intellihub.governance.mapper.AlertRequestDetailMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.intellihub.governance.dto.AlertRecordDetailDTO;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 告警记录服务
@@ -28,6 +33,59 @@ import java.util.List;
 public class AlertRecordService {
 
     private final AlertRecordMapper alertRecordMapper;
+    private final AlertRequestDetailMapper alertRequestDetailMapper;
+
+    /**
+     * 创建告警记录（带请求详情）
+     */
+    @Transactional
+    public AlertRecord createRecordWithDetails(AlertRule rule, String apiPath, BigDecimal currentValue,
+                                               String alertLevel, String alertMessage,
+                                               List<Map<String, Object>> requestDetails) {
+        // 创建告警记录
+        AlertRecord record = createRecord(rule, apiPath, currentValue, alertLevel, alertMessage);
+        
+        // 保存请求详情
+        if (requestDetails != null && !requestDetails.isEmpty()) {
+            for (Map<String, Object> detail : requestDetails) {
+                AlertRequestDetail requestDetail = new AlertRequestDetail();
+                requestDetail.setAlertRecordId(record.getId());
+                requestDetail.setRequestId((String) detail.get("requestId"));
+                requestDetail.setApiPath((String) detail.get("apiPath"));
+                requestDetail.setMethod((String) detail.get("method"));
+                
+                Object statusCode = detail.get("statusCode");
+                if (statusCode != null) {
+                    requestDetail.setStatusCode(((Number) statusCode).intValue());
+                }
+                
+                requestDetail.setSuccess((Boolean) detail.get("success"));
+                
+                Object latency = detail.get("latency");
+                if (latency != null) {
+                    requestDetail.setLatency(((Number) latency).intValue());
+                }
+                
+                requestDetail.setErrorMessage((String) detail.get("errorMessage"));
+                requestDetail.setClientIp((String) detail.get("clientIp"));
+                
+                String timestamp = (String) detail.get("timestamp");
+                if (timestamp != null) {
+                    try {
+                        requestDetail.setRequestTime(LocalDateTime.parse(timestamp));
+                    } catch (Exception e) {
+                        requestDetail.setRequestTime(LocalDateTime.now());
+                    }
+                }
+                
+                requestDetail.setCreatedAt(LocalDateTime.now());
+                alertRequestDetailMapper.insert(requestDetail);
+            }
+            log.info("保存告警请求详情 - alertRecordId: {}, count: {}", record.getId(), requestDetails.size());
+        }
+        
+        return record;
+    }
 
     /**
      * 创建告警记录
@@ -95,7 +153,7 @@ public class AlertRecordService {
     /**
      * 分页查询告警记录
      */
-    public IPage<AlertRecord> listRecords(String tenantId, String status, String alertLevel,
+    public PageData<AlertRecord> listRecords(String tenantId, String status, String alertLevel,
                                           Long ruleId, LocalDateTime startTime, LocalDateTime endTime,
                                           int pageNum, int pageSize) {
         LambdaQueryWrapper<AlertRecord> wrapper = new LambdaQueryWrapper<>();
@@ -119,7 +177,8 @@ public class AlertRecordService {
         
         wrapper.orderByDesc(AlertRecord::getFiredAt);
         
-        return alertRecordMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        Page<AlertRecord> page = alertRecordMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        return PageData.of(page.getRecords(), page.getTotal(), page.getSize(), page.getCurrent());
     }
 
     /**
@@ -130,6 +189,32 @@ public class AlertRecordService {
         wrapper.eq(AlertRecord::getNotified, false)
                .eq(AlertRecord::getStatus, "firing");
         return alertRecordMapper.selectList(wrapper);
+    }
+
+    /**
+     * 获取告警详情（包含请求详情列表）
+     */
+    public AlertRecordDetailDTO getAlertDetails(Long alertRecordId) {
+        log.info("[告警详情] 查询告警ID: {}", alertRecordId);
+        
+        AlertRecord record = alertRecordMapper.selectById(alertRecordId);
+        log.info("[告警详情] 查询到记录: {}", record);
+        
+        if (record == null) {
+            log.warn("[告警详情] 告警记录不存在: {}", alertRecordId);
+            return null;
+        }
+        
+        List<AlertRequestDetail> requestDetails = alertRequestDetailMapper.selectByAlertRecordId(alertRecordId);
+        log.info("[告警详情] 查询到请求详情数量: {}", requestDetails != null ? requestDetails.size() : 0);
+        
+        AlertRecordDetailDTO dto = new AlertRecordDetailDTO();
+        dto.setRecord(record);
+        dto.setRequestDetails(requestDetails != null ? requestDetails : new java.util.ArrayList<>());
+        dto.setRequestCount(requestDetails != null ? requestDetails.size() : 0);
+        
+        log.info("[告警详情] 返回DTO: record={}, requestCount={}", dto.getRecord() != null, dto.getRequestCount());
+        return dto;
     }
 
     /**
