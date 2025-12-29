@@ -21,7 +21,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(userContextInterceptor)
-                .addPathPatterns("/v1/**")
+                .addPathPatterns("/v1/**", "/platform/**")
                 .excludePathPatterns("/v1/health", "/v1/actuator/**");
     }
 }

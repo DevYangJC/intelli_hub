@@ -13,17 +13,22 @@
 - 安全控制：认证、限流、IP白名单
 - 路径转换：对外路径与内部路径解耦
 
+```mermaid
+sequenceDiagram
+    participant External as 外部调用方
+    participant Gateway as 网关
+    participant Service as 内部服务
+
+    External->>Gateway: GET /open/auth/captcha
+    Gateway->>Service: GET /iam/v1/auth/captcha
+    Service-->>Gateway: 验证码图片
+    Gateway-->>External: 验证码图片
+
 ```
-外部调用方                    网关                        内部服务
-    │                         │                            │
-    │  GET /open/auth/captcha │                            │
-    │ ───────────────────────→│                            │
-    │                         │  GET /iam/v1/auth/captcha  │
-    │                         │ ──────────────────────────→│
-    │                         │                            │
-    │       验证码图片         │       验证码图片            │
-    │ ←───────────────────────│ ←──────────────────────────│
-```
+
+
+
+
 
 ---
 
@@ -79,6 +84,7 @@
 | **Content-Type** | ✅ | 请求体格式 | `application/json` |
 
 > **路径设计建议**：
+>
 > - 公开接口：`/open/xxx`
 > - 需要认证：`/api/xxx`
 > - 支持路径参数：`/open/users/{userId}`

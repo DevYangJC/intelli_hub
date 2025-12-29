@@ -1,11 +1,13 @@
 package com.intellihub.governance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.intellihub.governance.dto.ApiStatsDetailDTO;
 import com.intellihub.governance.dto.StatsOverviewDTO;
 import com.intellihub.governance.dto.StatsTrendDTO;
 import com.intellihub.governance.entity.ApiCallStatsDaily;
 import com.intellihub.governance.entity.ApiCallStatsHourly;
 import com.intellihub.constants.RedisKeyConstants;
+import com.intellihub.governance.mapper.ApiCallLogMapper;
 import com.intellihub.governance.mapper.ApiCallStatsDailyMapper;
 import com.intellihub.governance.mapper.ApiCallStatsHourlyMapper;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class StatsService {
 
+    private final ApiCallLogMapper callLogMapper;
     private final ApiCallStatsHourlyMapper hourlyMapper;
     private final ApiCallStatsDailyMapper dailyMapper;
     private final StringRedisTemplate stringRedisTemplate;
@@ -286,6 +289,216 @@ public class StatsService {
     /**
      * 构建天趋势DTO
      */
+    /**
+     * 获取单个API的统计详情
+     * <p>
+     * 优化策略：
+     * 1. 基础统计数据优先从预聚合表（api_call_stats_daily）获取
+     * 2. 今日实时数据从日志表获取（数据量小）
+     * 3. 分布数据限制查询最近3天以控制数据量
+     * </p>
+     *
+     * @param tenantId 租户ID
+     * @param apiId    API ID
+     * @return API统计详情
+     */
+    public ApiStatsDetailDTO getApiStatsDetail(String tenantId, String apiId) {
+        ApiStatsDetailDTO dto = new ApiStatsDetailDTO();
+        
+        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = now.toLocalDate();
+        LocalDate yesterday = today.minusDays(1);
+        
+        // 今日开始时间和结束时间
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime todayEnd = now;
+        
+        // 昨日时间范围
+        LocalDateTime yesterdayStart = yesterday.atStartOfDay();
+        LocalDateTime yesterdayEnd = yesterday.atTime(23, 59, 59);
+        
+        // 1. 获取今日统计（从日志表，数据量小）
+        Map<String, Object> todayStats = callLogMapper.selectApiStatsSummary(tenantId, apiId, todayStart, todayEnd);
+        long todayCalls = parseLong(todayStats.get("total_count"));
+        long todaySuccess = parseLong(todayStats.get("success_count"));
+        int todayAvgLatency = parseInt(todayStats.get("avg_latency"));
+        
+        // 2. 获取昨日统计（优先从预聚合表获取）
+        long yesterdayCalls = 0;
+        long yesterdaySuccess = 0;
+        int yesterdayAvgLatency = 0;
+        
+        // 尝试从预聚合表获取昨日数据
+        LambdaQueryWrapper<ApiCallStatsDaily> dailyWrapper = new LambdaQueryWrapper<>();
+        dailyWrapper.eq(ApiCallStatsDaily::getTenantId, tenantId)
+                   .eq(ApiCallStatsDaily::getStatDate, yesterday);
+        List<ApiCallStatsDaily> yesterdayDailyStats = dailyMapper.selectList(dailyWrapper);
+        
+        if (!yesterdayDailyStats.isEmpty()) {
+            // 从预聚合表聚合
+            for (ApiCallStatsDaily stat : yesterdayDailyStats) {
+                yesterdayCalls += stat.getTotalCount() != null ? stat.getTotalCount() : 0;
+                yesterdaySuccess += stat.getSuccessCount() != null ? stat.getSuccessCount() : 0;
+            }
+            yesterdayAvgLatency = (int) yesterdayDailyStats.stream()
+                    .mapToInt(s -> s.getAvgLatency() != null ? s.getAvgLatency() : 0)
+                    .average().orElse(0);
+        } else {
+            // 回退到日志表查询
+            Map<String, Object> yesterdayStats = callLogMapper.selectApiStatsSummary(tenantId, apiId, yesterdayStart, yesterdayEnd);
+            yesterdayCalls = parseLong(yesterdayStats.get("total_count"));
+            yesterdaySuccess = parseLong(yesterdayStats.get("success_count"));
+            yesterdayAvgLatency = parseInt(yesterdayStats.get("avg_latency"));
+        }
+        
+        // 3. 获取历史总调用次数（从预聚合表汇总）
+        Long totalCalls = getTotalCallsFromDailyStats(tenantId, apiId);
+        totalCalls = totalCalls + todayCalls; // 加上今日实时数据
+        
+        // 设置基本统计
+        dto.setTodayCalls(todayCalls);
+        dto.setTotalCalls(totalCalls);
+        dto.setAvgLatency(todayAvgLatency);
+        dto.setSuccessRate(todayCalls > 0 ? (todaySuccess * 100.0 / todayCalls) : 100.0);
+        
+        // 计算环比
+        dto.setTodayTrend(calculateTrend(todayCalls, yesterdayCalls));
+        dto.setLatencyTrend(calculateTrend(todayAvgLatency, yesterdayAvgLatency));
+        
+        double todaySuccessRate = todayCalls > 0 ? (todaySuccess * 100.0 / todayCalls) : 100.0;
+        double yesterdaySuccessRate = yesterdayCalls > 0 ? (yesterdaySuccess * 100.0 / yesterdayCalls) : 100.0;
+        dto.setSuccessRateTrend(todaySuccessRate - yesterdaySuccessRate);
+        
+        // 4. 获取最近3天的状态码分布（限制时间范围以优化性能）
+        LocalDateTime recentStart = today.minusDays(3).atStartOfDay();
+        List<Map<String, Object>> statusDist = callLogMapper.selectStatusDistribution(tenantId, apiId, recentStart, todayEnd);
+        dto.setStatusDistribution(buildStatusDistribution(statusDist));
+        
+        // 5. 获取最近3天的响应时间分布
+        List<Map<String, Object>> latencyDist = callLogMapper.selectLatencyDistribution(tenantId, apiId, recentStart, todayEnd);
+        dto.setLatencyDistribution(buildLatencyDistribution(latencyDist));
+        
+        return dto;
+    }
+    
+    /**
+     * 从预聚合表获取历史总调用次数
+     */
+    private Long getTotalCallsFromDailyStats(String tenantId, String apiId) {
+        LambdaQueryWrapper<ApiCallStatsDaily> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApiCallStatsDaily::getTenantId, tenantId);
+        // 注意：apiId可能需要通过apiPath关联，这里简化处理
+        List<ApiCallStatsDaily> stats = dailyMapper.selectList(wrapper);
+        
+        return stats.stream()
+                .mapToLong(s -> s.getTotalCount() != null ? s.getTotalCount() : 0)
+                .sum();
+    }
+    
+    /**
+     * 计算环比增长率
+     */
+    private Double calculateTrend(long current, long previous) {
+        if (previous == 0) {
+            return current > 0 ? 100.0 : 0.0;
+        }
+        return (current - previous) * 100.0 / previous;
+    }
+    
+    /**
+     * 构建状态码分布
+     */
+    private List<ApiStatsDetailDTO.StatusDistribution> buildStatusDistribution(List<Map<String, Object>> data) {
+        List<ApiStatsDetailDTO.StatusDistribution> result = new ArrayList<>();
+        
+        // 初始化三个类别
+        Map<String, Long> countMap = new HashMap<>();
+        countMap.put("2xx", 0L);
+        countMap.put("4xx", 0L);
+        countMap.put("5xx", 0L);
+        
+        long total = 0;
+        for (Map<String, Object> item : data) {
+            String category = (String) item.get("status_category");
+            long count = parseLong(item.get("count"));
+            if (countMap.containsKey(category)) {
+                countMap.put(category, count);
+                total += count;
+            }
+        }
+        
+        // 构建分布项
+        result.add(createStatusDistribution("2xx", countMap.get("2xx"), total, "success", "#52c41a"));
+        result.add(createStatusDistribution("4xx", countMap.get("4xx"), total, "warning", "#faad14"));
+        result.add(createStatusDistribution("5xx", countMap.get("5xx"), total, "danger", "#ff4d4f"));
+        
+        return result;
+    }
+    
+    private ApiStatsDetailDTO.StatusDistribution createStatusDistribution(
+            String code, long count, long total, String type, String color) {
+        ApiStatsDetailDTO.StatusDistribution dist = new ApiStatsDetailDTO.StatusDistribution();
+        dist.setCode(code);
+        dist.setCount(count);
+        dist.setPercent(total > 0 ? (count * 100.0 / total) : 0.0);
+        dist.setType(type);
+        dist.setColor(color);
+        return dist;
+    }
+    
+    /**
+     * 构建响应时间分布
+     */
+    private List<ApiStatsDetailDTO.LatencyDistribution> buildLatencyDistribution(List<Map<String, Object>> data) {
+        List<ApiStatsDetailDTO.LatencyDistribution> result = new ArrayList<>();
+        
+        // 初始化四个区间
+        Map<String, Long> countMap = new HashMap<>();
+        countMap.put("< 50ms", 0L);
+        countMap.put("50-100ms", 0L);
+        countMap.put("100-500ms", 0L);
+        countMap.put("> 500ms", 0L);
+        
+        long total = 0;
+        for (Map<String, Object> item : data) {
+            String range = (String) item.get("latency_range");
+            long count = parseLong(item.get("count"));
+            if (countMap.containsKey(range)) {
+                countMap.put(range, count);
+                total += count;
+            }
+        }
+        
+        // 构建分布项
+        result.add(createLatencyDistribution("< 50ms", countMap.get("< 50ms"), total, "#52c41a"));
+        result.add(createLatencyDistribution("50-100ms", countMap.get("50-100ms"), total, "#1890ff"));
+        result.add(createLatencyDistribution("100-500ms", countMap.get("100-500ms"), total, "#faad14"));
+        result.add(createLatencyDistribution("> 500ms", countMap.get("> 500ms"), total, "#ff4d4f"));
+        
+        return result;
+    }
+    
+    private ApiStatsDetailDTO.LatencyDistribution createLatencyDistribution(
+            String range, long count, long total, String color) {
+        ApiStatsDetailDTO.LatencyDistribution dist = new ApiStatsDetailDTO.LatencyDistribution();
+        dist.setRange(range);
+        dist.setPercent(total > 0 ? (count * 100.0 / total) : 0.0);
+        dist.setColor(color);
+        return dist;
+    }
+    
+    private int parseInt(Object value) {
+        if (value == null) return 0;
+        try {
+            if (value instanceof Number) {
+                return ((Number) value).intValue();
+            }
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     private StatsTrendDTO buildDailyTrendDTO(List<ApiCallStatsDaily> stats) {
         StatsTrendDTO dto = new StatsTrendDTO();
         List<String> timePoints = new ArrayList<>();

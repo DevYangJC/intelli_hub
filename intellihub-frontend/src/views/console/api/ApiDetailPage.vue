@@ -540,6 +540,14 @@ import {
   type ApiVersionResponse,
   type ApiBackendResponse,
 } from '@/api/apiManage'
+import {
+  getApiStatsDetail,
+  getCallLogs,
+  type ApiStatsDetail,
+  type StatusDistribution,
+  type LatencyDistribution,
+  type CallLog,
+} from '@/api/stats'
 import ApiDebugger from './components/ApiDebugger.vue'
 
 const router = useRouter()
@@ -552,8 +560,8 @@ const savingBackend = ref(false)
 const testingConnection = ref(false)
 const creatingVersion = ref(false)
 
-// 标签页
-const activeTab = ref('stats')
+// 标签页 - 支持从URL query参数初始化
+const activeTab = ref(route.query.tab as string || 'stats')
 const chartPeriod = ref('7d')
 const codeTab = ref('curl')
 
@@ -621,8 +629,8 @@ const newVersionForm = reactive({
 const debugApiInfo = computed(() => ({
   method: apiDetail.method,
   path: apiDetail.path,
-  queryParams: requestParams.value.filter(p => p.position === 'query'),
-  headerParams: requestParams.value.filter(p => p.position === 'header'),
+  queryParams: requestParams.value.filter(p => p.location === 'query'),
+  headerParams: requestParams.value.filter(p => p.location === 'header'),
 }))
 
 // 获取API详情
@@ -883,36 +891,109 @@ watch(activeTab, (newTab) => {
     fetchBackendConfig()
   } else if (newTab === 'versions') {
     fetchVersionHistory()
+  } else if (newTab === 'logs') {
+    fetchCallLogs()
+  } else if (newTab === 'stats') {
+    fetchApiStats()
+  } else if (newTab === 'debug') {
+    // 切换到调试Tab时，确保请求参数已加载
+    if (requestParams.value.length === 0) {
+      fetchRequestParams()
+    }
   }
 })
+
+// 统计卡片数据
+const statsCards = ref([
+  { title: '今日调用', value: '0', color: '#1890ff', trend: 0 },
+  { title: '总调用量', value: '0', color: '#52c41a', trend: 0 },
+  { title: '平均响应', value: '0ms', color: '#722ed1', trend: 0 },
+  { title: '成功率', value: '100%', color: '#13c2c2', trend: 0 },
+])
+
+// 状态码分布数据
+const statusDistribution = ref<StatusDistribution[]>([
+  { code: '2xx', count: 0, percent: 0, color: '#52c41a', type: 'success' },
+  { code: '4xx', count: 0, percent: 0, color: '#faad14', type: 'warning' },
+  { code: '5xx', count: 0, percent: 0, color: '#ff4d4f', type: 'danger' },
+])
+
+// 响应时间分布数据
+const latencyDistribution = ref<LatencyDistribution[]>([
+  { range: '< 50ms', percent: 0, color: '#52c41a' },
+  { range: '50-100ms', percent: 0, color: '#1890ff' },
+  { range: '100-500ms', percent: 0, color: '#faad14' },
+  { range: '> 500ms', percent: 0, color: '#ff4d4f' },
+])
+
+// 获取API统计详情
+const fetchApiStats = async () => {
+  const apiId = route.params.id as string
+  if (!apiId) return
+
+  try {
+    const res = await getApiStatsDetail(apiId) as any
+    if (res.code === 200 && res.data) {
+      const data = res.data as ApiStatsDetail
+      
+      // 更新统计卡片
+      statsCards.value = [
+        { 
+          title: '今日调用', 
+          value: formatNumber(data.todayCalls), 
+          color: '#1890ff', 
+          trend: data.todayTrend 
+        },
+        { 
+          title: '总调用量', 
+          value: formatNumber(data.totalCalls), 
+          color: '#52c41a', 
+          trend: data.totalTrend || 0 
+        },
+        { 
+          title: '平均响应', 
+          value: `${data.avgLatency}ms`, 
+          color: '#722ed1', 
+          trend: data.latencyTrend 
+        },
+        { 
+          title: '成功率', 
+          value: `${data.successRate.toFixed(1)}%`, 
+          color: '#13c2c2', 
+          trend: data.successRateTrend 
+        },
+      ]
+      
+      // 更新状态码分布
+      if (data.statusDistribution && data.statusDistribution.length > 0) {
+        statusDistribution.value = data.statusDistribution
+      }
+      
+      // 更新响应时间分布
+      if (data.latencyDistribution && data.latencyDistribution.length > 0) {
+        latencyDistribution.value = data.latencyDistribution
+      }
+    }
+  } catch (error) {
+    console.error('获取API统计详情失败:', error)
+  }
+}
+
+// 格式化数字
+const formatNumber = (num: number): string => {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M'
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K'
+  }
+  return num.toString()
+}
 
 // 初始化
 onMounted(() => {
   fetchApiDetail()
+  fetchApiStats()
 })
-
-// 统计卡片
-const statsCards = [
-  { title: '今日调用', value: '12,580', color: '#1890ff', trend: 12.5 },
-  { title: '总调用量', value: '1,256,800', color: '#52c41a', trend: undefined },
-  { title: '平均响应', value: '45ms', color: '#722ed1', trend: -8.3 },
-  { title: '成功率', value: '99.8%', color: '#13c2c2', trend: 0.2 },
-]
-
-// 状态分布
-const statusDistribution = [
-  { code: '2xx', count: '1,245,632', percent: 99, color: '#52c41a', type: 'success' },
-  { code: '4xx', count: '8,234', percent: 0.7, color: '#faad14', type: 'warning' },
-  { code: '5xx', count: '2,934', percent: 0.3, color: '#ff4d4f', type: 'danger' },
-]
-
-// 响应时间分布
-const latencyDistribution = [
-  { range: '< 50ms', percent: 65, color: '#52c41a' },
-  { range: '50-100ms', percent: 25, color: '#1890ff' },
-  { range: '100-500ms', percent: 8, color: '#faad14' },
-  { range: '> 500ms', percent: 2, color: '#ff4d4f' },
-]
 
 // 请求头
 const requestHeaders = [
@@ -997,12 +1078,29 @@ response = requests.post(
 print(response.json())`
 
 // 调用日志
-const callLogs = [
-  { requestId: 'req_a1b2c3d4e5f6', appName: '电商平台', status: 200, latency: '45ms', clientIp: '192.168.1.100', timestamp: '2024-01-15 14:30:25' },
-  { requestId: 'req_g7h8i9j0k1l2', appName: '移动APP', status: 200, latency: '52ms', clientIp: '10.0.0.50', timestamp: '2024-01-15 14:30:18' },
-  { requestId: 'req_m3n4o5p6q7r8', appName: '电商平台', status: 401, latency: '23ms', clientIp: '192.168.1.101', timestamp: '2024-01-15 14:30:12' },
-  { requestId: 'req_s9t0u1v2w3x4', appName: '数据分析', status: 200, latency: '38ms', clientIp: '172.16.0.10', timestamp: '2024-01-15 14:30:05' },
-]
+const callLogs = ref<any[]>([])
+
+// 获取调用日志
+const fetchCallLogs = async () => {
+  const apiId = route.params.id as string
+  if (!apiId) return
+
+  try {
+    const res = await getCallLogs({ apiId, page: 1, size: 20 }) as any
+    if (res.code === 200 && res.data && res.data.records) {
+      callLogs.value = res.data.records.map((log: CallLog) => ({
+        requestId: log.id?.toString() || '',
+        appName: log.appKey || '未知应用',
+        status: log.statusCode,
+        latency: `${log.latency}ms`,
+        clientIp: log.clientIp || '',
+        timestamp: log.requestTime || '',
+      }))
+    }
+  } catch (error) {
+    console.error('获取调用日志失败:', error)
+  }
+}
 
 
 // 获取方法标签类型

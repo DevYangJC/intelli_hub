@@ -44,6 +44,36 @@ export interface CallLog {
   responseBody?: string  // 响应体（可选）
 }
 
+// API统计详情
+export interface ApiStatsDetail {
+  todayCalls: number
+  totalCalls: number
+  avgLatency: number
+  successRate: number
+  todayTrend: number
+  totalTrend: number
+  latencyTrend: number
+  successRateTrend: number
+  statusDistribution: StatusDistribution[]
+  latencyDistribution: LatencyDistribution[]
+}
+
+// 状态码分布
+export interface StatusDistribution {
+  code: string
+  count: number
+  percent: number
+  type: string
+  color: string
+}
+
+// 响应时间分布
+export interface LatencyDistribution {
+  range: string
+  percent: number
+  color: string
+}
+
 // Top API统计
 export interface TopApiStats {
   id: number | string  // Long ID 可能是 string
@@ -134,4 +164,12 @@ export function getCallLogs(params: {
  */
 export function getRealtimeCount() {
   return request.get<number>('/governance/v1/stats/realtime')
+}
+
+/**
+ * 获取单个API的统计详情
+ * @param apiId API ID
+ */
+export function getApiStatsDetail(apiId: string) {
+  return request.get<ApiStatsDetail>(`/governance/v1/stats/api-detail/${apiId}`)
 }

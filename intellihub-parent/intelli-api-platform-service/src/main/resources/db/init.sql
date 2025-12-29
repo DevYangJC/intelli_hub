@@ -173,6 +173,64 @@ CREATE TABLE `api_tag` (
     KEY `idx_tag_name` (`tag_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API标签表';
 
+
+-- 公告表
+CREATE TABLE IF NOT EXISTS sys_announcement (
+                                                id VARCHAR(36) PRIMARY KEY COMMENT '主键ID',
+                                                tenant_id VARCHAR(36) NOT NULL COMMENT '租户ID',
+                                                title VARCHAR(200) NOT NULL COMMENT '标题',
+                                                description TEXT COMMENT '内容描述',
+                                                type VARCHAR(20) NOT NULL DEFAULT 'notice' COMMENT '类型: notice-系统通知, feature-功能更新, maintenance-维护公告, warning-重要提醒',
+                                                meta VARCHAR(50) COMMENT '标签',
+                                                status VARCHAR(20) NOT NULL DEFAULT 'draft' COMMENT '状态: published-已发布, draft-草稿',
+                                                publish_time DATETIME COMMENT '发布时间',
+                                                created_by VARCHAR(36) COMMENT '创建人',
+                                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                                updated_by VARCHAR(36) COMMENT '更新人',
+                                                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                                deleted TINYINT DEFAULT 0 COMMENT '是否删除',
+                                                INDEX idx_tenant_status (tenant_id, status),
+                                                INDEX idx_publish_time (publish_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统公告表';
+
+-- 系统配置表
+CREATE TABLE IF NOT EXISTS sys_config (
+                                          id VARCHAR(36) PRIMARY KEY COMMENT '主键ID',
+                                          tenant_id VARCHAR(36) NOT NULL COMMENT '租户ID',
+                                          config_key VARCHAR(100) NOT NULL COMMENT '配置键',
+                                          config_value TEXT COMMENT '配置值',
+                                          config_type VARCHAR(20) DEFAULT 'string' COMMENT '配置类型: string, number, boolean, json',
+                                          description VARCHAR(200) COMMENT '配置描述',
+                                          created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                          UNIQUE KEY uk_tenant_key (tenant_id, config_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
+
+-- =====================================================
+-- 系统公告初始化数据（近三个月开发进度）
+-- =====================================================
+INSERT INTO sys_announcement (id, tenant_id, title, description, type, meta, status, publish_time, created_by, deleted) VALUES
+-- 2024年10月 - 项目启动阶段
+('ANN001', '1', 'IntelliHub 平台正式启动', '企业级智能API管理平台 IntelliHub 项目正式启动开发，目标打造统一的API全生命周期管理解决方案。', 'notice', '项目启动', 'published', '2024-10-08 09:00:00', '1', 0),
+('ANN002', '1', '基础架构搭建完成', '完成 Spring Cloud 微服务架构搭建，包括网关服务、认证服务、API平台服务等核心模块。', 'feature', '技术架构', 'published', '2024-10-15 14:30:00', '1', 0),
+('ANN003', '1', '用户认证模块上线', '用户认证与权限管理模块已完成开发，支持 JWT Token 认证、角色权限控制、多租户隔离。', 'feature', '功能更新', 'published', '2024-10-22 10:00:00', '1', 0),
+
+-- 2024年11月 - 核心功能开发
+('ANN004', '1', 'API 网关核心功能上线', '智能 API 网关已上线，支持动态路由、请求限流、熔断降级、访问日志记录等能力。', 'feature', '核心功能', 'published', '2024-11-01 09:30:00', '1', 0),
+('ANN005', '1', '系统维护通知', '2024年11月5日 22:00-24:00 进行系统升级维护，届时平台将暂停服务，请提前做好准备。', 'maintenance', '维护通知', 'published', '2024-11-03 15:00:00', '1', 0),
+('ANN006', '1', 'API 生命周期管理上线', 'API 全生命周期管理功能已发布，支持 API 创建、版本管理、发布上线、下线废弃等完整流程。', 'feature', '功能更新', 'published', '2024-11-10 11:00:00', '1', 0),
+('ANN007', '1', '应用中心模块发布', '应用中心已上线，支持应用创建、AppKey/AppSecret 管理、API 订阅授权等功能。', 'feature', '功能更新', 'published', '2024-11-18 14:00:00', '1', 0),
+('ANN008', '1', 'OpenAPI 签名认证上线', '开放 API 支持 HMAC-SHA256 签名认证，保障接口调用安全，防止请求篡改和重放攻击。', 'feature', '安全增强', 'published', '2024-11-25 10:30:00', '1', 0),
+
+-- 2024年12月 - 监控与增强
+('ANN009', '1', '调用统计功能上线', 'API 调用统计功能已发布，支持实时调用量、成功率、响应时间等多维度数据分析。', 'feature', '功能更新', 'published', '2024-12-02 09:00:00', '1', 0),
+('ANN010', '1', '监控告警系统发布', '智能监控告警系统上线，支持自定义告警规则、多渠道通知（邮件/Webhook）、告警历史记录。', 'feature', '运维能力', 'published', '2024-12-10 11:00:00', '1', 0),
+('ANN011', '1', '前端控制台全面升级', '管理控制台 UI 全面升级，优化用户体验，新增 API 市场、开发文档、数据看板等页面。', 'feature', '体验优化', 'published', '2024-12-16 14:30:00', '1', 0),
+('ANN012', '1', '年末系统维护公告', '2024年12月24日 23:00-次日02:00 进行年度系统维护和数据备份，期间服务可能短暂中断。', 'maintenance', '维护通知', 'published', '2024-12-20 16:00:00', '1', 0),
+('ANN013', '1', 'Java SDK 正式发布', 'IntelliHub Java SDK v1.0.0 正式发布，支持自动签名认证、HTTP 请求封装，方便开发者快速接入平台 API。', 'feature', '开发工具', 'published', '2024-12-26 10:00:00', '1', 0),
+('ANN014', '1', '系统设置与公告管理上线', '新增系统设置功能（基础配置、安全设置、API配置、通知设置）和公告管理功能，提升平台可配置性。', 'feature', '功能更新', 'published', '2024-12-26 15:00:00', '1', 0),
+('ANN015', '1', '元旦假期服务保障', '2025年元旦假期（1月1日）平台正常运行，如有问题请联系技术支持：support@intellihub.com', 'notice', '节日通知', 'published', '2024-12-28 09:00:00', '1', 0);
+
 -- =====================================================
 -- 初始化数据
 -- =====================================================

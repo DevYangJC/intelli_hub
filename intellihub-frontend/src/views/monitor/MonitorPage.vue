@@ -62,6 +62,65 @@
         </el-col>
       </el-row>
 
+      <!-- Top API 和最近调用 -->
+      <el-row :gutter="20" style="margin-top: 20px">
+        <el-col :xs="24" :lg="12">
+          <el-card class="table-card">
+            <template #header>
+              <div class="card-header">
+                <span>Top 10 API</span>
+              </div>
+            </template>
+            <el-table :data="topApis" stripe size="small" max-height="280">
+              <el-table-column prop="apiPath" label="API路径" min-width="180" show-overflow-tooltip />
+              <el-table-column prop="totalCount" label="调用量" width="90" align="right">
+                <template #default="{ row }">
+                  {{ formatNumber(row.totalCount || 0) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="成功率" width="80" align="right">
+                <template #default="{ row }">
+                  <span :class="getSuccessRateClass(row)">
+                    {{ row.totalCount > 0 ? ((row.successCount / row.totalCount) * 100).toFixed(1) : '100.0' }}%
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="avgLatency" label="延迟" width="70" align="right">
+                <template #default="{ row }">
+                  {{ row.avgLatency }}ms
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </el-col>
+        <el-col :xs="24" :lg="12">
+          <el-card class="table-card">
+            <template #header>
+              <div class="card-header">
+                <span>最近调用</span>
+                <el-button type="primary" link size="small" @click="$router.push('/console/logs')">查看全部</el-button>
+              </div>
+            </template>
+            <el-table :data="recentLogs" stripe size="small" max-height="280">
+              <el-table-column prop="apiPath" label="API路径" min-width="150" show-overflow-tooltip />
+              <el-table-column prop="apiMethod" label="方法" width="70" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="getMethodTagType(row.apiMethod)" size="small">{{ row.apiMethod }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="65" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.statusCode }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="latency" label="延迟" width="70" align="right">
+                <template #default="{ row }">{{ row.latency }}ms</template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </el-col>
+      </el-row>
+
       <!-- 告警和日志 -->
       <el-row :gutter="20" style="margin-top: 20px">
         <el-col :xs="24" :lg="12">
@@ -69,9 +128,7 @@
             <template #header>
               <div class="card-header">
                 <span>最新告警</span>
-                <el-badge :value="3" class="alert-badge">
-                  <el-button type="text" size="small">查看全部</el-button>
-                </el-badge>
+                <el-button type="primary" link size="small" @click="$router.push('/console/alert/records')">查看全部</el-button>
               </div>
             </template>
             <div class="alert-list">
@@ -87,6 +144,7 @@
                   <div class="alert-time">{{ alert.time }}</div>
                 </div>
               </div>
+              <el-empty v-if="alerts.length === 0" description="暂无告警" :image-size="60" />
             </div>
           </el-card>
         </el-col>
@@ -176,6 +234,12 @@ const alerts = ref<{ id: number; level: string; title: string; description: stri
 
 // 日志列表
 const logs = ref<{ id: number; time: string; level: string; message: string }[]>([])
+
+// Top API 列表
+const topApis = ref<TopApiStats[]>([])
+
+// 最近调用日志
+const recentLogs = ref<CallLog[]>([])
 
 // 格式化数字
 const formatNumber = (num: number) => {
@@ -310,18 +374,55 @@ const loadAlerts = async () => {
 // 加载最近日志
 const loadLogs = async () => {
   try {
-    const res = await getCallLogs({ page: 1, size: 5 })
+    const res = await getCallLogs({ page: 1, size: 10 })
     if (res.code === 200 && res.data) {
-      logs.value = (res.data.records || []).map((log: CallLog, index: number) => ({
+      const records = res.data.records || []
+      // 更新实时日志显示
+      logs.value = records.slice(0, 5).map((log: CallLog, index: number) => ({
         id: index,
         time: formatLogTime(log.requestTime),
         level: log.success ? 'info' : 'error',
         message: `[${log.apiMethod}] ${log.apiPath} - ${log.statusCode} (${log.latency}ms)`
       }))
+      // 更新最近调用表格
+      recentLogs.value = records
     }
   } catch (error) {
     console.error('加载日志失败', error)
   }
+}
+
+// 加载 Top API
+const loadTopApis = async () => {
+  try {
+    const res = await getTopApis(10)
+    if (res.code === 200 && res.data) {
+      topApis.value = res.data as TopApiStats[]
+    }
+  } catch (error) {
+    console.error('加载 Top API 失败', error)
+  }
+}
+
+// 获取成功率样式类
+const getSuccessRateClass = (row: TopApiStats) => {
+  if (!row.totalCount || row.totalCount === 0) return 'success-rate-high'
+  const rate = (row.successCount / row.totalCount) * 100
+  if (rate >= 99) return 'success-rate-high'
+  if (rate >= 95) return 'success-rate-mid'
+  return 'success-rate-low'
+}
+
+// 获取方法标签类型
+const getMethodTagType = (method: string) => {
+  const types: Record<string, string> = {
+    GET: 'success',
+    POST: 'primary',
+    PUT: 'warning',
+    DELETE: 'danger',
+    PATCH: 'info'
+  }
+  return types[method] || 'info'
 }
 
 // 格式化告警时间
@@ -472,6 +573,7 @@ const refreshData = () => {
   loadAlerts()
   loadLogs()
   loadTrendData()
+  loadTopApis()
 }
 
 // 监听时间范围变化
@@ -685,6 +787,15 @@ onUnmounted(() => {
 }
 
 /* 告警卡片 */
+/* 表格卡片 */
+.table-card {
+  height: 360px;
+}
+
+.success-rate-high { color: #52c41a; font-weight: 500; }
+.success-rate-mid { color: #faad14; font-weight: 500; }
+.success-rate-low { color: #ff4d4f; font-weight: 500; }
+
 .alert-card,
 .log-card {
   height: 360px;

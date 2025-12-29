@@ -12,6 +12,25 @@
         </div>
       </template>
 
+      <!-- 环境选择 -->
+      <div class="env-selector">
+        <span class="env-label">环境：</span>
+        <el-radio-group v-model="currentEnv" size="small">
+          <el-radio-button 
+            v-for="env in environments" 
+            :key="env.key" 
+            :value="env.key"
+          >
+            <el-icon v-if="env.icon" style="margin-right: 4px"><component :is="env.icon" /></el-icon>
+            {{ env.name }}
+          </el-radio-button>
+        </el-radio-group>
+        <el-button text type="primary" size="small" @click="showEnvDialog = true">
+          <el-icon><Setting /></el-icon>
+          配置
+        </el-button>
+      </div>
+
       <!-- 请求URL -->
       <div class="request-url">
         <el-select v-model="request.method" style="width: 100px">
@@ -22,7 +41,11 @@
           <el-option label="PATCH" value="PATCH" />
         </el-select>
         <el-input v-model="request.url" placeholder="请求URL" class="url-input">
-          <template #prepend>{{ baseUrl }}</template>
+          <template #prepend>
+            <el-tooltip :content="currentBaseUrl" placement="top">
+              <span class="base-url-text">{{ currentBaseUrl }}</span>
+            </el-tooltip>
+          </template>
         </el-input>
       </div>
 
@@ -155,13 +178,55 @@
         </el-tab-pane>
       </el-tabs>
     </el-card>
+    <!-- 环境配置对话框 -->
+    <el-dialog 
+      v-model="showEnvDialog" 
+      title="环境配置" 
+      width="600px"
+      destroy-on-close
+    >
+      <el-table :data="environments" style="width: 100%">
+        <el-table-column prop="name" label="环境名称" width="120" />
+        <el-table-column label="请求地址">
+          <template #default="{ row }">
+            <el-input 
+              v-model="row.baseUrl" 
+              placeholder="请输入请求地址"
+              size="small"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="80">
+          <template #default="{ row }">
+            <el-button 
+              v-if="!row.isDefault"
+              type="danger" 
+              link 
+              size="small" 
+              @click="removeEnv(row.key)"
+            >
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div style="margin-top: 16px">
+        <el-button type="primary" text size="small" @click="addEnv">
+          <el-icon><Plus /></el-icon> 添加环境
+        </el-button>
+      </div>
+      <template #footer>
+        <el-button @click="showEnvDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveEnvConfig">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CaretRight, Delete, Plus } from '@element-plus/icons-vue'
+import { CaretRight, Delete, Plus, Setting, Monitor, Promotion, HomeFilled } from '@element-plus/icons-vue'
 
 interface Props {
   apiInfo?: {
@@ -176,7 +241,95 @@ const props = withDefaults(defineProps<Props>(), {
   apiInfo: () => ({ method: 'GET', path: '' })
 })
 
-const baseUrl = 'https://api.intellihub.com'
+// 环境配置
+interface Environment {
+  key: string
+  name: string
+  baseUrl: string
+  icon?: any
+  isDefault?: boolean
+}
+
+const ENV_STORAGE_KEY = 'api_debugger_environments'
+const CURRENT_ENV_KEY = 'api_debugger_current_env'
+
+// 默认环境配置
+const defaultEnvironments: Environment[] = [
+  { key: 'local', name: '本地环境', baseUrl: 'http://localhost:8080', icon: HomeFilled, isDefault: true },
+  { key: 'dev', name: '开发环境', baseUrl: 'http://dev-api.intellihub.com', icon: Monitor, isDefault: true },
+  { key: 'prod', name: '生产环境', baseUrl: 'https://api.intellihub.com', icon: Promotion, isDefault: true },
+]
+
+const environments = ref<Environment[]>([...defaultEnvironments])
+const currentEnv = ref('local')
+const showEnvDialog = ref(false)
+
+// 当前环境的baseUrl
+const currentBaseUrl = computed(() => {
+  const env = environments.value.find(e => e.key === currentEnv.value)
+  return env?.baseUrl || 'http://localhost:8080'
+})
+
+// 加载保存的环境配置
+onMounted(() => {
+  const savedEnvs = localStorage.getItem(ENV_STORAGE_KEY)
+  if (savedEnvs) {
+    try {
+      const parsed = JSON.parse(savedEnvs)
+      // 合并默认环境和自定义环境
+      environments.value = parsed.map((env: Environment) => {
+        const defaultEnv = defaultEnvironments.find(d => d.key === env.key)
+        return { ...env, icon: defaultEnv?.icon, isDefault: defaultEnv?.isDefault }
+      })
+    } catch (e) {
+      console.error('Failed to parse saved environments', e)
+    }
+  }
+  
+  const savedCurrentEnv = localStorage.getItem(CURRENT_ENV_KEY)
+  if (savedCurrentEnv && environments.value.some(e => e.key === savedCurrentEnv)) {
+    currentEnv.value = savedCurrentEnv
+  }
+})
+
+// 监听当前环境变化，保存到localStorage
+watch(currentEnv, (newEnv) => {
+  localStorage.setItem(CURRENT_ENV_KEY, newEnv)
+})
+
+// 添加环境
+const addEnv = () => {
+  const newKey = `custom_${Date.now()}`
+  environments.value.push({
+    key: newKey,
+    name: '自定义环境',
+    baseUrl: 'http://',
+    isDefault: false
+  })
+}
+
+// 删除环境
+const removeEnv = (key: string) => {
+  const index = environments.value.findIndex(e => e.key === key)
+  if (index > -1) {
+    environments.value.splice(index, 1)
+    if (currentEnv.value === key) {
+      currentEnv.value = environments.value[0]?.key || 'local'
+    }
+  }
+}
+
+// 保存环境配置
+const saveEnvConfig = () => {
+  localStorage.setItem(ENV_STORAGE_KEY, JSON.stringify(environments.value.map(e => ({
+    key: e.key,
+    name: e.name,
+    baseUrl: e.baseUrl,
+    isDefault: e.isDefault
+  }))))
+  showEnvDialog.value = false
+  ElMessage.success('环境配置已保存')
+}
 const activeTab = ref('query')
 const responseTab = ref('body')
 const sending = ref(false)
@@ -209,30 +362,36 @@ const response = reactive({
 
 // 监听API信息变化，初始化请求配置
 watch(() => props.apiInfo, (info) => {
+  console.log('[ApiDebugger] apiInfo changed:', info)
   if (info) {
     request.method = info.method || 'GET'
     request.url = info.path || ''
     // 初始化Query参数
     if (info.queryParams?.length) {
+      console.log('[ApiDebugger] Loading query params:', info.queryParams)
       request.queryParams = info.queryParams.map(p => ({
         enabled: true,
-        key: p.name,
-        value: p.example || ''
+        key: p.name || '',
+        value: p.example || p.defaultValue || ''
       }))
+    } else {
+      // 保留一个空的参数行
+      request.queryParams = [{ enabled: true, key: '', value: '' }]
     }
     // 初始化Header参数
     if (info.headerParams?.length) {
+      console.log('[ApiDebugger] Loading header params:', info.headerParams)
       request.headers = [
         { enabled: true, key: 'Content-Type', value: 'application/json' },
         ...info.headerParams.map(p => ({
           enabled: true,
-          key: p.name,
-          value: p.example || ''
+          key: p.name || '',
+          value: p.example || p.defaultValue || ''
         }))
       ]
     }
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
 // 添加参数
 const addParam = (type: 'query' | 'headers') => {
@@ -264,7 +423,7 @@ const sendRequest = async () => {
 
   try {
     // 构建完整URL
-    let fullUrl = baseUrl + request.url
+    let fullUrl = currentBaseUrl.value + request.url
     const enabledQueryParams = request.queryParams.filter(p => p.enabled && p.key)
     if (enabledQueryParams.length) {
       const queryString = enabledQueryParams
@@ -385,6 +544,30 @@ const copyResponse = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.env-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+
+.env-label {
+  font-size: 14px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.base-url-text {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
 }
 
 .request-url {

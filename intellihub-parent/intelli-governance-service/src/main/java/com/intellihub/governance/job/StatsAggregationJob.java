@@ -3,9 +3,11 @@ package com.intellihub.governance.job;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.intellihub.governance.entity.ApiCallLog;
 import com.intellihub.governance.entity.ApiCallStatsDaily;
+import com.intellihub.governance.entity.ApiCallStatsDistribution;
 import com.intellihub.governance.entity.ApiCallStatsHourly;
 import com.intellihub.governance.mapper.ApiCallLogMapper;
 import com.intellihub.governance.mapper.ApiCallStatsDailyMapper;
+import com.intellihub.governance.mapper.ApiCallStatsDistributionMapper;
 import com.intellihub.governance.mapper.ApiCallStatsHourlyMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,7 @@ public class StatsAggregationJob {
     private final ApiCallLogMapper callLogMapper;
     private final ApiCallStatsHourlyMapper hourlyMapper;
     private final ApiCallStatsDailyMapper dailyMapper;
+    private final ApiCallStatsDistributionMapper distributionMapper;
 
     /**
      * 每小时聚合一次（整点后5分钟执行，聚合上一小时的数据）
@@ -106,6 +109,10 @@ public class StatsAggregationJob {
             // 如果昨天的数据也没有，补充昨天的
             LocalDate yesterday = today.minusDays(1);
             aggregateDailyData(yesterday);
+            
+            // 聚合分布统计
+            aggregateDistributionData(today);
+            aggregateDistributionData(yesterday);
             
             log.info("========== [统计聚合] 启动补充聚合完成 ==========");
         } catch (Exception e) {
@@ -322,5 +329,111 @@ public class StatsAggregationJob {
         }
         
         log.info("[统计聚合] 天聚合完成: {} 条日志 -> {} 组统计", logs.size(), grouped.size());
+    }
+
+    /**
+     * 聚合指定日期的分布统计（状态码+响应时间）
+     */
+    private void aggregateDistributionData(LocalDate date) {
+        log.info("[统计聚合] 聚合分布数据: {}", date);
+        
+        LocalDateTime startTime = date.atStartOfDay();
+        LocalDateTime endTime = date.plusDays(1).atStartOfDay();
+        
+        // 查询该日期的调用日志
+        LambdaQueryWrapper<ApiCallLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.ge(ApiCallLog::getRequestTime, startTime)
+               .lt(ApiCallLog::getRequestTime, endTime);
+        List<ApiCallLog> logs = callLogMapper.selectList(wrapper);
+        
+        if (logs.isEmpty()) {
+            log.info("[统计聚合] 该日期无调用日志");
+            return;
+        }
+        
+        // 按 tenantId + apiId + apiPath 分组聚合
+        Map<String, List<ApiCallLog>> grouped = logs.stream()
+                .collect(Collectors.groupingBy(log -> 
+                    String.format("%s|%s|%s", 
+                        log.getTenantId() != null ? log.getTenantId() : "default",
+                        log.getApiId() != null ? log.getApiId() : "",
+                        log.getApiPath() != null ? log.getApiPath() : "unknown")));
+        
+        for (Map.Entry<String, List<ApiCallLog>> entry : grouped.entrySet()) {
+            String[] parts = entry.getKey().split("\\|", -1);
+            String tenantId = parts[0];
+            String apiId = parts.length > 1 ? parts[1] : null;
+            String apiPath = parts.length > 2 ? parts[2] : "unknown";
+            List<ApiCallLog> groupLogs = entry.getValue();
+            
+            // 计算状态码分布
+            long count2xx = groupLogs.stream()
+                    .filter(l -> l.getStatusCode() != null && l.getStatusCode() >= 200 && l.getStatusCode() < 300)
+                    .count();
+            long count4xx = groupLogs.stream()
+                    .filter(l -> l.getStatusCode() != null && l.getStatusCode() >= 400 && l.getStatusCode() < 500)
+                    .count();
+            long count5xx = groupLogs.stream()
+                    .filter(l -> l.getStatusCode() != null && l.getStatusCode() >= 500)
+                    .count();
+            
+            // 计算响应时间分布
+            long latencyLt50 = groupLogs.stream()
+                    .filter(l -> l.getLatency() != null && l.getLatency() < 50)
+                    .count();
+            long latency50To100 = groupLogs.stream()
+                    .filter(l -> l.getLatency() != null && l.getLatency() >= 50 && l.getLatency() < 100)
+                    .count();
+            long latency100To500 = groupLogs.stream()
+                    .filter(l -> l.getLatency() != null && l.getLatency() >= 100 && l.getLatency() < 500)
+                    .count();
+            long latencyGt500 = groupLogs.stream()
+                    .filter(l -> l.getLatency() != null && l.getLatency() >= 500)
+                    .count();
+            
+            // 查找或创建记录
+            LambdaQueryWrapper<ApiCallStatsDistribution> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(ApiCallStatsDistribution::getTenantId, tenantId)
+                       .eq(ApiCallStatsDistribution::getStatDate, date);
+            if (apiId != null && !apiId.isEmpty()) {
+                queryWrapper.eq(ApiCallStatsDistribution::getApiId, apiId);
+            } else {
+                queryWrapper.isNull(ApiCallStatsDistribution::getApiId);
+            }
+            
+            ApiCallStatsDistribution existing = distributionMapper.selectOne(queryWrapper);
+            
+            if (existing != null) {
+                // 更新
+                existing.setCount2xx(count2xx);
+                existing.setCount4xx(count4xx);
+                existing.setCount5xx(count5xx);
+                existing.setLatencyLt50(latencyLt50);
+                existing.setLatency50To100(latency50To100);
+                existing.setLatency100To500(latency100To500);
+                existing.setLatencyGt500(latencyGt500);
+                existing.setUpdatedAt(LocalDateTime.now());
+                distributionMapper.updateById(existing);
+            } else {
+                // 插入
+                ApiCallStatsDistribution stats = new ApiCallStatsDistribution();
+                stats.setTenantId(tenantId);
+                stats.setApiId(apiId != null && !apiId.isEmpty() ? apiId : null);
+                stats.setApiPath(apiPath);
+                stats.setStatDate(date);
+                stats.setCount2xx(count2xx);
+                stats.setCount4xx(count4xx);
+                stats.setCount5xx(count5xx);
+                stats.setLatencyLt50(latencyLt50);
+                stats.setLatency50To100(latency50To100);
+                stats.setLatency100To500(latency100To500);
+                stats.setLatencyGt500(latencyGt500);
+                stats.setCreatedAt(LocalDateTime.now());
+                stats.setUpdatedAt(LocalDateTime.now());
+                distributionMapper.insert(stats);
+            }
+        }
+        
+        log.info("[统计聚合] 分布聚合完成: {} 条日志 -> {} 组统计", logs.size(), grouped.size());
     }
 }

@@ -3,6 +3,38 @@
 version: '3.8'
 
 services:
+  # Nacos 注册中心
+  nacos:
+    image: nacos/nacos-server:v2.2.0
+    environment:
+      - MODE=standalone
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=mysql
+      - MYSQL_SERVICE_DB_NAME=nacos
+      - MYSQL_SERVICE_USER=root
+      - MYSQL_SERVICE_PASSWORD=root123
+    ports:
+      - "8848:8848"
+    depends_on:
+      - mysql
+
+  # MySQL
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+
+  # Redis
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
+
   zookeeper:
     image: wurstmeister/zookeeper:latest
     container_name: zookeeper

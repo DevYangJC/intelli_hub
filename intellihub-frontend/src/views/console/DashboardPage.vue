@@ -21,10 +21,6 @@
           <el-icon class="action-icon"><Plus /></el-icon>
           <span>创建API</span>
         </div>
-        <div class="action-card" @click="$router.push('/console/tokens')">
-          <el-icon class="action-icon"><Key /></el-icon>
-          <span>管理令牌</span>
-        </div>
         <div class="action-card" @click="$router.push('/console/app/list')">
           <el-icon class="action-icon"><Grid /></el-icon>
           <span>应用管理</span>
@@ -78,34 +74,81 @@
 </template>
 
 <script setup lang="ts">
-import { ref, markRaw } from 'vue'
-import { 
-  Connection, 
-  Grid, 
-  Document, 
-  Key, 
-  Plus, 
+import { ref, markRaw, onMounted } from 'vue'
+import {
+  Connection,
+  Grid,
+  Document,
+  Key,
+  Plus,
   ArrowRight,
   DataLine,
   Ticket,
 } from '@element-plus/icons-vue'
+import { getStatsOverview, getCallLogs, type CallLog } from '@/api/stats'
 
 // 统计数据
 const stats = ref([
-  { label: 'API总数', value: '28', icon: markRaw(Connection), bgColor: '#e6f4ff', color: '#1890ff' },
-  { label: '应用数量', value: '12', icon: markRaw(Grid), bgColor: '#f0fdf4', color: '#22c55e' },
-  { label: '今日调用', value: '15,680', icon: markRaw(DataLine), bgColor: '#fef3c7', color: '#f59e0b' },
-  { label: 'API令牌', value: '5', icon: markRaw(Ticket), bgColor: '#fce7f3', color: '#ec4899' },
+  { label: 'API总数', value: '-', icon: markRaw(Connection), bgColor: '#e6f4ff', color: '#1890ff' },
+  { label: '应用数量', value: '-', icon: markRaw(Grid), bgColor: '#f0fdf4', color: '#22c55e' },
+  { label: '今日调用', value: '-', icon: markRaw(DataLine), bgColor: '#fef3c7', color: '#f59e0b' },
+  { label: '成功率', value: '-', icon: markRaw(Ticket), bgColor: '#fce7f3', color: '#ec4899' },
 ])
 
 // 最近调用
-const recentCalls = ref([
-  { apiName: '用户认证接口', method: 'POST', status: 200, latency: 45, time: '2分钟前' },
-  { apiName: '订单查询接口', method: 'GET', status: 200, latency: 128, time: '5分钟前' },
-  { apiName: '支付回调接口', method: 'POST', status: 500, latency: 2300, time: '8分钟前' },
-  { apiName: '商品信息接口', method: 'GET', status: 200, latency: 67, time: '12分钟前' },
-  { apiName: '消息推送接口', method: 'POST', status: 200, latency: 89, time: '15分钟前' },
-])
+const recentCalls = ref<Array<{apiName: string; method: string; status: number; latency: number; time: string}>>([])
+
+// 格式化数字
+const formatNumber = (num: number) => {
+  if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
+  return num.toString()
+}
+
+// 格式化时间
+const formatTime = (timeStr: string) => {
+  const time = new Date(timeStr)
+  const now = new Date()
+  const diff = Math.floor((now.getTime() - time.getTime()) / 1000)
+  if (diff < 60) return `${diff}秒前`
+  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
+  return timeStr.substring(5, 16)
+}
+
+// 加载统计数据
+const loadStats = async () => {
+  try {
+    const res = await getStatsOverview()
+    if (res.code === 200 && res.data) {
+      const data = res.data
+      stats.value[0].value = formatNumber(data.apiCount || 0)
+      stats.value[1].value = formatNumber(data.appCount || 0)
+      stats.value[2].value = formatNumber(data.todayTotalCount || 0)
+      stats.value[3].value = (data.todaySuccessRate || 0).toFixed(1) + '%'
+    }
+  } catch (error) {
+    console.error('加载统计数据失败', error)
+  }
+}
+
+// 加载最近调用
+const loadRecentCalls = async () => {
+  try {
+    const res = await getCallLogs({ page: 1, size: 5 })
+    if (res.code === 200 && res.data) {
+      recentCalls.value = (res.data.records || []).map((log: CallLog) => ({
+        apiName: log.apiPath || '未知API',
+        method: log.apiMethod || 'GET',
+        status: log.statusCode || 0,
+        latency: log.latency || 0,
+        time: formatTime(log.requestTime)
+      }))
+    }
+  } catch (error) {
+    console.error('加载调用日志失败', error)
+  }
+}
 
 // 获取方法类型
 const getMethodType = (method: string) => {
@@ -117,6 +160,11 @@ const getMethodType = (method: string) => {
   }
   return types[method] || 'info'
 }
+
+onMounted(() => {
+  loadStats()
+  loadRecentCalls()
+})
 </script>
 
 <style scoped>

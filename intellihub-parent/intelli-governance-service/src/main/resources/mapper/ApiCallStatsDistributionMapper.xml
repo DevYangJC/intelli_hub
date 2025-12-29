@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.intellihub.governance.mapper.ApiCallStatsDistributionMapper">
+
+    <!-- 查询指定API在日期范围内的分布统计 -->
+    <select id="selectByApiIdAndDateRange"
+            resultType="com.intellihub.governance.entity.ApiCallStatsDistribution">
+    <![CDATA[
+        SELECT *
+        FROM api_call_stats_distribution
+        WHERE tenant_id = #{tenantId}
+          AND api_id = #{apiId}
+          AND stat_date >= #{startDate}
+          AND stat_date <= #{endDate}
+        ORDER BY stat_date DESC
+        ]]>
+</select>
+
+    <!-- 汇总指定API在日期范围内的分布统计 -->
+    <select id="sumByApiIdAndDateRange"
+            resultType="com.intellihub.governance.entity.ApiCallStatsDistribution">
+    <![CDATA[
+        SELECT
+            SUM(count_2xx) AS count2xx,
+            SUM(count_4xx) AS count4xx,
+            SUM(count_5xx) AS count5xx,
+            SUM(latency_lt_50) AS latencyLt50,
+            SUM(latency_50_to_100) AS latency50To100,
+            SUM(latency_100_to_500) AS latency100To500,
+            SUM(latency_gt_500) AS latencyGt500
+        FROM api_call_stats_distribution
+        WHERE tenant_id = #{tenantId}
+          AND api_id = #{apiId}
+          AND stat_date >= #{startDate}
+          AND stat_date <= #{endDate}
+        ]]>
+</select>
+
+</mapper>

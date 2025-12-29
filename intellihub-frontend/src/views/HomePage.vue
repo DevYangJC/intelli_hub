@@ -82,6 +82,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, markRaw, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Plus,
@@ -89,21 +90,22 @@ import {
   User,
   Monitor,
 } from '@element-plus/icons-vue'
-import { markRaw, type Component } from 'vue'
 import ModelsVisual from '@/components/visuals/ModelsVisual.vue'
 import AvailabilityVisual from '@/components/visuals/AvailabilityVisual.vue'
 import PerformanceVisual from '@/components/visuals/PerformanceVisual.vue'
 import SecurityVisual from '@/components/visuals/SecurityVisual.vue'
+import { getPublishedAnnouncements, type AnnouncementDTO } from '@/api/announcement'
+import { getStatsOverview } from '@/api/stats'
 
 const router = useRouter()
 
 // 平台统计数据
-const platformStats = [
-  { value: '1,200+', label: 'API接口' },
-  { value: '50万+', label: '日调用量' },
-  { value: '200+', label: '活跃应用' },
+const platformStats = ref([
+  { value: '-', label: 'API接口' },
+  { value: '-', label: '日调用量' },
+  { value: '-', label: '活跃应用' },
   { value: '99.9%', label: '服务可用性' },
-]
+])
 
 // 功能卡片
 const featureCards: Array<{
@@ -143,38 +145,89 @@ const quickActions = [
   { text: '创建API', type: 'primary' as const, icon: Plus, path: '/console/api/create' },
   { text: '查看文档', type: 'default' as const, icon: Document, path: '/docs' },
   { text: '监控面板', type: 'default' as const, icon: Monitor, path: '/monitor' },
-  { text: '用户管理', type: 'default' as const, icon: User, path: '/console/users' },
+  { text: '用户管理', type: 'default' as const, icon: User, path: '/console/users/list' },
 ]
 
 // 时间线事件
-const timelineEvents = [
-  {
-    timestamp: '2024-01-15 14:30',
-    title: '系统维护通知',
-    description: '系统将于今晚22:00进行维护升级，预计耗时2小时',
-    color: '#faad14',
-    meta: '重要',
-  },
-  {
-    timestamp: '2024-01-14 10:15',
-    title: '新功能发布',
-    description: '新的API版本管理功能已上线，支持自动化版本控制',
-    color: '#52c41a',
-    meta: '功能更新',
-  },
-  {
-    timestamp: '2024-01-13 09:00',
-    title: '配额更新',
-    description: '本月API调用配额已更新，当前可用配额为：100,000 次',
-    color: '#1890ff',
-    meta: '账户信息',
-  },
-]
+interface TimelineEvent {
+  timestamp: string
+  title: string
+  description: string
+  color: string
+  meta: string
+}
+const timelineEvents = ref<TimelineEvent[]>([])
+
+// 获取类型对应的颜色
+const getTypeColor = (type: string): string => {
+  const colorMap: Record<string, string> = {
+    notice: '#1890ff',
+    feature: '#52c41a',
+    maintenance: '#faad14',
+    warning: '#ff4d4f'
+  }
+  return colorMap[type] || '#1890ff'
+}
+
+// 格式化数字
+const formatNumber = (num: number): string => {
+  if (num >= 10000) return (num / 10000).toFixed(1) + '万+'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k+'
+  return num.toString()
+}
+
+// 加载平台统计数据
+const loadStats = async () => {
+  try {
+    const res = await getStatsOverview()
+    if (res.code === 200 && res.data) {
+      platformStats.value[0].value = formatNumber(res.data.apiCount || 0)
+      platformStats.value[1].value = formatNumber(res.data.todayTotalCount || 0)
+      platformStats.value[2].value = formatNumber(res.data.appCount || 0)
+      // 可用性保持默认值
+    }
+  } catch (error) {
+    console.error('加载统计数据失败', error)
+  }
+}
+
+// 加载公告
+const loadAnnouncements = async () => {
+  try {
+    const res = await getPublishedAnnouncements(5)
+    if (res.code === 200 && res.data) {
+      timelineEvents.value = (res.data || []).map((item: AnnouncementDTO) => ({
+        timestamp: item.publishTime || '',
+        title: item.title,
+        description: item.description,
+        color: getTypeColor(item.type),
+        meta: item.meta || ''
+      }))
+    }
+  } catch (error) {
+    console.error('加载公告失败', error)
+    // 加载失败时显示默认数据
+    timelineEvents.value = [
+      {
+        timestamp: new Date().toISOString().slice(0, 16).replace('T', ' '),
+        title: '欢迎使用 IntelliHub',
+        description: '智能API管理平台，提供API全生命周期管理能力',
+        color: '#1890ff',
+        meta: '系统通知'
+      }
+    ]
+  }
+}
 
 // 导航方法
 const navigateToModule = (path: string) => {
   router.push(path)
 }
+
+onMounted(() => {
+  loadStats()
+  loadAnnouncements()
+})
 </script>
 
 <style scoped>

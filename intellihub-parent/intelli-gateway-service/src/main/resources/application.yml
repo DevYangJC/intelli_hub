@@ -42,7 +42,7 @@ spring:
         - id: api-platform-service
           uri: lb://intelli-api-platform-service
           predicates:
-            - Path=/api/v1/apis/**,/api/v1/api-groups/**,/api/v1/public/apis/**
+            - Path=/api/v1/apis/**,/api/v1/api-groups/**,/api/v1/public/apis/**,/api/platform/**
           filters:
             - StripPrefix=1
 

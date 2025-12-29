@@ -158,3 +158,38 @@ CREATE TABLE alert_request_detail (
     INDEX idx_api_path (api_path(100)),
     INDEX idx_request_time (request_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警请求详情表';
+
+CREATE TABLE api_call_stats_distribution (
+                                             id BIGINT PRIMARY KEY,
+                                             tenant_id VARCHAR(64) NOT NULL COMMENT '租户ID',
+                                             api_id VARCHAR(64) COMMENT 'API ID',
+                                             api_path VARCHAR(255) NOT NULL COMMENT 'API路径',
+                                             stat_date DATE NOT NULL COMMENT '统计日期',
+
+    -- 状态码分布
+                                             count_2xx BIGINT DEFAULT 0 COMMENT '2xx状态码数量',
+                                             count_4xx BIGINT DEFAULT 0 COMMENT '4xx状态码数量',
+                                             count_5xx BIGINT DEFAULT 0 COMMENT '5xx状态码数量',
+
+    -- 响应时间分布
+                                             latency_lt_50 BIGINT DEFAULT 0 COMMENT '响应时间<50ms数量',
+                                             latency_50_to_100 BIGINT DEFAULT 0 COMMENT '响应时间50-100ms数量',
+                                             latency_100_to_500 BIGINT DEFAULT 0 COMMENT '响应时间100-500ms数量',
+                                             latency_gt_500 BIGINT DEFAULT 0 COMMENT '响应时间>500ms数量',
+
+                                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    -- 索引
+                                             INDEX idx_tenant_api_date (tenant_id, api_id, stat_date),
+                                             INDEX idx_tenant_path_date (tenant_id, api_path, stat_date),
+                                             UNIQUE KEY uk_tenant_api_date (tenant_id, api_id, stat_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API调用分布统计表';
+
+-- 为api_call_log表添加索引优化查询性能
+CREATE INDEX IF NOT EXISTS idx_api_call_log_tenant_api_time
+    ON api_call_log (tenant_id, api_id, request_time);
+
+CREATE INDEX IF NOT EXISTS idx_api_call_log_status_latency
+    ON api_call_log (tenant_id, api_id, status_code, latency);
+

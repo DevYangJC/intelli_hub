@@ -8,12 +8,6 @@
           class="sidebar-menu"
           @select="handleMenuSelect"
         >
-          <el-menu-item index="dashboard">
-            <el-icon><DataLine /></el-icon>
-            <span>数据看板</span>
-          </el-menu-item>
-          
-          <div class="menu-divider"></div>
           <div class="menu-label">平台管理</div>
           
           <el-sub-menu index="api">
@@ -43,11 +37,6 @@
 
           <div class="menu-divider"></div>
           <div class="menu-label">监控统计</div>
-
-          <el-menu-item index="stats">
-            <el-icon><TrendCharts /></el-icon>
-            <span>调用统计</span>
-          </el-menu-item>
 
           <el-menu-item index="logs">
             <el-icon><Tickets /></el-icon>
@@ -84,10 +73,14 @@
             <el-menu-item index="users-roles">角色权限</el-menu-item>
           </el-sub-menu>
 
-          <el-menu-item index="settings">
-            <el-icon><Setting /></el-icon>
-            <span>系统设置</span>
-          </el-menu-item>
+          <el-sub-menu index="system">
+            <template #title>
+              <el-icon><Setting /></el-icon>
+              <span>系统设置</span>
+            </template>
+            <el-menu-item index="settings">基础设置</el-menu-item>
+            <el-menu-item index="announcements">公告管理</el-menu-item>
+          </el-sub-menu>
         </el-menu>
       </aside>
 
@@ -146,7 +139,6 @@ watch(() => route.path, (path) => {
 // 菜单选择处理
 const handleMenuSelect = (index: string) => {
   const routeMap: Record<string, string> = {
-    'dashboard': '/console',
     'api-list': '/console/api/list',
     'api-create': '/console/api/create',
     'api-groups': '/console/api/groups',
@@ -158,11 +150,11 @@ const handleMenuSelect = (index: string) => {
     'tenant-quota': '/console/tenant/quota',
     'users-list': '/console/users/list',
     'users-roles': '/console/users/roles',
-    'stats': '/console/stats',
     'logs': '/console/logs',
     'alert-rules': '/console/alert/rules',
     'alert-records': '/console/alert/records',
     'settings': '/console/settings',
+    'announcements': '/console/announcements',
   }
   
   const targetRoute = routeMap[index]

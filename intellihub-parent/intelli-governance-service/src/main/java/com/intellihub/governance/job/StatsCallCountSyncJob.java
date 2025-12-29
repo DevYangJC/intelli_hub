@@ -119,12 +119,20 @@ public class StatsCallCountSyncJob {
         }
         log.debug("[调用次数同步] 总调用次数统计完成，共 {} 个 API", totalMap.size());
 
-        // 3. 构建 DTO 列表，用于 Dubbo 调用
-        List<ApiCallCountDTO> callCounts = new ArrayList<>();
+        // 构建今日调用次数 Map
+        Map<String, Long> todayMap = new HashMap<>();
         for (Map<String, Object> row : todayStats) {
             String apiId = (String) row.get("apiId");
-            Long todayCalls = ((Number) row.get("callCount")).longValue();
-            Long totalCalls = totalMap.getOrDefault(apiId, todayCalls);
+            Long count = ((Number) row.get("callCount")).longValue();
+            todayMap.put(apiId, count);
+        }
+
+        // 3. 构建 DTO 列表 - 遍历所有有调用记录的API（不仅仅是今日有调用的）
+        List<ApiCallCountDTO> callCounts = new ArrayList<>();
+        for (Map<String, Object> row : totalStats) {
+            String apiId = (String) row.get("apiId");
+            Long totalCalls = ((Number) row.get("callCount")).longValue();
+            Long todayCalls = todayMap.getOrDefault(apiId, 0L);
             
             ApiCallCountDTO dto = new ApiCallCountDTO(apiId, todayCalls, totalCalls);
             callCounts.add(dto);

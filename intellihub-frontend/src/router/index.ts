@@ -85,6 +85,12 @@ const router = createRouter({
             },
             // 网关配置
             {
+              path: 'gateway',
+              name: 'GatewayOverview',
+              component: () => import('../views/console/gateway/GatewayPage.vue'),
+              meta: { title: '网关概览' }
+            },
+            {
               path: 'gateway/routes',
               name: 'GatewayRoutes',
               component: () => import('../views/PlaceholderView.vue'),
@@ -110,6 +116,12 @@ const router = createRouter({
               meta: { title: '应用列表' }
             },
             // 租户管理
+            {
+              path: 'tenant',
+              name: 'TenantSecurity',
+              component: () => import('../views/console/tenant/TenantSecurityPage.vue'),
+              meta: { title: '多租户安全' }
+            },
             {
               path: 'tenant/list',
               name: 'TenantList',
@@ -165,8 +177,14 @@ const router = createRouter({
             {
               path: 'settings',
               name: 'Settings',
-              component: () => import('../views/PlaceholderView.vue'),
+              component: () => import('../views/console/settings/SettingsPage.vue'),
               meta: { title: '系统设置' }
+            },
+            {
+              path: 'announcements',
+              name: 'Announcements',
+              component: () => import('../views/console/settings/AnnouncementsPage.vue'),
+              meta: { title: '公告管理' }
             },
           ]
         },

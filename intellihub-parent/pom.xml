@@ -13,6 +13,9 @@
         <!-- 内部支撑模块 -->
         <module>inner-intergration</module>
 
+        <!-- SDK 模块 -->
+        <module>intelli-sdk</module>
+
         <!-- 业务服务模块 -->
         <module>intelli-gateway-service</module>
         <module>intelli-auth-iam-service</module>

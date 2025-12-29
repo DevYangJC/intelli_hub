@@ -3,6 +3,7 @@ package com.intellihub.governance.controller;
 import com.intellihub.ApiResponse;
 import com.intellihub.page.PageData;
 import com.intellihub.context.UserContextHolder;
+import com.intellihub.governance.dto.ApiStatsDetailDTO;
 import com.intellihub.governance.dto.StatsOverviewDTO;
 import com.intellihub.governance.dto.StatsTrendDTO;
 import com.intellihub.governance.entity.ApiCallLog;
@@ -120,5 +121,21 @@ public class StatsController {
         String tenantId = UserContextHolder.getCurrentTenantId();
         Long count = callLogService.getGlobalRealtimeCount(tenantId);
         return ApiResponse.success(count);
+    }
+
+    /**
+     * 获取单个API的统计详情
+     * <p>
+     * 包括：今日调用、总调用量、平均响应时间、成功率、状态码分布、响应时间分布
+     * </p>
+     *
+     * @param apiId API ID
+     * @return API统计详情
+     */
+    @GetMapping("/api-detail/{apiId}")
+    public ApiResponse<ApiStatsDetailDTO> getApiStatsDetail(@PathVariable String apiId) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
+        ApiStatsDetailDTO detail = statsService.getApiStatsDetail(tenantId, apiId);
+        return ApiResponse.success(detail);
     }
 }

@@ -381,9 +381,9 @@ const handleEdit = (row: any) => {
   router.push(`/console/api/${row.id}/edit`)
 }
 
-// 查看文档
+// 查看文档（跳转到详情页的文档Tab）
 const handleViewDoc = (row: any) => {
-  router.push(`/console/api/${row.id}/doc`)
+  router.push(`/console/api/${row.id}?tab=doc`)
 }
 
 // 选择变化
