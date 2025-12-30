@@ -26,6 +26,11 @@ public enum ResultCode {
 
     API_NOT_EXIST(4300, "API 不存在"),
 
+    // 事件中心相关
+    EVENT_NOT_FOUND(4400, "事件定义不存在"),
+    EVENT_PUBLISH_FAILED(4401, "事件发布失败"),
+    SUBSCRIPTION_NOT_FOUND(4402, "订阅不存在"),
+
     // 认证相关
     ACCOUNT_INCORRECT(4100, "用户名或密码错误"),
     ACCOUNT_DISABLED(4101, "账户已禁用"),

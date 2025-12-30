@@ -17,6 +17,7 @@ import com.intellihub.api.mapper.ApiGroupMapper;
 import com.intellihub.api.mapper.ApiInfoMapper;
 import com.intellihub.api.mapper.ApiRequestParamMapper;
 import com.intellihub.api.mapper.ApiTagMapper;
+import com.intellihub.api.service.ApiEventPublisher;
 import com.intellihub.api.service.ApiInfoService;
 import com.intellihub.api.service.ApiRouteEventPublisher;
 import com.intellihub.constants.ResponseStatus;
@@ -50,6 +51,7 @@ public class ApiInfoServiceImpl implements ApiInfoService {
     private final ApiBackendMapper apiBackendMapper;
     private final ApiTagMapper apiTagMapper;
     private final ApiRouteEventPublisher routeEventPublisher;
+    private final ApiEventPublisher apiEventPublisher;
 
     @Override
     public PageData<ApiInfoResponse> listApis(String tenantId, ApiQueryRequest request) {
@@ -267,6 +269,9 @@ public class ApiInfoServiceImpl implements ApiInfoService {
 
         // 删除API（软删除）
         apiInfoMapper.deleteById(id);
+
+        // 发布API删除事件到事件中心（Kafka）
+        apiEventPublisher.publishApiDeleted(id, apiInfo.getPath(), apiInfo.getMethod(), apiInfo.getTenantId());
     }
 
     @Override
@@ -284,8 +289,11 @@ public class ApiInfoServiceImpl implements ApiInfoService {
         apiInfo.setPublishedAt(LocalDateTime.now());
         apiInfoMapper.updateById(apiInfo);
 
-        // 发布路由变更事件，通知网关刷新
+        // 发布路由变更事件，通知网关刷新（Redis）
         routeEventPublisher.publishApiPublished(id, apiInfo.getPath(), apiInfo.getMethod(), apiInfo.getTenantId());
+        
+        // 发布API发布事件到事件中心（Kafka）
+        apiEventPublisher.publishApiPublished(id, apiInfo.getName(), apiInfo.getPath(), apiInfo.getMethod(), apiInfo.getTenantId());
     }
 
     @Override
@@ -302,8 +310,11 @@ public class ApiInfoServiceImpl implements ApiInfoService {
         apiInfo.setStatus("offline");
         apiInfoMapper.updateById(apiInfo);
 
-        // 发布路由变更事件，通知网关移除路由
+        // 发布路由变更事件，通知网关移除路由（Redis）
         routeEventPublisher.publishApiOffline(id, apiInfo.getPath(), apiInfo.getMethod(), apiInfo.getTenantId());
+        
+        // 发布API下线事件到事件中心（Kafka）
+        apiEventPublisher.publishApiOffline(id, apiInfo.getPath(), apiInfo.getMethod(), apiInfo.getTenantId());
     }
 
     @Override

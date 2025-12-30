@@ -40,10 +40,10 @@
             <artifactId>redis-cache-spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- RabbitMQ -->
+        <!-- Kafka -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-amqp</artifactId>
+            <groupId>com.intellihub</groupId>
+            <artifactId>kafka-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- IntelliHub Common -->

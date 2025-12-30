@@ -10,6 +10,12 @@
     </parent>
     <artifactId>intelli-event-service</artifactId>
     <dependencies>
+        <!-- Kafka -->
+        <dependency>
+            <groupId>com.intellihub</groupId>
+            <artifactId>kafka-spring-boot-starter</artifactId>
+        </dependency>
+
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -28,11 +34,6 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
-        <!-- Nacos 配置中心 -->
-        <dependency>
-            <groupId>com.alibaba.cloud</groupId>
-            <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
-        </dependency>
 
         <!-- MyBatis Helper Starter -->
         <dependency>
@@ -46,12 +47,12 @@
             <artifactId>redis-cache-spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- RabbitMQ -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-amqp</artifactId>
-        </dependency>
 
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- IntelliHub Common -->
         <dependency>
             <groupId>com.intellihub</groupId>

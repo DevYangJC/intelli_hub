@@ -9,27 +9,18 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        server-addr: ${NACOS_SERVER_ADDR:192.168.200.130:8848}
         namespace: ${NACOS_NAMESPACE:}
         group: DEFAULT_GROUP
-      config:
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-        namespace: ${NACOS_NAMESPACE:}
-        group: DEFAULT_GROUP
-        file-extension: yml
-        shared-configs:
-          - data-id: common.yml
-            group: DEFAULT_GROUP
-            refresh: true
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:intelli_hub_event}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+    url: jdbc:mysql://${DB_HOST:192.168.200.130}:${DB_PORT:3306}/${DB_NAME:intelli_hub_event}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:123456}
 
   redis:
-    host: ${REDIS_HOST:localhost}
+    host: ${REDIS_HOST:192.168.200.130}
     port: ${REDIS_PORT:6379}
     database: ${REDIS_DATABASE:2}
     password: ${REDIS_PASSWORD:}
@@ -41,14 +32,19 @@ spring:
         max-idle: 8
         min-idle: 0
 
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
-    virtual-host: ${RABBITMQ_VHOST:/}
-    publisher-confirm-type: correlated
-    publisher-returns: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:192.168.200.130:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: 1
+      retries: 3
+    consumer:
+      group-id: event-service-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: true
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
