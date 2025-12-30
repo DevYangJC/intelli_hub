@@ -2,6 +2,7 @@ package com.intellihub.auth.dubbo;
 
 import com.intellihub.dubbo.AuthDubboService;
 import com.intellihub.dubbo.UserInfoDTO;
+import com.intellihub.dubbo.UserInfoSearchDTO;
 import com.intellihub.dubbo.ValidateTokenResponse;
 import com.intellihub.auth.entity.IamPermission;
 import com.intellihub.auth.entity.IamRole;
@@ -16,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboService;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -87,6 +90,55 @@ public class AuthDubboServiceImpl implements AuthDubboService {
             return null;
         }
         return buildUserInfoDTO(user);
+    }
+
+    @Override
+    public List<UserInfoSearchDTO> getAllUserInfoForSync(String tenantId) {
+        log.info("[搜索同步] 获取所有用户信息，tenantId={}", tenantId);
+
+        List<IamUser> userList;
+        if (tenantId != null && !tenantId.isEmpty()) {
+            userList = userMapper.selectByTenantId(tenantId);
+        } else {
+            userList = userMapper.selectAllActive();
+        }
+
+        List<UserInfoSearchDTO> result = userList.stream()
+                .map(this::convertToUserInfoSearchDTO)
+                .collect(Collectors.toList());
+
+        log.info("[搜索同步] 获取用户信息完成，共 {} 条", result.size());
+        return result;
+    }
+
+    @Override
+    public List<UserInfoSearchDTO> getUserInfoUpdatedAfter(String tenantId, LocalDateTime lastSyncTime) {
+        log.info("[搜索同步] 获取增量用户信息，tenantId={}, lastSyncTime={}", tenantId, lastSyncTime);
+
+        List<IamUser> userList = userMapper.selectUpdatedAfter(tenantId, lastSyncTime);
+
+        List<UserInfoSearchDTO> result = userList.stream()
+                .map(this::convertToUserInfoSearchDTO)
+                .collect(Collectors.toList());
+
+        log.info("[搜索同步] 获取增量用户信息完成，共 {} 条", result.size());
+        return result;
+    }
+
+    private UserInfoSearchDTO convertToUserInfoSearchDTO(IamUser user) {
+        UserInfoSearchDTO dto = new UserInfoSearchDTO();
+        dto.setId(user.getId());
+        dto.setTenantId(user.getTenantId());
+        dto.setUsername(user.getUsername());
+        dto.setNickname(user.getNickname());
+        dto.setEmail(user.getEmail());
+        dto.setPhone(user.getPhone());
+        dto.setAvatar(user.getAvatar());
+        dto.setStatus(user.getStatus());
+        dto.setLastLoginAt(user.getLastLoginAt());
+        dto.setCreatedAt(user.getCreatedAt());
+        dto.setUpdatedAt(user.getUpdatedAt());
+        return dto;
     }
 
     /**

@@ -138,6 +138,11 @@
                 <artifactId>kafka-spring-boot-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.intellihub</groupId>
+                <artifactId>elasticsearch-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- MySQL -->
             <dependency>
@@ -192,13 +197,6 @@
                 <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-jsr310</artifactId>
                 <version>2.13.5</version>
-            </dependency>
-
-            <!-- PageHelper -->
-            <dependency>
-                <groupId>com.github.pagehelper</groupId>
-                <artifactId>pagehelper</artifactId>
-                <version>5.3.2</version>
             </dependency>
 
             <!-- JWT -->

@@ -24,6 +24,8 @@ public enum ResultCode {
     VALIDATION_ERROR(4022, "数据验证失败"),
     THE_ALARM_RULE_DOES_NOT_EXIST(4023, "告警规则不存在"),
 
+    API_NOT_EXIST(4300, "API 不存在"),
+
     // 认证相关
     ACCOUNT_INCORRECT(4100, "用户名或密码错误"),
     ACCOUNT_DISABLED(4101, "账户已禁用"),

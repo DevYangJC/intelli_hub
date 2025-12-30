@@ -61,3 +61,36 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_HEAP_OPTS: '-Xmx512M -Xms128M'
     restart: always
+
+  # Elasticsearch
+  elasticsearch:
+    image: elasticsearch:7.4.2
+    container_name: elasticsearch
+    ports:
+      - '9200:9200'
+      - '9300:9300'
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+      - es_plugins:/usr/share/elasticsearch/plugins
+    restart: always
+
+  # Kibana
+  kibana:
+    image: kibana:7.4.2
+    container_name: kibana
+    depends_on:
+      - elasticsearch
+    ports:
+      - '5601:5601'
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    restart: always
+
+volumes:
+  mysql_data:
+  es_data:
+  es_plugins:

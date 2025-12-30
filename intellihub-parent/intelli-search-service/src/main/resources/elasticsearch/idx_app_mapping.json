@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "properties": {
+      "id": { "type": "keyword" },
+      "tenantId": { "type": "keyword" },
+      "name": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "code": { "type": "keyword" },
+      "description": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "appType": { "type": "keyword" },
+      "appTypeName": { "type": "keyword" },
+      "appKey": { "type": "keyword" },
+      "status": { "type": "keyword" },
+      "statusName": { "type": "keyword" },
+      "contactName": { "type": "text", "analyzer": "ik_smart" },
+      "contactEmail": { "type": "keyword" },
+      "createdBy": { "type": "keyword" },
+      "createdByName": { "type": "text", "analyzer": "ik_smart" },
+      "createdAt": { "type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis" },
+      "updatedAt": { "type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis" }
+    }
+  }
+}

@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -28,4 +29,26 @@ public interface IamUserMapper extends BaseMapper<IamUser> {
      */
     @Select("SELECT * FROM iam_user WHERE username = #{username} AND tenant_id = #{tenantId} AND deleted_at IS NULL LIMIT 1")
     IamUser selectByUsernameAndTenantId(@Param("username") String username, @Param("tenantId") String tenantId);
+
+    /**
+     * 根据租户ID查询所有用户
+     */
+    @Select("SELECT * FROM iam_user WHERE tenant_id = #{tenantId} AND deleted_at IS NULL")
+    List<IamUser> selectByTenantId(@Param("tenantId") String tenantId);
+
+    /**
+     * 查询所有活跃用户
+     */
+    @Select("SELECT * FROM iam_user WHERE deleted_at IS NULL")
+    List<IamUser> selectAllActive();
+
+    /**
+     * 查询更新时间在指定时间之后的用户（用于增量同步）
+     */
+    @Select("<script>" +
+            "SELECT * FROM iam_user WHERE deleted_at IS NULL " +
+            "<if test='tenantId != null and tenantId != \"\"'> AND tenant_id = #{tenantId} </if>" +
+            "<if test='lastSyncTime != null'> AND updated_at > #{lastSyncTime} </if>" +
+            "</script>")
+    List<IamUser> selectUpdatedAfter(@Param("tenantId") String tenantId, @Param("lastSyncTime") LocalDateTime lastSyncTime);
 }

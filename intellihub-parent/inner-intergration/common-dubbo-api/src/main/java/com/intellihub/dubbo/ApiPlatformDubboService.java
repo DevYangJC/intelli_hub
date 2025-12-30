@@ -62,4 +62,21 @@ public interface ApiPlatformDubboService {
      * @return 更新成功的记录数
      */
     int batchUpdateApiCallCounts(List<ApiCallCountDTO> callCounts);
+
+    /**
+     * 获取所有 API 信息（用于搜索索引同步）
+     *
+     * @param tenantId 租户ID（可选，为空则查所有租户）
+     * @return API 信息列表
+     */
+    List<ApiInfoDTO> getAllApiInfoForSync(Long tenantId);
+
+    /**
+     * 获取增量更新的 API 信息（用于搜索索引增量同步）
+     *
+     * @param tenantId    租户ID（可选）
+     * @param lastSyncTime 上次同步时间
+     * @return API 信息列表
+     */
+    List<ApiInfoDTO> getApiInfoUpdatedAfter(Long tenantId, java.time.LocalDateTime lastSyncTime);
 }

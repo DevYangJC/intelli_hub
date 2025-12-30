@@ -7,6 +7,7 @@ import com.intellihub.app.mapper.AppApiSubscriptionMapper;
 import com.intellihub.app.mapper.AppInfoMapper;
 import com.intellihub.dubbo.AppCallCountDTO;
 import com.intellihub.dubbo.AppCenterDubboService;
+import com.intellihub.dubbo.AppInfoDTO;
 import com.intellihub.dubbo.AppKeyInfoDTO;
 import com.intellihub.enums.SubscriptionStatus;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,9 @@ import org.apache.dubbo.config.annotation.DubboService;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 应用中心Dubbo服务实现
@@ -194,5 +197,65 @@ public class AppCenterDubboServiceImpl implements AppCenterDubboService {
 
         log.info("[配额同步] App配额批量更新完成，成功 {} / {} 条", successCount, callCounts.size());
         return successCount;
+    }
+
+    @Override
+    public List<AppInfoDTO> getAllAppInfoForSync(String tenantId) {
+        log.info("[搜索同步] 获取所有应用信息，tenantId={}", tenantId);
+
+        LambdaQueryWrapper<AppInfo> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(AppInfo::getDeleted, 0);
+        if (tenantId != null && !tenantId.isEmpty()) {
+            queryWrapper.eq(AppInfo::getTenantId, tenantId);
+        }
+
+        List<AppInfo> appList = appInfoMapper.selectList(queryWrapper);
+        List<AppInfoDTO> result = appList.stream()
+                .map(this::convertToAppInfoDTO)
+                .collect(Collectors.toList());
+
+        log.info("[搜索同步] 获取应用信息完成，共 {} 条", result.size());
+        return result;
+    }
+
+    @Override
+    public List<AppInfoDTO> getAppInfoUpdatedAfter(String tenantId, LocalDateTime lastSyncTime) {
+        log.info("[搜索同步] 获取增量应用信息，tenantId={}, lastSyncTime={}", tenantId, lastSyncTime);
+
+        LambdaQueryWrapper<AppInfo> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(AppInfo::getDeleted, 0);
+        if (tenantId != null && !tenantId.isEmpty()) {
+            queryWrapper.eq(AppInfo::getTenantId, tenantId);
+        }
+        if (lastSyncTime != null) {
+            queryWrapper.gt(AppInfo::getUpdatedAt, lastSyncTime);
+        }
+
+        List<AppInfo> appList = appInfoMapper.selectList(queryWrapper);
+        List<AppInfoDTO> result = appList.stream()
+                .map(this::convertToAppInfoDTO)
+                .collect(Collectors.toList());
+
+        log.info("[搜索同步] 获取增量应用信息完成，共 {} 条", result.size());
+        return result;
+    }
+
+    private AppInfoDTO convertToAppInfoDTO(AppInfo appInfo) {
+        AppInfoDTO dto = new AppInfoDTO();
+        dto.setId(appInfo.getId());
+        dto.setTenantId(appInfo.getTenantId());
+        dto.setName(appInfo.getName());
+        dto.setCode(appInfo.getCode());
+        dto.setDescription(appInfo.getDescription());
+        dto.setAppType(appInfo.getAppType());
+        dto.setAppKey(appInfo.getAppKey());
+        dto.setStatus(appInfo.getStatus());
+        dto.setContactName(appInfo.getContactName());
+        dto.setContactEmail(appInfo.getContactEmail());
+        dto.setCreatedBy(appInfo.getCreatedBy());
+        dto.setCreatedByName(appInfo.getCreatedByName());
+        dto.setCreatedAt(appInfo.getCreatedAt());
+        dto.setUpdatedAt(appInfo.getUpdatedAt());
+        return dto;
     }
 }

@@ -22,10 +22,43 @@
             </svg>
             <span class="brand-name">智能开放平台</span>
           </router-link>
-          <div class="search-box">
-            <el-icon class="search-icon"><Search /></el-icon>
-            <input type="text" placeholder="搜索API、文档..." class="search-input" />
-            <span class="search-shortcut">/</span>
+          <div class="search-box-wrapper">
+            <div class="search-box" :class="{ 'is-focused': showSearchDropdown }">
+              <el-icon class="search-icon"><Search /></el-icon>
+              <input 
+                type="text" 
+                v-model="globalSearchKeyword"
+                placeholder="搜索API、应用、用户..." 
+                class="search-input"
+                @input="handleSearchInput"
+                @keyup.enter="handleSearchEnter"
+                @focus="handleSearchFocus"
+                @blur="handleSearchBlur"
+              />
+              <span class="search-shortcut" v-if="!showSearchDropdown">/</span>
+              <el-icon v-if="globalSearchKeyword && showSearchDropdown" class="clear-icon" @click.stop="clearSearch"><Close /></el-icon>
+            </div>
+            <!-- 搜索下拉结果 -->
+            <div class="search-dropdown" v-show="showSearchDropdown && globalSearchKeyword">
+              <div v-if="searchLoading" class="search-loading">
+                <el-icon class="is-loading"><Loading /></el-icon>
+                <span>搜索中...</span>
+              </div>
+              <template v-else-if="searchResults.length > 0">
+                <div 
+                  v-for="item in searchResults" 
+                  :key="`${item.type}-${item.id}`"
+                  class="search-result-item"
+                  @mousedown.prevent="handleResultClick(item)"
+                >
+                  <el-tag :type="getSearchTagType(item.type)" size="small">{{ getSearchTypeName(item.type) }}</el-tag>
+                  <span class="result-name" v-html="item.name"></span>
+                </div>
+              </template>
+              <div v-else class="search-empty">
+                没有找到相关结果
+              </div>
+            </div>
           </div>
         </div>
 
@@ -233,7 +266,10 @@ import {
   Search,
   Setting,
   SwitchButton,
+  Close,
+  Loading,
 } from '@element-plus/icons-vue'
+import { searchApi, type SearchItem } from '@/api/search'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 
 const router = useRouter()
@@ -465,6 +501,107 @@ const handleRegister = async () => {
 // 用户头像
 const userAvatar = ref('https://secure.gravatar.com/avatar/placeholder')
 
+// 全局搜索
+const globalSearchKeyword = ref('')
+const showSearchDropdown = ref(false)
+const searchLoading = ref(false)
+const searchResults = ref<SearchItem[]>([])
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+const handleSearchInput = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  if (!globalSearchKeyword.value.trim()) {
+    searchResults.value = []
+    return
+  }
+  searchTimer = setTimeout(() => {
+    performSearch()
+  }, 300)
+}
+
+const performSearch = async () => {
+  if (!globalSearchKeyword.value.trim()) return
+  searchLoading.value = true
+  try {
+    const res = await searchApi.aggregateSearch({
+      keyword: globalSearchKeyword.value,
+      types: ['api', 'app', 'user'],
+      page: 1,
+      size: 8,
+      highlight: true
+    })
+    searchResults.value = res.data.items || []
+  } catch (error) {
+    console.error('搜索失败:', error)
+    searchResults.value = []
+  } finally {
+    searchLoading.value = false
+  }
+}
+
+const handleSearchFocus = () => {
+  showSearchDropdown.value = true
+  if (globalSearchKeyword.value.trim() && searchResults.value.length === 0) {
+    performSearch()
+  }
+}
+
+const handleSearchBlur = () => {
+  setTimeout(() => {
+    showSearchDropdown.value = false
+  }, 200)
+}
+
+const handleSearchEnter = () => {
+  if (globalSearchKeyword.value.trim()) {
+    performSearch()
+  }
+}
+
+const clearSearch = () => {
+  globalSearchKeyword.value = ''
+  searchResults.value = []
+}
+
+const handleResultClick = (item: SearchItem) => {
+  showSearchDropdown.value = false
+  globalSearchKeyword.value = ''
+  switch (item.type) {
+    case 'api':
+      router.push(`/console/api/${item.id}`)
+      break
+    case 'app':
+      router.push(`/console/app/list`)
+      break
+    case 'user':
+      router.push(`/console/users/list`)
+      break
+  }
+}
+
+const getSearchTypeName = (type: string): string => {
+  const typeNames: Record<string, string> = { api: 'API', app: '应用', user: '用户' }
+  return typeNames[type] || type
+}
+
+const getSearchTagType = (type: string): 'primary' | 'success' | 'warning' => {
+  const tagTypes: Record<string, 'primary' | 'success' | 'warning'> = { api: 'primary', app: 'success', user: 'warning' }
+  return tagTypes[type] || 'primary'
+}
+
+// 键盘快捷键
+onMounted(() => {
+  document.addEventListener('keydown', handleKeyDown)
+})
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+    e.preventDefault()
+    const searchInput = document.querySelector('.search-input') as HTMLInputElement
+    if (searchInput) searchInput.focus()
+  }
+}
+
 // 导航栏命令处理
 const handleNavCommand = async (command: string) => {
   switch (command) {
@@ -578,6 +715,96 @@ const handleNavCommand = async (command: string) => {
   border-radius: 4px;
   font-size: 12px;
   font-family: monospace;
+}
+
+.search-box-wrapper {
+  position: relative;
+}
+
+.search-box.is-focused {
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.clear-icon {
+  cursor: pointer;
+  color: #999;
+  font-size: 14px;
+}
+
+.clear-icon:hover {
+  color: #666;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.search-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: #999;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.search-result-item:hover {
+  background: #f5f7fa;
+}
+
+.search-result-item .result-name {
+  flex: 1;
+  font-size: 14px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-item .result-name :deep(em) {
+  color: #1890ff;
+  font-style: normal;
+  font-weight: bold;
+}
+
+.search-footer {
+  padding: 12px 16px;
+  text-align: center;
+  color: #1890ff;
+  font-size: 14px;
+  cursor: pointer;
+  border-top: 1px solid #f0f0f0;
+}
+
+.search-footer:hover {
+  background: #f5f7fa;
+}
+
+.search-empty {
+  padding: 24px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
 }
 
 .navbar-right {

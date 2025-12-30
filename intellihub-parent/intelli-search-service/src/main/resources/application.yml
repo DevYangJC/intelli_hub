@@ -9,31 +9,22 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-        namespace: ${NACOS_NAMESPACE:}
+        server-addr: 127.0.0.1:8848
+        namespace: dev
         group: DEFAULT_GROUP
-      config:
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-        namespace: ${NACOS_NAMESPACE:}
-        group: DEFAULT_GROUP
-        file-extension: yml
-        shared-configs:
-          - data-id: common.yml
-            group: DEFAULT_GROUP
-            refresh: true
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:intelli_hub_search}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    url: jdbc:mysql://192.168.200.130:3306/intelli_hub_search?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: root
 
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    database: ${REDIS_DATABASE:2}
-    password: ${REDIS_PASSWORD:}
-    timeout: 10s
+    host: 192.168.200.130
+    port: 6379
+    database: 2
+    timeout: 3000ms
+    password: root
     lettuce:
       pool:
         max-active: 8
@@ -41,18 +32,33 @@ spring:
         max-idle: 8
         min-idle: 0
 
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
-    virtual-host: ${RABBITMQ_VHOST:/}
-    publisher-confirm-type: correlated
-    publisher-returns: true
+intellihub:
+  elasticsearch:
+    enabled: true
+    hosts:
+      - 192.168.200.130:9200
+    username:
+    password:
+    connect-timeout: 5s
+    socket-timeout: 30s
+    max-connections: 100
+    max-connections-per-route: 20
+    index-prefix: intellihub
+    default-shards: 1
+    default-replicas: 0
+    refresh-policy: "false"
+  search:
+    sync:
+      full-cron: "0 0 2 * * ?"
+      incremental-cron: "0 */5 * * * ?"
+      app-full-cron: "0 0 2 * * ?"
+      app-incremental-cron: "0 */5 * * * ?"
+      user-full-cron: "0 0 2 * * ?"
+      user-incremental-cron: "0 */5 * * * ?"
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
-  type-aliases-package: com.vibe.intellihub.entity
+  type-aliases-package: com.intellihub.search.entity
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
@@ -67,7 +73,7 @@ mybatis-plus:
 
 logging:
   level:
-    com.vibe.intellihub: debug
+    com.intellihub.search: debug
     com.intellihub.common: debug
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
@@ -81,3 +87,15 @@ management:
   endpoint:
     health:
       show-details: always
+
+dubbo:
+  application:
+    name: intelli-search-service
+    qos-enable: false
+  registry:
+    address: nacos://127.0.0.1:8848
+    parameters:
+      namespace: dev
+  consumer:
+    check: false
+    timeout: 30000

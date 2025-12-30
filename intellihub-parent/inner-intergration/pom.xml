@@ -13,13 +13,11 @@
     <modules>
         <module>common-dubbo-api</module>
         <module>common-helper</module>
-        <module>swagger-spring-boot-starter</module>
         <module>mybatis-helper-spring-boot-starter</module>
-        <module>common-interceptor-spring-boot-starter</module>
-        <module>common-security-spring-boot-starter</module>
         <module>redis-cache-spring-boot-starter</module>
         <module>aop-spring-boot-starter</module>
         <module>kafka-spring-boot-starter</module>
+        <module>elasticsearch-spring-boot-starter</module>
     </modules>
     <packaging>pom</packaging>
 </project>

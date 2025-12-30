@@ -53,4 +53,21 @@ public interface AppCenterDubboService {
      * @return 更新成功的记录数
      */
     int batchUpdateAppQuotaUsed(java.util.List<AppCallCountDTO> callCounts);
+
+    /**
+     * 获取所有应用信息（用于搜索索引同步）
+     *
+     * @param tenantId 租户ID（可选）
+     * @return 应用信息列表
+     */
+    java.util.List<AppInfoDTO> getAllAppInfoForSync(String tenantId);
+
+    /**
+     * 获取增量更新的应用信息（用于搜索索引增量同步）
+     *
+     * @param tenantId     租户ID（可选）
+     * @param lastSyncTime 上次同步时间
+     * @return 应用信息列表
+     */
+    java.util.List<AppInfoDTO> getAppInfoUpdatedAfter(String tenantId, java.time.LocalDateTime lastSyncTime);
 }

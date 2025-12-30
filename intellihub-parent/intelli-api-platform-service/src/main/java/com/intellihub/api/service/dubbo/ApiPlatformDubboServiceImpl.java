@@ -6,6 +6,7 @@ import com.intellihub.api.entity.ApiInfo;
 import com.intellihub.api.mapper.ApiBackendMapper;
 import com.intellihub.api.mapper.ApiInfoMapper;
 import com.intellihub.dubbo.ApiCallCountDTO;
+import com.intellihub.dubbo.ApiInfoDTO;
 import com.intellihub.dubbo.ApiPlatformDubboService;
 import com.intellihub.dubbo.ApiRouteDTO;
 import lombok.RequiredArgsConstructor;
@@ -13,8 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboService;
 import org.springframework.util.AntPathMatcher;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * API平台Dubbo服务实现
@@ -229,4 +233,73 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
         log.info("[调用次数同步] API调用次数批量更新完成，成功 {} / {} 条", successCount, callCounts.size());
         return successCount;
     }
+
+    @Override
+    public List<ApiInfoDTO> getAllApiInfoForSync(Long tenantId) {
+        log.info("[搜索同步] 获取所有API信息，tenantId={}", tenantId);
+
+        LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.isNull(ApiInfo::getDeletedAt);
+        if (tenantId != null) {
+            queryWrapper.eq(ApiInfo::getTenantId, tenantId);
+        }
+
+        List<ApiInfo> apiInfoList = apiInfoMapper.selectList(queryWrapper);
+        List<ApiInfoDTO> result = apiInfoList.stream()
+                .map(this::convertToApiInfoDTO)
+                .collect(Collectors.toList());
+
+        log.info("[搜索同步] 获取API信息完成，共 {} 条", result.size());
+        return result;
+    }
+
+    @Override
+    public List<ApiInfoDTO> getApiInfoUpdatedAfter(Long tenantId, LocalDateTime lastSyncTime) {
+        log.info("[搜索同步] 获取增量API信息，tenantId={}, lastSyncTime={}", tenantId, lastSyncTime);
+
+        LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.isNull(ApiInfo::getDeletedAt);
+        if (tenantId != null) {
+            queryWrapper.eq(ApiInfo::getTenantId, tenantId);
+        }
+        if (lastSyncTime != null) {
+            queryWrapper.gt(ApiInfo::getUpdatedAt, lastSyncTime);
+        }
+
+        List<ApiInfo> apiInfoList = apiInfoMapper.selectList(queryWrapper);
+        List<ApiInfoDTO> result = apiInfoList.stream()
+                .map(this::convertToApiInfoDTO)
+                .collect(Collectors.toList());
+
+        log.info("[搜索同步] 获取增量API信息完成，共 {} 条", result.size());
+        return result;
+    }
+
+    /**
+     * 转换为 ApiInfoDTO
+     */
+    private ApiInfoDTO convertToApiInfoDTO(ApiInfo apiInfo) {
+        ApiInfoDTO dto = new ApiInfoDTO();
+        dto.setId(apiInfo.getId());
+        dto.setName(apiInfo.getName());
+        dto.setCode(apiInfo.getCode());
+        dto.setPath(apiInfo.getPath());
+        dto.setMethod(apiInfo.getMethod());
+        dto.setProtocol(apiInfo.getProtocol());
+        dto.setDescription(apiInfo.getDescription());
+        dto.setGroupId(apiInfo.getGroupId());
+        // groupName 需要关联查询，暂时置空
+        dto.setGroupName(null);
+        dto.setStatus(apiInfo.getStatus());
+        dto.setAuthType(apiInfo.getAuthType());
+        dto.setVersion(apiInfo.getVersion());
+        dto.setTenantId(apiInfo.getTenantId());
+        dto.setCreatedBy(apiInfo.getCreatedBy());
+        dto.setCreatorName(apiInfo.getCreatorName());
+        dto.setPublishedAt(apiInfo.getPublishedAt());
+        dto.setCreatedAt(apiInfo.getCreatedAt());
+        dto.setUpdatedAt(apiInfo.getUpdatedAt());
+        return dto;
+    }
+
 }
