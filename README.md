@@ -85,7 +85,7 @@ IntelliHub 是一个面向企业与开发者的**智能API开放平台**，旨�
 | `intelli-sdk` | - | ✅ | Java SDK（签名生成、HTTP客户端） |
 | `intellihub-frontend` | 5173 | ✅ | Vue3控制台，开发代理到网关 |
 | `intelli-aigc-service` | 8084 | 📦 | AIGC能力（规划中） |
-| `intelli-search-service` | 8086 | 📦 | 聚合搜索（规划中） |
+| `intelli-search-service` | 8086 | ✅ | 聚合搜索（规划中） |
 | `intelli-event-service` | 8087 | 📦 | 事件中心（规划中） |
 | `intelli-log-audit-service` | 8088 | 📦 | 日志审计（规划中） |
 
