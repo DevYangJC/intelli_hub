@@ -46,7 +46,7 @@ public class ElasticsearchAutoConfiguration {
     public RestClient restClient(ElasticsearchProperties properties) {
         List<String> hosts = properties.getHosts();
         if (CollectionUtils.isEmpty(hosts)) {
-            hosts = List.of("localhost:9200");
+            hosts.add("localhost:9200");
             log.warn("未配置 ES 地址，使用默认地址: localhost:9200");
         }
 

@@ -3,6 +3,9 @@ package com.intellihub.governance.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.intellihub.page.PageData;
+import com.intellihub.governance.constant.AlertLevel;
+import com.intellihub.governance.constant.AlertStatus;
+import com.intellihub.governance.dto.AlertRecordDetailDTO;
 import com.intellihub.governance.entity.AlertRecord;
 import com.intellihub.governance.entity.AlertRequestDetail;
 import com.intellihub.governance.entity.AlertRule;
@@ -13,8 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-
-import com.intellihub.governance.dto.AlertRecordDetailDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -103,7 +104,7 @@ public class AlertRecordService {
         record.setAlertMessage(alertMessage);
         record.setCurrentValue(currentValue);
         record.setThresholdValue(rule.getThreshold());
-        record.setStatus("firing");
+        record.setStatus(AlertStatus.FIRING.getCode());
         record.setFiredAt(LocalDateTime.now());
         record.setNotified(false);
         record.setCreatedAt(LocalDateTime.now());
@@ -120,8 +121,8 @@ public class AlertRecordService {
     @Transactional
     public void resolveAlert(Long recordId) {
         AlertRecord record = alertRecordMapper.selectById(recordId);
-        if (record != null && "firing".equals(record.getStatus())) {
-            record.setStatus("resolved");
+        if (record != null && AlertStatus.FIRING.getCode().equals(record.getStatus())) {
+            record.setStatus(AlertStatus.RESOLVED.getCode());
             record.setResolvedAt(LocalDateTime.now());
             alertRecordMapper.updateById(record);
             log.info("告警恢复 - id: {}, rule: {}", recordId, record.getRuleName());
@@ -187,7 +188,7 @@ public class AlertRecordService {
     public List<AlertRecord> getUnnotifiedRecords() {
         LambdaQueryWrapper<AlertRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AlertRecord::getNotified, false)
-               .eq(AlertRecord::getStatus, "firing");
+               .eq(AlertRecord::getStatus, AlertStatus.FIRING.getCode());
         return alertRecordMapper.selectList(wrapper);
     }
 
@@ -235,11 +236,11 @@ public class AlertRecordService {
         
         AlertStats stats = new AlertStats();
         stats.setTotal(records.size());
-        stats.setFiring((int) records.stream().filter(r -> "firing".equals(r.getStatus())).count());
-        stats.setResolved((int) records.stream().filter(r -> "resolved".equals(r.getStatus())).count());
-        stats.setCritical((int) records.stream().filter(r -> "critical".equals(r.getAlertLevel())).count());
-        stats.setWarning((int) records.stream().filter(r -> "warning".equals(r.getAlertLevel())).count());
-        stats.setInfo((int) records.stream().filter(r -> "info".equals(r.getAlertLevel())).count());
+        stats.setFiring((int) records.stream().filter(r -> AlertStatus.FIRING.getCode().equals(r.getStatus())).count());
+        stats.setResolved((int) records.stream().filter(r -> AlertStatus.RESOLVED.getCode().equals(r.getStatus())).count());
+        stats.setCritical((int) records.stream().filter(r -> AlertLevel.CRITICAL.getCode().equals(r.getAlertLevel())).count());
+        stats.setWarning((int) records.stream().filter(r -> AlertLevel.WARNING.getCode().equals(r.getAlertLevel())).count());
+        stats.setInfo((int) records.stream().filter(r -> AlertLevel.INFO.getCode().equals(r.getAlertLevel())).count());
         
         return stats;
     }

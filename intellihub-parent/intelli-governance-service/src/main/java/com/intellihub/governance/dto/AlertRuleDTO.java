@@ -1,6 +1,7 @@
 package com.intellihub.governance.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.intellihub.governance.constant.RuleStatus;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
@@ -71,5 +72,5 @@ public class AlertRuleDTO {
     /**
      * 状态(active/disabled)
      */
-    private String status = "active";
+    private String status = RuleStatus.ACTIVE.getCode();
 }

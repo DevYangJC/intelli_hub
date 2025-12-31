@@ -1,5 +1,6 @@
 package com.intellihub.governance.notify;
 
+import com.intellihub.governance.constant.AlertLevel;
 import com.intellihub.governance.entity.AlertRecord;
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,33 +46,13 @@ public abstract class AbstractNotifyChannel implements NotifyChannel {
      * 获取告警级别对应的Emoji
      */
     protected String getAlertLevelEmoji(String level) {
-        if (level == null) return "⚠️";
-        switch (level.toLowerCase()) {
-            case "critical":
-                return "🔴";
-            case "warning":
-                return "🟡";
-            case "info":
-                return "🔵";
-            default:
-                return "⚠️";
-        }
+        return AlertLevel.fromCode(level).getEmoji();
     }
 
     /**
      * 获取告警级别中文描述
      */
     protected String getAlertLevelDesc(String level) {
-        if (level == null) return "未知";
-        switch (level.toLowerCase()) {
-            case "critical":
-                return "严重";
-            case "warning":
-                return "警告";
-            case "info":
-                return "信息";
-            default:
-                return level;
-        }
+        return AlertLevel.fromCode(level).getDesc();
     }
 }
