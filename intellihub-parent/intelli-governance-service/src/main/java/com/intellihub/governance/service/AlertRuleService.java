@@ -2,10 +2,11 @@ package com.intellihub.governance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.intellihub.page.PageData;
+import com.intellihub.governance.constant.RuleStatus;
 import com.intellihub.governance.dto.AlertRuleDTO;
 import com.intellihub.governance.entity.AlertRule;
 import com.intellihub.governance.mapper.AlertRuleMapper;
+import com.intellihub.page.PageData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -123,7 +124,7 @@ public class AlertRuleService {
     public List<AlertRule> getActiveRules(String tenantId) {
         LambdaQueryWrapper<AlertRule> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AlertRule::getTenantId, tenantId)
-               .eq(AlertRule::getStatus, "active");
+               .eq(AlertRule::getStatus, RuleStatus.ACTIVE.getCode());
         return alertRuleMapper.selectList(wrapper);
     }
 
@@ -132,7 +133,7 @@ public class AlertRuleService {
      */
     public List<AlertRule> getAllActiveRules() {
         LambdaQueryWrapper<AlertRule> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AlertRule::getStatus, "active");
+        wrapper.eq(AlertRule::getStatus, RuleStatus.ACTIVE.getCode());
         return alertRuleMapper.selectList(wrapper);
     }
 
@@ -141,7 +142,7 @@ public class AlertRuleService {
      */
     @Transactional
     public void enableRule(Long id, String tenantId) {
-        updateRuleStatus(id, tenantId, "active");
+        updateRuleStatus(id, tenantId, RuleStatus.ACTIVE.getCode());
     }
 
     /**

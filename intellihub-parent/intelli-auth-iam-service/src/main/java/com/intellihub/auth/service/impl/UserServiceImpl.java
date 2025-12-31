@@ -10,6 +10,7 @@ import com.intellihub.auth.dto.request.UserQueryRequest;
 import com.intellihub.auth.dto.response.UserInfoResponse;
 import com.intellihub.auth.entity.*;
 import com.intellihub.auth.mapper.*;
+import com.intellihub.auth.service.UserEventPublisher;
 import com.intellihub.auth.service.UserService;
 import com.intellihub.constants.ResultCode;
 import com.intellihub.exception.BusinessException;
@@ -43,6 +44,7 @@ public class UserServiceImpl implements UserService {
     private final IamPermissionMapper permissionMapper;
     private final IamUserRoleMapper userRoleMapper;
     private final PasswordEncoder passwordEncoder;
+    private final UserEventPublisher userEventPublisher;
 
     @Override
     public PageData<UserInfoResponse> listUsers(String tenantId, UserQueryRequest request) {
@@ -124,6 +126,17 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        // 发布用户创建事件到事件中心
+        userEventPublisher.publishUserCreated(
+            user.getId(),
+            user.getUsername(),
+            user.getNickname(),
+            user.getEmail(),
+            user.getPhone(),
+            request.getRoleIds(),
+            tenantId
+        );
+
         return convertToUserInfoResponse(user);
     }
 
@@ -172,6 +185,16 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        // 发布用户更新事件到事件中心
+        userEventPublisher.publishUserUpdated(
+            user.getId(),
+            user.getUsername(),
+            user.getNickname(),
+            user.getEmail(),
+            user.getPhone(),
+            user.getTenantId()
+        );
+
         return convertToUserInfoResponse(user);
     }
 
@@ -189,6 +212,13 @@ public class UserServiceImpl implements UserService {
 
         // 删除角色关联
         userRoleMapper.deleteByUserId(id);
+
+        // 发布用户删除事件到事件中心
+        userEventPublisher.publishUserDeleted(
+            user.getId(),
+            user.getUsername(),
+            user.getTenantId()
+        );
     }
 
     @Override

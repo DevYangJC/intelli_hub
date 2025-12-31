@@ -1,7 +1,9 @@
 package com.intellihub.governance.job;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intellihub.governance.constant.AlertLevel;
 import com.intellihub.governance.entity.AlertRule;
+import com.intellihub.governance.service.AlertEventPublisher;
 import com.intellihub.governance.service.AlertRecordService;
 import com.intellihub.governance.service.AlertRuleService;
 import com.intellihub.governance.service.StatsService;
@@ -36,6 +38,7 @@ public class AlertDetectionJob {
     private final AlertRecordService alertRecordService;
     private final StatsService statsService;
     private final ObjectMapper objectMapper;
+    private final AlertEventPublisher alertEventPublisher;
     
     private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHH");
 
@@ -131,13 +134,28 @@ public class AlertDetectionJob {
             
             List<Map<String, Object>> relatedRequests = filterRequestsByAlertType(ruleType, requestJsonList);
             
-            String alertLevel = determineAlertLevel(currentValue, threshold, ruleType);
+            AlertLevel alertLevel = determineAlertLevel(currentValue, threshold, ruleType);
             String message = buildAlertMessage(rule, currentValue, ruleType);
             log.warn("[告警触发] 规则[{}] 触发告警! level={}, message={}, relatedRequests={}", 
                     rule.getName(), alertLevel, message, relatedRequests.size());
             
             // 保存告警记录和请求详情
-            alertRecordService.createRecordWithDetails(rule, "global", currentValue, alertLevel, message, relatedRequests);
+            com.intellihub.governance.entity.AlertRecord alertRecord = alertRecordService.createRecordWithDetails(rule, "global", currentValue, alertLevel.getCode(), message, relatedRequests);
+            
+            // 发布告警触发事件到事件中心
+            alertEventPublisher.publishAlertTriggered(
+                alertRecord.getId(),
+                rule.getId(),
+                rule.getName(),
+                alertLevel.getCode(),
+                ruleType,
+                currentValue,
+                threshold,
+                null,
+                "global",
+                tenantId,
+                message
+            );
             
             // QPS 告警不删除 Redis 数据（因为 QPS 使用独立的分钟级 Key，且请求详情对其他告警类型仍有用）
             // 只有 error_rate 和 latency 告警才删除数据
@@ -395,16 +413,9 @@ public class AlertDetectionJob {
     /**
      * 确定告警级别
      */
-    private String determineAlertLevel(BigDecimal currentValue, BigDecimal threshold, String ruleType) {
+    private AlertLevel determineAlertLevel(BigDecimal currentValue, BigDecimal threshold, String ruleType) {
         double ratio = currentValue.doubleValue() / threshold.doubleValue();
-        
-        if (ratio >= 2.0) {
-            return "critical";
-        } else if (ratio >= 1.5) {
-            return "warning";
-        } else {
-            return "info";
-        }
+        return AlertLevel.determineLevel(ratio);
     }
 
     /**

@@ -48,6 +48,12 @@
             <artifactId>redis-cache-spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- Kafka Starter -->
+        <dependency>
+            <groupId>com.intellihub</groupId>
+            <artifactId>kafka-spring-boot-starter</artifactId>
+        </dependency>
+
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
