@@ -6,10 +6,19 @@ spring:
     name: intelli-search-service
   profiles:
     active: dev
+  # Spring Cloud 2020+需要显式导入Nacos配置
+  config:
+    import:
+      - optional:nacos:intelli-search-service.yml
   cloud:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
+        namespace: dev
+        group: DEFAULT_GROUP
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yml
         namespace: dev
         group: DEFAULT_GROUP
 

@@ -93,19 +93,19 @@ const router = createRouter({
             {
               path: 'gateway/routes',
               name: 'GatewayRoutes',
-              component: () => import('../views/PlaceholderView.vue'),
+              component: () => import('../views/console/gateway/RouteManagePage.vue'),
               meta: { title: '路由管理' }
             },
             {
               path: 'gateway/plugins',
               name: 'GatewayPlugins',
-              component: () => import('../views/PlaceholderView.vue'),
+              component: () => import('../views/console/gateway/PluginManagePage.vue'),
               meta: { title: '插件配置' }
             },
             {
               path: 'gateway/ratelimit',
               name: 'GatewayRatelimit',
-              component: () => import('../views/PlaceholderView.vue'),
+              component: () => import('../views/console/gateway/RatelimitManagePage.vue'),
               meta: { title: '限流策略' }
             },
             // 应用管理

@@ -77,6 +77,16 @@ public class ApiRouteEventPublisher {
     }
 
     /**
+     * 发布路由刷新事件
+     * 用于限流策略变更时通知网关刷新路由配置
+     */
+    public void publishRouteRefresh() {
+        ApiRouteChangeEvent event = ApiRouteChangeEvent.refreshAll();
+        publishEvent(event);
+        log.info("发布路由刷新事件");
+    }
+
+    /**
      * 发布事件到Redis
      */
     private void publishEvent(ApiRouteChangeEvent event) {

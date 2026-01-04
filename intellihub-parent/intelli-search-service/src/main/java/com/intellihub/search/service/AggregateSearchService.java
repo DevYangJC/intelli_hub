@@ -88,15 +88,12 @@ public class AggregateSearchService {
             return scoreB.compareTo(scoreA);
         });
 
-        // 分页处理（简单实现，实际应在 ES 层面处理）
-        int from = (request.getPage() - 1) * request.getSize();
-        int to = Math.min(from + request.getSize(), allItems.size());
-        List<AggregateSearchResponse.SearchItem> pagedItems = 
-                from < allItems.size() ? allItems.subList(from, to) : new ArrayList<>();
-
-        long total = allItems.size();
+        // ES已在各服务层面分页,这里直接使用结果
+        // 计算总数(从各类型的count累加)
+        long total = typeCounts.values().stream().mapToLong(Long::longValue).sum();
+        
         response.setTotal(total);
-        response.setItems(pagedItems);
+        response.setItems(allItems);
         response.setTotalPages((int) Math.ceil((double) total / request.getSize()));
 
         // 分面统计
@@ -122,8 +119,8 @@ public class AggregateSearchService {
                     request.getKeyword(),
                     tenantId,
                     request.getFilters(),
-                    1, // 获取前N条
-                    100,
+                    request.getPage(),
+                    request.getSize(),
                     request.isHighlight()
             );
 
@@ -158,8 +155,8 @@ public class AggregateSearchService {
                     request.getKeyword(),
                     tenantId,
                     request.getFilters(),
-                    1,
-                    100,
+                    request.getPage(),
+                    request.getSize(),
                     request.isHighlight()
             );
 
@@ -194,8 +191,8 @@ public class AggregateSearchService {
                     request.getKeyword(),
                     tenantId,
                     request.getFilters(),
-                    1,
-                    100,
+                    request.getPage(),
+                    request.getSize(),
                     request.isHighlight()
             );
 

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.intellihub.api.mapper.RouteRatelimitMapper">
+
+    <delete id="deleteByPolicyId">
+        DELETE FROM gateway_route_ratelimit
+        WHERE policy_id = #{policyId}
+    </delete>
+
+    <delete id="deleteByRouteId">
+        DELETE FROM gateway_route_ratelimit
+        WHERE route_id = #{routeId}
+    </delete>
+
+    <select id="countByPolicyId" resultType="int">
+        SELECT COUNT(*)
+        FROM gateway_route_ratelimit
+        WHERE policy_id = #{policyId}
+    </select>
+
+</mapper>
