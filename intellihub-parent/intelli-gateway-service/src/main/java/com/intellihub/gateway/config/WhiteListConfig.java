@@ -53,6 +53,10 @@ public class WhiteListConfig {
             "/",
             "/api/public/**",
             
+            // 搜索接口（公开访问）
+            "/api/v1/search/**",
+            "/api/search/**",
+            
             // 开放API（跳过JWT认证，使用AppKey认证）
             "/open/**",
             "/external/**",

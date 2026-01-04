@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * @since 1.0.0
  */
 @Slf4j
-@DubboService(version = "1.0.0", group = "intellihub")
+@DubboService
 @RequiredArgsConstructor
 public class AuthDubboServiceImpl implements AuthDubboService {
 

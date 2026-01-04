@@ -168,6 +168,18 @@ public class IntelliHubClient {
         String timestamp = SignatureUtils.getTimestamp();
         String nonce = SignatureUtils.generateNonce();
         String signature = SignatureUtils.generateSignature(method, path, timestamp, nonce, config.getAppSecret());
+        
+        // 添加调试日志
+        System.out.println("========== SDK 签名生成调试 ==========");
+        System.out.println("Method: " + method);
+        System.out.println("Path: " + path);
+        System.out.println("URL: " + url);
+        System.out.println("Timestamp: " + timestamp);
+        System.out.println("Nonce: " + nonce);
+        System.out.println("AppSecret: " + config.getAppSecret());
+        System.out.println("SignData: " + method.toUpperCase() + path + timestamp + nonce);
+        System.out.println("Signature: " + signature);
+        System.out.println("======================================");
 
         Request.Builder builder = new Request.Builder()
                 .url(url)

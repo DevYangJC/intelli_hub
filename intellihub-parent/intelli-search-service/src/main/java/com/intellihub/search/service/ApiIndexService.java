@@ -114,7 +114,8 @@ public class ApiIndexService {
     private Map<String, Object> createDateMapping() {
         Map<String, Object> mapping = new HashMap<>();
         mapping.put("type", "date");
-        mapping.put("format", "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis");
+        // 支持 ISO-8601 格式 (Jackson 默认格式) 和其他常见格式
+        mapping.put("format", "strict_date_optional_time||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis");
         return mapping;
     }
 

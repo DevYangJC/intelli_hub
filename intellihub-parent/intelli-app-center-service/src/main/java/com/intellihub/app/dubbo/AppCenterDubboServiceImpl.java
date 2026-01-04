@@ -102,7 +102,7 @@ public class AppCenterDubboServiceImpl implements AppCenterDubboService {
         LambdaQueryWrapper<AppApiSubscription> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(AppApiSubscription::getAppId, appId)
                 .eq(AppApiSubscription::getApiId, apiId)
-                .eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE.getCode());
+                .eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE);
         
         Long count = subscriptionMapper.selectCount(queryWrapper);
         boolean hasSubscription = count != null && count > 0;

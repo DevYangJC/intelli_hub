@@ -40,7 +40,7 @@ public class GlobalTenantFilter implements GlobalFilter, Ordered {
     @Autowired
     private ReactiveRedisUtil redisUtil;
 
-    @DubboReference(version = "1.0.0", group = "intellihub", check = false, timeout = 3000)
+    @DubboReference(check = false, timeout = 3000)
     private TenantDubboService tenantDubboService;
 
     @Override

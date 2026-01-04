@@ -19,11 +19,18 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- Elasticsearch Java Client (8.x) -->
+        <!-- Elasticsearch Rest High Level Client (兼容 7.4.2) -->
         <dependency>
-            <groupId>co.elastic.clients</groupId>
-            <artifactId>elasticsearch-java</artifactId>
-            <version>8.11.0</version>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-high-level-client</artifactId>
+            <version>7.4.2</version>
+        </dependency>
+
+        <!-- Elasticsearch Core (提供 XContent 相关类) -->
+        <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch</artifactId>
+            <version>7.4.2</version>
         </dependency>
 
         <!-- Jackson for JSON processing -->
@@ -34,18 +41,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
-        </dependency>
-
-        <!-- Jakarta JSON -->
-        <dependency>
-            <groupId>jakarta.json</groupId>
-            <artifactId>jakarta.json-api</artifactId>
-            <version>2.1.3</version>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.parsson</groupId>
-            <artifactId>parsson</artifactId>
-            <version>1.1.5</version>
         </dependency>
 
         <!-- Common Helper -->

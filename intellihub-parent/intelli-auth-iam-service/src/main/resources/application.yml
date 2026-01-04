@@ -135,6 +135,8 @@ dubbo:
     port: 20881
   scan:
     base-packages: com.intellihub.auth.dubbo
+  provider:
+    group: ${DUBBO_GROUP:intellihub}
 
 # 日志配置
 logging:

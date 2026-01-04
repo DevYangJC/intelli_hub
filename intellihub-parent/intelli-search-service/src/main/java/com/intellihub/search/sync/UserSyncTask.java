@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserSyncTask {
 
-    @DubboReference(check = false, timeout = 30000, version = "1.0.0", group = "intellihub")
+    @DubboReference(check = false, timeout = 30000)
     private AuthDubboService authDubboService;
 
     private final UserIndexService userIndexService;

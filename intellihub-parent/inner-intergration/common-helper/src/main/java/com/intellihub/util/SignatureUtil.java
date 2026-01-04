@@ -93,6 +93,20 @@ public class SignatureUtil {
             String timestamp, String nonce, String appSecret) {
         String signData = method.toUpperCase() + path + timestamp + nonce;
         String expectedSignature = hmacSha256(signData, appSecret);
+        
+        // 添加调试日志
+        System.out.println("========== 签名验证调试 ==========");
+        System.out.println("Method: " + method);
+        System.out.println("Path: " + path);
+        System.out.println("Timestamp: " + timestamp);
+        System.out.println("Nonce: " + nonce);
+        System.out.println("AppSecret: " + appSecret);
+        System.out.println("SignData: " + signData);
+        System.out.println("客户端签名: " + signature);
+        System.out.println("服务端签名: " + expectedSignature);
+        System.out.println("签名匹配: " + expectedSignature.equals(signature));
+        System.out.println("==================================");
+        
         return expectedSignature.equals(signature);
     }
 

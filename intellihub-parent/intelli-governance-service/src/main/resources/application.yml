@@ -90,5 +90,6 @@ dubbo:
     parameters:
       namespace: dev
   consumer:
+    group: ${DUBBO_GROUP:intellihub}
     check: false
     timeout: 10000

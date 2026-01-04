@@ -5,12 +5,13 @@ import com.intellihub.gateway.config.FilterOrderConfig;
 import com.intellihub.dubbo.ApiRouteDTO;
 import com.intellihub.gateway.service.DubboGenericService;
 import com.intellihub.gateway.service.OpenApiRouteService;
+import com.intellihub.gateway.service.dubbo.DubboInvocationContext;
+import com.intellihub.gateway.service.dubbo.DubboInvocationContextBuilder;
 import com.intellihub.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
-import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpMethod;
@@ -25,7 +26,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -47,6 +47,7 @@ public class OpenApiRouteFilter implements GlobalFilter, Ordered {
 
     private final OpenApiRouteService routeService;
     private final DubboGenericService dubboGenericService;
+    private final DubboInvocationContextBuilder contextBuilder;
     private final LoadBalancerClient loadBalancerClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final WebClient webClient = WebClient.create();
@@ -191,64 +192,25 @@ public class OpenApiRouteFilter implements GlobalFilter, Ordered {
 
     /**
      * 转发到Dubbo后端（泛化调用）
-     */
-    private Mono<Void> forwardToDubboBackend(ServerWebExchange exchange, ApiRouteDTO route) {
-        ServerHttpRequest request = exchange.getRequest();
-        String path = request.getPath().value();
-
-        log.info("Dubbo泛化调用 - path: {}, interface: {}, method: {}",
-                path, route.getDubboInterface(), route.getDubboMethod());
-
-        // 从Query参数和Body获取调用参数
-        return extractRequestParams(exchange)
-                .flatMap(params -> dubboGenericService.invoke(route, params))
-                .flatMap(result -> {
-                    // 将Dubbo调用结果返回给客户端
-                    return handleDubboResponse(exchange.getResponse(), result);
-                })
-                .onErrorResume(e -> {
-                    log.error("Dubbo泛化调用失败 - path: {}", path, e);
-                    return handleError(exchange.getResponse(), 500, "Dubbo服务调用失败: " + e.getMessage());
-                });
-    }
-
-    /**
-     * 提取请求参数
      * <p>
-     * 从Query参数和缓存的Body中提取参数
+     * 使用建造者模式构建调用上下文，策略模式执行调用
      * </p>
      */
-    private Mono<java.util.Map<String, Object>> extractRequestParams(ServerWebExchange exchange) {
-        ServerHttpRequest request = exchange.getRequest();
-        java.util.Map<String, Object> params = new java.util.HashMap<>();
+    private Mono<Void> forwardToDubboBackend(ServerWebExchange exchange, ApiRouteDTO route) {
+        log.info("[OpenApiRouteFilter] Dubbo转发开始: path={}, interface={}, method={}, group={}", 
+                route.getPath(), route.getDubboInterface(), route.getDubboMethod(), route.getDubboGroup());
 
-        // 提取Query参数
-        request.getQueryParams().forEach((key, values) -> {
-            if (values.size() == 1) {
-                params.put(key, values.get(0));
-            } else {
-                params.put(key, values);
-            }
-        });
+        // 使用建造者构建调用上下文（参数提取由提取器链完成）
+        DubboInvocationContext context = contextBuilder.build(exchange, route);
 
-        // 如果是POST/PUT/PATCH，从缓存的Body中提取参数
-        String method = request.getMethod().name();
-        if ("POST".equals(method) || "PUT".equals(method) || "PATCH".equals(method)) {
-            // 使用CacheBodyFilter缓存的Body
-            String cachedBody = (String) exchange.getAttributes().get(CacheBodyFilter.ATTR_CACHED_BODY);
-            if (cachedBody != null && !cachedBody.isEmpty()) {
-                try {
-                    @SuppressWarnings("unchecked")
-                    java.util.Map<String, Object> bodyParams = objectMapper.readValue(cachedBody, java.util.Map.class);
-                    params.putAll(bodyParams);
-                    log.debug("从缓存Body提取参数 - params: {}", bodyParams.keySet());
-                } catch (Exception e) {
-                    log.warn("解析请求Body失败 - body: {}", cachedBody.substring(0, Math.min(100, cachedBody.length())), e);
-                }
-            }
-        }
-
-        return Mono.just(params);
+        // 执行泛化调用
+        return dubboGenericService.invoke(context)
+                .flatMap(result -> handleDubboResponse(exchange.getResponse(), result))
+                .doOnSuccess(v -> log.info("[OpenApiRouteFilter] Dubbo转发完成: {}", context.toSummary()))
+                .onErrorResume(e -> {
+                    log.error("[OpenApiRouteFilter] Dubbo转发失败: {}, error={}", context.toSummary(), e.getMessage(), e);
+                    return handleError(exchange.getResponse(), 500, "Dubbo服务调用失败: " + e.getMessage());
+                });
     }
 
     /**
