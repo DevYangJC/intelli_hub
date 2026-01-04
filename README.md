@@ -2,14 +2,14 @@
 
 # 🚀 IntelliHub
 
-**企业级智能API开放平台**
+**企业级 API 开放平台 - 统一入口 · 统一安全 · 统一治理**
 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7+-green.svg)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/Vue-3.x-brightgreen.svg)](https://vuejs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/yourusername/intelli_hub/pulls)
 
-[简体中文](README.md) | [English](README_EN.md)
+[简体中文](README.md) | [English](README_EN.md) | [系统架构图](系统架构图.drawio)
 
 </div>
 
@@ -17,27 +17,43 @@
 
 ## 📖 项目简介
 
-IntelliHub 是一个面向企业与开发者的**智能API开放平台**，旨在以 **统一入口、统一安全、统一治理** 的方式对外开放企业内部微服务能力。平台提供完整的API生命周期管理、多租户体系、智能治理和实时监控能力。
+IntelliHub 是一个面向企业与开发者的**智能 API 开放平台**，旨在以 **统一入口、统一安全、统一治理** 的方式对外开放企业内部微服务能力。
+
+### 🎯 核心价值
+
+**解决的问题**
+- ✅ 各系统烟囱式建设，API 管理混乱
+- ✅ 第三方接入困难，每次都要单独开发
+- ✅ 安全性参差不齐，缺乏统一鉴权
+- ✅ 调用情况不清楚，问题难以排查
+
+**提供的能力**
+- 🎯 完整的 API 生命周期管理
+- 🎯 多租户体系与权限控制
+- 🎯 智能治理与实时监控
+- 🎯 开箱即用的 SDK 支持
 
 ### ✨ 核心特性
 
-- 🌐 **统一网关治理** - 认证/鉴权/限流/租户校验/动态路由/日志上报
-- 🔐 **IAM多租户与RBAC** - 完善的身份认证与权限管理体系
-- 📊 **API全生命周期管理** - 从创建、发布到下线的完整管理
-- 🔑 **应用中心** - AppKey/AppSecret管理与API订阅授权
-- 📈 **智能治理中心** - 调用日志消费、统计聚合、实时告警
-- 🎯 **多协议支持** - HTTP/Dubbo泛化调用/Mock
-- 🔒 **企业级安全** - JWT认证、签名验证、防重放攻击
-- 📱 **现代化前端** - Vue3 + TypeScript + Element Plus
+| 特性 | 说明 |
+|------|------|
+| 🌐 **统一网关治理** | JWT/AppKey 双认证 · 多维限流 · 动态路由 · 实时日志 |
+| 🔐 **IAM 多租户** | 租户隔离 · RBAC 权限 · 用户/角色管理 |
+| 📊 **生命周期管理** | API 创建/发布/下线 · 版本管理 · 文档自动生成 |
+| 🔑 **应用中心** | AppKey/Secret 管理 · API 订阅授权 · 配额控制 |
+| 📈 **智能治理** | 调用统计 · 实时告警 · 性能分析 · 日志追踪 |
+| 🎯 **多协议支持** | HTTP 转发 · Dubbo 泛化调用 · Mock 响应 |
+| 🔒 **企业级安全** | 签名验证 · 防重放攻击 · 租户级隔离 |
+| 📱 **现代化前端** | Vue3 · TypeScript · Element Plus · 响应式设计 |
 
-### 🎯 适用场景
+### 🏢 适用场景
 
-- 企业微服务能力统一对外开放
-- API集市与开放平台建设
-- 多租户SaaS服务API管理
-- 内部API统一治理与监控
+- **企业内部**：微服务能力统一对外开放
+- **开放平台**：API 集市与生态建设
+- **SaaS 服务**：多租户 API 管理与治理
+- **内部治理**：统一 API 管理与监控
 
-> 📚 **详细架构说明**：[项目架构文档](docs/10-架构设计-项目架构文档.md)
+> 📚 **了解更多**：[项目架构文档](docs/10-架构设计-项目架构文档.md) · [系统架构图](系统架构图.drawio)
 
 ---
 
@@ -73,40 +89,77 @@ IntelliHub 是一个面向企业与开发者的**智能API开放平台**，旨�
                         └─────────┘
 ```
 
-### 模块清单
+### 📦 模块架构
 
-| 模块 | 端口 | 状态 | 说明 |
-|------|------|:----:|------|
-| `intelli-gateway-service` | 8080 | ✅ | Spring Cloud Gateway，统一入口与治理链路 |
-| `intelli-auth-iam-service` | 8081 | ✅ | 多租户、登录与JWT签发、RBAC权限 |
-| `intelli-api-platform-service` | 8082 | ✅ | API生命周期与路由配置、公告管理 |
-| `intelli-governance-service` | 8083 | ✅ | 调用日志消费、统计聚合、告警检测 |
-| `intelli-app-center-service` | 8085 | ✅ | App、AppKey/AppSecret、订阅授权 |
-| `intelli-sdk` | - | ✅ | Java SDK（签名生成、HTTP客户端） |
-| `intellihub-frontend` | 5173 | ✅ | Vue3控制台，开发代理到网关 |
-| `intelli-aigc-service` | 8084 | 📦 | AIGC能力（规划中） |
-| `intelli-search-service` | 8086 | ✅ | 聚合搜索（规划中） |
-| `intelli-event-service` | 8087 | 📦 | 事件中心（规划中） |
-| `intelli-log-audit-service` | 8088 | 📦 | 日志审计（规划中） |
+#### 核心服务（已实现）
 
-### 核心流程
+| 模块 | 端口 | 职责 |
+|------|:----:|------|
+| **intelli-gateway-service** | 8080 | 🌐 统一网关：认证鉴权、限流熔断、动态路由、日志上报 |
+| **intelli-auth-iam-service** | 8081 | 🔐 身份认证：多租户管理、JWT 签发、RBAC 权限 |
+| **intelli-api-platform-service** | 8082 | 📊 API 平台：生命周期管理、路由配置、文档生成 |
+| **intelli-app-center-service** | 8085 | 🔑 应用中心：AppKey 管理、订阅授权、配额控制 |
+| **intelli-governance-service** | 8083 | 📈 治理中心：日志消费、统计分析、告警检测 |
 
-#### 管理后台流量（JWT认证）
+#### 客户端 SDK
+
+| 模块 | 说明 |
+|------|------|
+| **intelli-sdk** | ☕ Java SDK：签名生成、HTTP 客户端、异常处理 |
+| **intellihub-frontend** | 🖥️ 管理控制台：Vue3 + TypeScript，端口 5173 |
+
+#### 扩展服务（规划中）
+
+| 模块 | 端口 | 说明 |
+|------|:----:|------|
+| intelli-aigc-service | 8084 | 🤖 AIGC 智能分析 |
+| intelli-search-service | 8086 | 🔍 统一搜索服务 |
+| intelli-event-service | 8087 | 📮 事件中心 |
+| intelli-log-audit-service | 8088 | 📝 日志审计 |
+
+### 🔄 核心流程
+
+#### 1️⃣ 管理后台流量（JWT 认证）
+
+```mermaid
+graph LR
+    A[前端控制台] -->|JWT Token| B[网关]
+    B -->|本地验签| C[注入上下文]
+    C -->|转发| D[业务服务]
+    D -->|响应| A
 ```
-前端Console → Gateway (JWT验证) → 微服务 (用户/租户上下文) → 业务处理
+
+**流程说明**：
+1. 用户登录获取 JWT Token
+2. 网关本地验签（性能更优）
+3. 注入用户 ID、租户 ID、角色信息
+4. 路由到对应微服务
+
+#### 2️⃣ 开放 API 流量（AppKey + 签名）
+
+```mermaid
+graph LR
+    A[第三方系统] -->|签名请求| B[网关]
+    B -->|路由匹配| C[签名验证]
+    C -->|订阅校验| D[动态路由]
+    D -->|HTTP/Dubbo| E[后端服务]
+    B -.异步.-> F[Kafka]
+    F --> G[治理服务]
+    G --> H[统计/告警]
 ```
 
-#### 开放API流量（AppKey+签名）
-```
-第三方系统 → Gateway → 路由匹配 → 签名验证 → 订阅校验 → HTTP/Dubbo转发 → 返回结果
-                ↓                                       ↓
-             日志上报 → Kafka → 治理服务 → 统计/告警
-```
+**流程说明**：
+1. 使用 AppKey + Secret 生成签名
+2. 网关验证签名与时间戳
+3. 检查 API 订阅权限
+4. 根据配置动态路由（HTTP/Dubbo）
+5. 异步上报调用日志到 Kafka
+6. 治理服务实时统计与告警
 
-> 📖 **详细流程说明**：
-> - [网关技术流程说明书](docs/20-技术流程-网关技术流程说明书.md)
-> - [API开放平台架构设计指南](docs/12-架构设计-API开放平台架构设计指南.md)
-> - [告警系统流程说明书](docs/21-技术流程-告警系统流程说明书.md)
+> 📖 **详细流程文档**：
+> - [网关技术流程说明书](docs/20-技术流程-网关技术流程说明书.md) - 完整的 Filter 链路与执行顺序
+> - [API 开放平台设计指南](docs/12-架构设计-API开放平台架构设计指南.md) - 架构设计原则与最佳实践
+> - [告警系统流程说明书](docs/21-技术流程-告警系统流程说明书.md) - 告警规则、状态机与故障排查
 
 ---
 
@@ -227,84 +280,199 @@ npm run dev
 
 ## 📚 文档中心
 
-### 核心文档
+### 📖 文档导航
 
-| 文档 | 说明 |
-|------|------|
-| [📑 文档索引](docs/00-文档索引.md) | 完整的文档导航与分类索引 |
-| [项目架构文档](docs/10-架构设计-项目架构文档.md) | 总体架构、模块职责、关键链路、技术选型 |
-| [实体关系说明](docs/11-架构设计-实体关系说明.md) | 核心实体关系与ER图 |
-| [API开放平台架构设计指南](docs/12-架构设计-API开放平台架构设计指南.md) | 开放API平台架构设计原则与最佳实践 |
-| [网关技术流程说明书](docs/20-技术流程-网关技术流程说明书.md) | 网关执行链路、Filter顺序、鉴权、路由、日志 |
-| [告警系统流程说明书](docs/21-技术流程-告警系统流程说明书.md) | 告警规则、状态机、抑制策略与故障排查 |
-| [API下发指南](docs/22-技术流程-API下发指南.md) | API配置与下发流程详细说明 |
-| [需求文档](docs/01-需求与规划-需求文档.md) | 功能需求与范围边界 |
-| [功能开发计划](docs/功能开发计划.md) | 项目现状与后续开发计划 |
-| [后续开发与优化计划](docs/03-需求与规划-后续开发与优化计划.md) | 详细的开发规划与优化路线 |
+| 分类 | 文档 | 说明 |
+|------|------|------|
+| **📑 索引** | [文档索引](docs/00-文档索引.md) | 完整的文档导航与分类索引 |
+| **🏗️ 架构设计** | [项目架构文档](docs/10-架构设计-项目架构文档.md) | 总体架构、模块职责、关键链路、技术选型 |
+| | [实体关系说明](docs/11-架构设计-实体关系说明.md) | 核心实体关系与 ER 图 |
+| | [API 开放平台设计指南](docs/12-架构设计-API开放平台架构设计指南.md) | 架构设计原则与最佳实践 |
+| **⚙️ 技术流程** | [网关技术流程说明书](docs/20-技术流程-网关技术流程说明书.md) | Filter 链路、鉴权、路由、日志上报 |
+| | [告警系统流程说明书](docs/21-技术流程-告警系统流程说明书.md) | 告警规则、状态机、抑制策略 |
+| | [API 下发指南](docs/22-技术流程-API下发指南.md) | API 配置与下发流程 |
+| **📋 需求与规划** | [需求文档](docs/01-需求与规划-需求文档.md) | 功能需求与范围边界 |
+| | [功能开发计划](docs/功能开发计划.md) | 项目现状与开发进度 |
+| | [后续开发与优化计划](docs/03-需求与规划-后续开发与优化计划.md) | 详细的开发规划与优化路线 |
 
-### SDK使用
+### 🛠️ 开发指南
 
-查看 [Java SDK README](intellihub-parent/intelli-sdk/README.md) 了解如何使用SDK调用开放API。
+- **[Java SDK 使用文档](intellihub-parent/intelli-sdk/README.md)** - SDK 快速接入指南
+- **[系统架构图](系统架构图.drawio)** - Draw.io 可编辑架构图
+- **[事件中心设计](intellihub-parent/intelli-event-service/docs/事件中心设计文档.md)** - 事件驱动架构设计
+- **[多租户实现](intellihub-parent/intelli-auth-iam-service/docs/MultiTenant.md)** - 多租户技术方案
 
 ---
 
-## 💡 核心特性说明
+## 💡 核心特性详解
 
-### 认证架构
+### 🔐 双流量认证架构
 
-**双流量认证模型**：
-- **管理后台** (`/api/**`)：JWT Token认证，网关本地验签，性能更优
-- **开放API** (`/open/**`)：AppKey + HMAC-SHA256签名，支持防重放攻击
+<table>
+<tr>
+<th width="20%">流量类型</th>
+<th width="40%">管理后台</th>
+<th width="40%">开放 API</th>
+</tr>
+<tr>
+<td><strong>路径</strong></td>
+<td><code>/api/**</code></td>
+<td><code>/open/**</code></td>
+</tr>
+<tr>
+<td><strong>认证方式</strong></td>
+<td>JWT Token</td>
+<td>AppKey + HMAC-SHA256 签名</td>
+</tr>
+<tr>
+<td><strong>验证位置</strong></td>
+<td>网关本地验签</td>
+<td>网关 + 应用中心校验</td>
+</tr>
+<tr>
+<td><strong>性能优势</strong></td>
+<td>✅ 无需远程调用</td>
+<td>✅ 支持缓存优化</td>
+</tr>
+<tr>
+<td><strong>安全特性</strong></td>
+<td>Token 过期机制</td>
+<td>防重放攻击（Nonce + Timestamp）</td>
+</tr>
+</table>
 
-### 动态路由
+### 🎯 动态路由能力
 
-网关支持根据配置动态路由到不同后端：
-- **HTTP转发**：支持服务名负载均衡
-- **Dubbo泛化调用**：无需依赖业务接口JAR包
-- **Mock响应**：便于测试和演示
+| 路由类型 | 特点 | 适用场景 |
+|---------|------|----------|
+| **HTTP 转发** | 服务名负载均衡、自动故障转移 | 标准 REST API、微服务调用 |
+| **Dubbo 泛化调用** | 无需依赖业务 JAR、动态参数映射 | 内部 RPC 服务、高性能调用 |
+| **Mock 响应** | 固定返回、便于调试 | 功能演示、前期测试 |
 
-### 治理能力
+**关键优势**：
+- ✅ 配置热更新（Redis Pub/Sub）
+- ✅ 无需重启网关
+- ✅ 支持灰度发布
 
-- **限流**：支持IP/Path/IP+Path多维度限流
-- **调用统计**：基于Kafka异步采集，Redis实时统计
-- **告警检测**：支持错误率、延迟、QPS多种告警规则
-- **租户隔离**：全链路租户上下文透传
+### 📊 智能治理能力
+
+#### 多维限流
+
+```
+IP 维度限流    ┐
+               ├─► 组合判断 ─► 放行/拒绝
+Path 维度限流  ┤
+               │
+IP+Path 维度   ┘
+```
+
+**支持的限流策略**：
+- 固定窗口计数
+- 滑动窗口（规划中）
+- 令牌桶（规划中）
+
+#### 实时统计与告警
+
+**数据采集**：
+- 网关 → Kafka（异步上报）
+- 网关 → Redis（实时写入）
+
+**统计维度**：
+- 总调用量、成功率、平均延迟
+- API Top10、错误分布
+- 租户/应用级别统计
+
+**告警规则**：
+- 错误率告警（可配置阈值）
+- 延迟告警（可配置阈值）
+- QPS 告警（可配置阈值）
+
+#### 全链路租户隔离
+
+```
+请求 → 网关提取 tenantId → 注入请求头 → 微服务读取 → 数据库过滤
+```
+
+**隔离层级**：
+- ✅ 网络层：独立路由
+- ✅ 应用层：上下文透传
+- ✅ 数据层：MyBatis Plus 租户插件
 
 ---
 
 ## 🤝 参与贡献
 
-我们欢迎任何形式的贡献，无论是新功能、Bug修复还是文档改进。
+我们欢迎任何形式的贡献！无论是新功能、Bug 修复、文档改进还是问题反馈。
 
-### 提交Issue
+### 💬 提交 Issue
 
-请按照以下格式提交Issue：
-- **问题背景**：描述遇到的场景
-- **复现步骤**：详细的操作步骤
-- **期望行为**：期望看到的结果
-- **实际行为**：实际看到的结果
-- **环境信息**：版本、操作系统等
+**问题报告模板**：
+```markdown
+### 问题描述
+[清晰描述遇到的问题]
 
-### 提交Pull Request
+### 复现步骤
+1. 步骤一
+2. 步骤二
+3. 步骤三
 
-请按照以下格式描述PR：
-- **模块**：涉及的模块或服务
-- **改动点**：具体修改了什么
-- **风险点**：可能的影响范围
-- **验证方式**：如何验证改动有效
+### 期望行为
+[描述期望的结果]
 
-### 开发规范
+### 实际行为
+[描述实际的结果]
 
-- 遵循现有代码风格
-- 添加必要的注释和文档
-- 确保单元测试通过
-- 更新相关文档
+### 环境信息
+- 操作系统：
+- JDK 版本：
+- 项目版本：
+```
+
+### 🔧 提交 Pull Request
+
+**PR 描述模板**：
+```markdown
+### 变更说明
+- 修改了什么功能/问题
+
+### 涉及模块
+- [ ] Gateway
+- [ ] IAM
+- [ ] API Platform
+- [ ] 其他
+
+### 测试验证
+- [ ] 单元测试通过
+- [ ] 集成测试通过
+- [ ] 手动测试验证
+
+### 风险评估
+- 影响范围：
+- 兼容性：
+```
+
+### 📝 开发规范
+
+- ✅ 遵循现有代码风格（阿里巴巴 Java 规范）
+- ✅ 添加必要的注释和 JavaDoc
+- ✅ 编写单元测试（覆盖率 > 70%）
+- ✅ 更新相关文档
+- ✅ 提交前运行 `mvn clean test`
+
+---
+
+## 📊 项目统计
+
+- **代码行数**：~15,000+ 行（后端）+ ~8,000+ 行（前端）
+- **服务模块**：11 个微服务模块
+- **文档数量**：10+ 篇技术文档
+- **技术栈**：Spring Boot + Vue3 + 多种中间件
 
 ---
 
 ## 📄 开源协议
 
-Apache License 2.0
+本项目采用 [Apache License 2.0](LICENSE) 开源协议。
 
 ---
 
@@ -312,17 +480,32 @@ Apache License 2.0
 
 感谢所有为本项目做出贡献的开发者！
 
+特别感谢以下开源项目：
+- [Spring Cloud](https://spring.io/projects/spring-cloud)
+- [Vue.js](https://vuejs.org/)
+- [Element Plus](https://element-plus.org/)
+- [MyBatis Plus](https://baomidou.com/)
+
 ---
 
-## 📞 联系方式
+## 📞 联系与支持
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/intelli_hub/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/intelli_hub/discussions)
+- 💬 **问题反馈**：[GitHub Issues](https://github.com/yourusername/intelli_hub/issues)
+- 🗨️ **功能建议**：[GitHub Discussions](https://github.com/yourusername/intelli_hub/discussions)
+- 📧 **商务合作**：[Email](mailto:your-email@example.com)
 
 ---
 
 <div align="center">
 
+### ⭐️ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/intelli_hub&type=Date)](https://star-history.com/#yourusername/intelli_hub&Date)
+
+---
+
 **如果这个项目对你有帮助，请给一个 ⭐️ Star ⭐️**
+
+**让我们一起打造更好的 API 开放平台！**
 
 </div>
