@@ -31,15 +31,80 @@ public class UserIndexService {
     public void initIndex() {
         try {
             if (!elasticsearchTemplate.indexExists(IndexConstants.INDEX_USER)) {
-                Map<String, Object> mappings = new HashMap<>();
+                Map<String, Object> mappings = buildUserMappings();
                 elasticsearchTemplate.createIndex(IndexConstants.INDEX_USER, mappings);
                 log.info("用户索引创建成功: {}", IndexConstants.INDEX_USER);
             } else {
                 log.info("用户索引已存在: {}", IndexConstants.INDEX_USER);
             }
         } catch (Exception e) {
-            log.warn("初始化用户索引失败（ES 可能未启动）: {}", e.getMessage());
+            log.error("初始化用户索引失败: {}", e.getMessage(), e);
+            throw new RuntimeException("Elasticsearch初始化失败,服务无法启动", e);
         }
+    }
+
+    /**
+     * 构建用户索引映射
+     */
+    private Map<String, Object> buildUserMappings() {
+        Map<String, Object> mappings = new HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
+        
+        // 文本字段 - 使用中文分词
+        properties.put("nickname", createTextMapping("ik_max_word", "ik_smart"));
+        properties.put("bio", createTextMapping("ik_max_word", "ik_smart"));
+        
+        // 关键字字段
+        properties.put("id", createKeywordMapping());
+        properties.put("tenantId", createKeywordMapping());
+        properties.put("username", createKeywordMapping());
+        properties.put("email", createKeywordMapping());
+        properties.put("phone", createKeywordMapping());
+        properties.put("avatar", createKeywordMapping());
+        properties.put("status", createKeywordMapping());
+        properties.put("statusName", createKeywordMapping());
+        properties.put("role", createKeywordMapping());
+        
+        // 数值字段 (可选,用于统计和排序)
+        properties.put("loginCount", createTypeMapping("long"));
+        
+        // 布尔字段 (可选,用于筛选)
+        properties.put("enabled", createTypeMapping("boolean"));
+        
+        // 日期字段
+        properties.put("lastLoginAt", createDateMapping());
+        properties.put("createdAt", createDateMapping());
+        properties.put("updatedAt", createDateMapping());
+        
+        mappings.put("properties", properties);
+        return mappings;
+    }
+    
+    private Map<String, Object> createTextMapping(String analyzer, String searchAnalyzer) {
+        Map<String, Object> mapping = new HashMap<>();
+        mapping.put("type", "text");
+        mapping.put("analyzer", analyzer);
+        mapping.put("search_analyzer", searchAnalyzer);
+        return mapping;
+    }
+    
+    private Map<String, Object> createKeywordMapping() {
+        Map<String, Object> mapping = new HashMap<>();
+        mapping.put("type", "keyword");
+        return mapping;
+    }
+    
+    private Map<String, Object> createTypeMapping(String type) {
+        Map<String, Object> mapping = new HashMap<>();
+        mapping.put("type", type);
+        return mapping;
+    }
+    
+    private Map<String, Object> createDateMapping() {
+        Map<String, Object> mapping = new HashMap<>();
+        mapping.put("type", "date");
+        mapping.put("format", "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis");
+        return mapping;
     }
 
     public void indexUser(UserDoc userDoc) {

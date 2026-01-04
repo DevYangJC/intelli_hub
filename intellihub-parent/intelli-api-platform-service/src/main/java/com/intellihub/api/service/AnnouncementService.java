@@ -21,6 +21,7 @@ public class AnnouncementService {
 
     public Page<AnnouncementDTO> list(String tenantId, int page, int size) {
         Page<Announcement> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<Announcement> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Announcement::getTenantId, tenantId)
                .orderByDesc(Announcement::getPublishTime);
         

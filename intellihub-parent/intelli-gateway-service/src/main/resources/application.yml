@@ -38,28 +38,20 @@ spring:
           filters:
             - StripPrefix=1
 
-        # API平台服务路由（管理接口）
+        # API平台服务路由（管理接口 + 旧版开放API）
         - id: api-platform-service
           uri: lb://intelli-api-platform-service
           predicates:
-            - Path=/api/v1/apis/**,/api/v1/api-groups/**,/api/v1/public/apis/**,/api/platform/**
+            - Path=/api/v1/apis/**,/api/v1/api-groups/**,/api/v1/public/apis/**,/api/platform/**,/api/v1/gateway/**,/api/open/**,/api/external/**
           filters:
             - StripPrefix=1
 
-        # 开放API路由（动态路由，由OpenApiRouteFilter处理，URI仅为占位）
+        # 开放API路由（动态路由，由OpenApiRouteFilter处理）
         - id: open-api-dynamic
           uri: forward:/open
           predicates:
             - Path=/open/**,/external/**
           order: 0
-
-        # 开放API路由（旧版，带/api前缀）
-        - id: open-api-service
-          uri: lb://intelli-api-platform-service
-          predicates:
-            - Path=/api/open/**,/api/external/**
-          filters:
-            - StripPrefix=1
 
         # 治理服务路由
         - id: governance-service
