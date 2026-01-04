@@ -18,13 +18,13 @@
     <description>Java SDK for IntelliHub API Platform</description>
 
     <properties>
-        <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <java.version>1.8</java.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <okhttp.version>4.12.0</okhttp.version>
-        <jackson.version>2.15.3</jackson.version>
-        <slf4j.version>2.0.9</slf4j.version>
+        <okhttp.version>4.9.3</okhttp.version>
+        <jackson.version>2.13.5</jackson.version>
+        <slf4j.version>1.7.36</slf4j.version>
     </properties>
 
     <dependencies>

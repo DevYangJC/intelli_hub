@@ -21,7 +21,7 @@ import javax.validation.Valid;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/search")
+@RequestMapping("/v1/search")
 @RequiredArgsConstructor
 public class SearchController {
 

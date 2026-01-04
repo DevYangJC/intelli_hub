@@ -15,7 +15,7 @@ import org.apache.dubbo.config.annotation.DubboService;
  * @since 1.0.0
  */
 @Slf4j
-@DubboService(version = "1.0.0", group = "intellihub")
+@DubboService
 @RequiredArgsConstructor
 public class TenantDubboServiceImpl implements TenantDubboService {
 

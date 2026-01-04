@@ -1,21 +1,36 @@
 package com.intellihub.elasticsearch.core;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.FieldValue;
-import co.elastic.clients.elasticsearch._types.Refresh;
-import co.elastic.clients.elasticsearch._types.SortOrder;
-import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch.core.*;
-import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
-import co.elastic.clients.elasticsearch.core.search.Hit;
-import co.elastic.clients.elasticsearch.core.search.HighlightField;
-import co.elastic.clients.elasticsearch.indices.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.intellihub.elasticsearch.config.ElasticsearchProperties;
 import com.intellihub.elasticsearch.exception.ElasticsearchException;
 import com.intellihub.elasticsearch.model.SearchRequest;
-import com.intellihub.elasticsearch.model.SearchResponse;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.support.WriteRequest;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.CreateIndexRequest;
+import org.elasticsearch.client.indices.CreateIndexResponse;
+import org.elasticsearch.client.indices.GetIndexRequest;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.reindex.BulkByScrollResponse;
+import org.elasticsearch.index.reindex.DeleteByQueryRequest;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -31,19 +46,21 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ElasticsearchTemplate {
 
-    private final ElasticsearchClient client;
+    /**
+     * -- GETTER --
+     *  获取原生客户端
+     */
+    @Getter
+    private final RestHighLevelClient client;
     private final ElasticsearchProperties properties;
+    private final ObjectMapper objectMapper;
 
-    public ElasticsearchTemplate(ElasticsearchClient client, ElasticsearchProperties properties) {
+    public ElasticsearchTemplate(RestHighLevelClient client, ElasticsearchProperties properties) {
         this.client = client;
         this.properties = properties;
-    }
-
-    /**
-     * 获取原生客户端
-     */
-    public ElasticsearchClient getClient() {
-        return client;
+        this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
+        this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     // ==================== 索引操作 ====================
@@ -59,21 +76,29 @@ public class ElasticsearchTemplate {
                 return false;
             }
 
-            CreateIndexRequest.Builder builder = new CreateIndexRequest.Builder()
-                    .index(fullIndexName)
-                    .settings(s -> s
-                            .numberOfShards(String.valueOf(properties.getDefaultShards()))
-                            .numberOfReplicas(String.valueOf(properties.getDefaultReplicas())));
+            CreateIndexRequest request = new CreateIndexRequest(fullIndexName);
+            
+            // 设置分片和副本
+            Map<String, Object> settings = new HashMap<>();
+            settings.put("number_of_shards", String.valueOf(properties.getDefaultShards()));
+            settings.put("number_of_replicas", String.valueOf(properties.getDefaultReplicas()));
+            request.settings(settings);
 
-            CreateIndexResponse response = client.indices().create(builder.build());
+            // 设置映射
+            if (mappings != null && !mappings.isEmpty()) {
+                request.mapping(mappings);
+            }
+
+            CreateIndexResponse response = client.indices().create(request, RequestOptions.DEFAULT);
             log.info("创建索引成功: {}", fullIndexName);
-            return response.acknowledged();
+            return response.isAcknowledged();
         } catch (IOException e) {
             throw new ElasticsearchException(
                     ElasticsearchException.ErrorCode.UNKNOWN,
                     "创建索引失败: " + fullIndexName, e);
         }
     }
+
 
     /**
      * 删除索引
@@ -86,9 +111,11 @@ public class ElasticsearchTemplate {
                 return false;
             }
 
-            DeleteIndexResponse response = client.indices().delete(d -> d.index(fullIndexName));
+            DeleteIndexRequest request = new DeleteIndexRequest(fullIndexName);
+            org.elasticsearch.action.support.master.AcknowledgedResponse response = 
+                    client.indices().delete(request, RequestOptions.DEFAULT);
             log.info("删除索引成功: {}", fullIndexName);
-            return response.acknowledged();
+            return response.isAcknowledged();
         } catch (IOException e) {
             throw new ElasticsearchException(
                     ElasticsearchException.ErrorCode.UNKNOWN,
@@ -102,7 +129,8 @@ public class ElasticsearchTemplate {
     public boolean indexExists(String indexName) {
         String fullIndexName = getFullIndexName(indexName);
         try {
-            return client.indices().exists(e -> e.index(fullIndexName)).value();
+            GetIndexRequest request = new GetIndexRequest(fullIndexName);
+            return client.indices().exists(request, RequestOptions.DEFAULT);
         } catch (IOException e) {
             throw new ElasticsearchException(
                     ElasticsearchException.ErrorCode.CONNECTION_FAILED,
@@ -118,18 +146,20 @@ public class ElasticsearchTemplate {
     public <T> String index(String indexName, String id, T document) {
         String fullIndexName = getFullIndexName(indexName);
         try {
-            IndexRequest.Builder<T> builder = new IndexRequest.Builder<T>()
-                    .index(fullIndexName)
-                    .document(document)
-                    .refresh(getRefresh());
-
+            IndexRequest request = new IndexRequest(fullIndexName);
+            
             if (StringUtils.hasText(id)) {
-                builder.id(id);
+                request.id(id);
             }
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> jsonMap = objectMapper.convertValue(document, Map.class);
+            request.source(jsonMap);
+            request.setRefreshPolicy(getRefreshPolicy());
 
-            IndexResponse response = client.index(builder.build());
-            log.debug("索引文档成功: index={}, id={}", fullIndexName, response.id());
-            return response.id();
+            IndexResponse response = client.index(request, RequestOptions.DEFAULT);
+            log.debug("索引文档成功: index={}, id={}", fullIndexName, response.getId());
+            return response.getId();
         } catch (IOException e) {
             throw new ElasticsearchException(
                     ElasticsearchException.ErrorCode.UNKNOWN,
@@ -146,27 +176,37 @@ public class ElasticsearchTemplate {
         }
 
         String fullIndexName = getFullIndexName(indexName);
-        List<BulkOperation> operations = documents.entrySet().stream()
-                .map(entry -> BulkOperation.of(op -> op
-                        .index(idx -> idx
-                                .index(fullIndexName)
-                                .id(entry.getKey())
-                                .document(entry.getValue()))))
-                .collect(Collectors.toList());
+        BulkRequest bulkRequest = new BulkRequest();
+        bulkRequest.setRefreshPolicy(getRefreshPolicy());
 
         try {
-            BulkResponse response = client.bulk(b -> b
-                    .operations(operations)
-                    .refresh(getRefresh()));
+            for (Map.Entry<String, T> entry : documents.entrySet()) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> jsonMap = objectMapper.convertValue(entry.getValue(), Map.class);
+                IndexRequest request = new IndexRequest(fullIndexName)
+                        .id(entry.getKey())
+                        .source(jsonMap);
+                bulkRequest.add(request);
+            }
 
-            if (response.errors()) {
-                long failedCount = response.items().stream()
-                        .filter(item -> item.error() != null)
+            BulkResponse response = client.bulk(bulkRequest, RequestOptions.DEFAULT);
+
+            if (response.hasFailures()) {
+                long failedCount = Arrays.stream(response.getItems())
+                        .filter(org.elasticsearch.action.bulk.BulkItemResponse::isFailed)
                         .count();
+                
+                // 记录详细的失败信息
+                Arrays.stream(response.getItems())
+                        .filter(org.elasticsearch.action.bulk.BulkItemResponse::isFailed)
+                        .limit(5)  // 只记录前5个错误
+                        .forEach(item -> log.error("索引失败 [id={}]: {}", 
+                                item.getId(), item.getFailureMessage()));
+                
                 log.warn("批量索引部分失败: total={}, failed={}", documents.size(), failedCount);
                 throw new ElasticsearchException(
                         ElasticsearchException.ErrorCode.BULK_PARTIAL_FAILURE,
-                        "批量索引部分失败，失败数: " + failedCount);
+                        "批量索引部分失败，失败数: " + failedCount + "，详情见日志");
             }
 
             log.info("批量索引成功: index={}, count={}", fullIndexName, documents.size());
@@ -183,14 +223,13 @@ public class ElasticsearchTemplate {
     public <T> T get(String indexName, String id, Class<T> clazz) {
         String fullIndexName = getFullIndexName(indexName);
         try {
-            GetResponse<T> response = client.get(g -> g
-                    .index(fullIndexName)
-                    .id(id), clazz);
+            GetRequest request = new GetRequest(fullIndexName, id);
+            GetResponse response = client.get(request, RequestOptions.DEFAULT);
 
-            if (!response.found()) {
+            if (!response.isExists()) {
                 return null;
             }
-            return response.source();
+            return objectMapper.readValue(response.getSourceAsString(), clazz);
         } catch (IOException e) {
             throw new ElasticsearchException(
                     ElasticsearchException.ErrorCode.UNKNOWN,
@@ -204,12 +243,11 @@ public class ElasticsearchTemplate {
     public boolean delete(String indexName, String id) {
         String fullIndexName = getFullIndexName(indexName);
         try {
-            DeleteResponse response = client.delete(d -> d
-                    .index(fullIndexName)
-                    .id(id)
-                    .refresh(getRefresh()));
-
-            return "deleted".equals(response.result().jsonValue());
+            DeleteRequest request = new DeleteRequest(fullIndexName, id);
+            request.setRefreshPolicy(getRefreshPolicy());
+            
+            DeleteResponse response = client.delete(request, RequestOptions.DEFAULT);
+            return response.getResult() == DeleteResponse.Result.DELETED;
         } catch (IOException e) {
             throw new ElasticsearchException(
                     ElasticsearchException.ErrorCode.UNKNOWN,
@@ -223,14 +261,12 @@ public class ElasticsearchTemplate {
     public long deleteByQuery(String indexName, Map<String, Object> filters) {
         String fullIndexName = getFullIndexName(indexName);
         try {
-            Query query = buildFilterQuery(filters);
+            DeleteByQueryRequest request = new DeleteByQueryRequest(fullIndexName);
+            request.setQuery(buildFilterQuery(filters));
+            request.setRefresh(true);
 
-            DeleteByQueryResponse response = client.deleteByQuery(d -> d
-                    .index(fullIndexName)
-                    .query(query)
-                    .refresh(true));
-
-            return response.deleted() != null ? response.deleted() : 0;
+            BulkByScrollResponse response = client.deleteByQuery(request, RequestOptions.DEFAULT);
+            return response.getDeleted();
         } catch (IOException e) {
             throw new ElasticsearchException(
                     ElasticsearchException.ErrorCode.UNKNOWN,
@@ -243,44 +279,43 @@ public class ElasticsearchTemplate {
     /**
      * 统一搜索接口
      */
-    public <T> SearchResponse<T> search(String indexName, SearchRequest request, Class<T> clazz) {
+    public <T> com.intellihub.elasticsearch.model.SearchResponse<T> search(String indexName, SearchRequest request, Class<T> clazz) {
         String fullIndexName = getFullIndexName(indexName);
         try {
-            co.elastic.clients.elasticsearch.core.SearchRequest.Builder searchBuilder =
-                    new co.elastic.clients.elasticsearch.core.SearchRequest.Builder()
-                            .index(fullIndexName)
-                            .from(request.getFrom())
-                            .size(request.getSize());
+            org.elasticsearch.action.search.SearchRequest searchRequest = 
+                    new org.elasticsearch.action.search.SearchRequest(fullIndexName);
+            
+            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+            sourceBuilder.from(request.getFrom());
+            sourceBuilder.size(request.getSize());
 
             // 构建查询
-            Query query = buildSearchQuery(request);
-            searchBuilder.query(query);
+            BoolQueryBuilder query = buildSearchQuery(request);
+            sourceBuilder.query(query);
 
             // 排序
             if (!CollectionUtils.isEmpty(request.getSorts())) {
                 request.getSorts().forEach((field, order) ->
-                        searchBuilder.sort(s -> s.field(f -> f
-                                .field(field)
-                                .order("desc".equalsIgnoreCase(order) ? SortOrder.Desc : SortOrder.Asc))));
+                        sourceBuilder.sort(field, 
+                                "desc".equalsIgnoreCase(order) ? SortOrder.DESC : SortOrder.ASC));
             }
 
             // 高亮
             if (request.isHighlight() && !CollectionUtils.isEmpty(request.getSearchFields())) {
-                searchBuilder.highlight(h -> {
-                    h.preTags(request.getHighlightPreTag())
-                            .postTags(request.getHighlightPostTag());
-                    request.getSearchFields().forEach(field ->
-                            h.fields(field, HighlightField.of(hf -> hf)));
-                    return h;
-                });
+                HighlightBuilder highlightBuilder = new HighlightBuilder();
+                highlightBuilder.preTags(request.getHighlightPreTag());
+                highlightBuilder.postTags(request.getHighlightPostTag());
+                request.getSearchFields().forEach(highlightBuilder::field);
+                sourceBuilder.highlighter(highlightBuilder);
             }
 
+            searchRequest.source(sourceBuilder);
+
             // 执行搜索
-            co.elastic.clients.elasticsearch.core.SearchResponse<T> response =
-                    client.search(searchBuilder.build(), clazz);
+            org.elasticsearch.action.search.SearchResponse response = client.search(searchRequest, RequestOptions.DEFAULT);
 
             // 构建响应
-            return buildSearchResponse(response, request);
+            return buildSearchResponse(response, request, clazz);
         } catch (IOException e) {
             throw new ElasticsearchException(
                     ElasticsearchException.ErrorCode.UNKNOWN,
@@ -291,18 +326,16 @@ public class ElasticsearchTemplate {
     /**
      * 构建搜索查询
      */
-    private Query buildSearchQuery(SearchRequest request) {
-        BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
+    private BoolQueryBuilder buildSearchQuery(SearchRequest request) {
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
 
         // 关键词搜索
         if (StringUtils.hasText(request.getKeyword())) {
             if (!CollectionUtils.isEmpty(request.getSearchFields())) {
-                boolBuilder.must(m -> m.multiMatch(mm -> mm
-                        .query(request.getKeyword())
-                        .fields(request.getSearchFields())));
+                boolQuery.must(QueryBuilders.multiMatchQuery(request.getKeyword(), 
+                        request.getSearchFields().toArray(new String[0])));
             } else {
-                boolBuilder.must(m -> m.queryString(qs -> qs
-                        .query("*" + request.getKeyword() + "*")));
+                boolQuery.must(QueryBuilders.queryStringQuery("*" + request.getKeyword() + "*"));
             }
         }
 
@@ -311,89 +344,92 @@ public class ElasticsearchTemplate {
             request.getFilters().forEach((field, value) -> {
                 if (value instanceof Collection) {
                     Collection<?> values = (Collection<?>) value;
-                    List<FieldValue> fieldValues = values.stream()
-                            .map(v -> FieldValue.of(String.valueOf(v)))
-                            .collect(Collectors.toList());
-                    boolBuilder.filter(f -> f.terms(t -> t
-                            .field(field)
-                            .terms(tv -> tv.value(fieldValues))));
+                    boolQuery.filter(QueryBuilders.termsQuery(field, values));
                 } else {
-                    boolBuilder.filter(f -> f.term(t -> t
-                            .field(field)
-                            .value(String.valueOf(value))));
+                    boolQuery.filter(QueryBuilders.termQuery(field, value));
                 }
             });
         }
 
         // 租户隔离
         if (request.getTenantId() != null) {
-            boolBuilder.filter(f -> f.term(t -> t
-                    .field("tenantId")
-                    .value(request.getTenantId())));
+            boolQuery.filter(QueryBuilders.termQuery("tenantId", request.getTenantId()));
         }
 
         // 范围过滤
         if (!CollectionUtils.isEmpty(request.getRangeFilters())) {
             request.getRangeFilters().forEach((field, range) -> {
                 if (range != null && range.length == 2) {
-                    boolBuilder.filter(f -> f.range(r -> {
-                        r.field(field);
-                        if (range[0] != null) {
-                            r.gte(co.elastic.clients.json.JsonData.of(range[0]));
-                        }
-                        if (range[1] != null) {
-                            r.lte(co.elastic.clients.json.JsonData.of(range[1]));
-                        }
-                        return r;
-                    }));
+                    org.elasticsearch.index.query.RangeQueryBuilder rangeQuery = 
+                            QueryBuilders.rangeQuery(field);
+                    if (range[0] != null) {
+                        rangeQuery.gte(range[0]);
+                    }
+                    if (range[1] != null) {
+                        rangeQuery.lte(range[1]);
+                    }
+                    boolQuery.filter(rangeQuery);
                 }
             });
         }
 
-        return Query.of(q -> q.bool(boolBuilder.build()));
+        return boolQuery;
     }
 
     /**
      * 构建过滤查询
      */
-    private Query buildFilterQuery(Map<String, Object> filters) {
+    private BoolQueryBuilder buildFilterQuery(Map<String, Object> filters) {
         if (CollectionUtils.isEmpty(filters)) {
-            return Query.of(q -> q.matchAll(m -> m));
+            return QueryBuilders.boolQuery().must(QueryBuilders.matchAllQuery());
         }
 
-        BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
         filters.forEach((field, value) ->
-                boolBuilder.filter(f -> f.term(t -> t
-                        .field(field)
-                        .value(String.valueOf(value)))));
+                boolQuery.filter(QueryBuilders.termQuery(field, value)));
 
-        return Query.of(q -> q.bool(boolBuilder.build()));
+        return boolQuery;
     }
 
     /**
      * 构建搜索响应
      */
-    private <T> SearchResponse<T> buildSearchResponse(
-            co.elastic.clients.elasticsearch.core.SearchResponse<T> response,
-            SearchRequest request) {
+    private <T> com.intellihub.elasticsearch.model.SearchResponse<T> buildSearchResponse(
+            org.elasticsearch.action.search.SearchResponse response,
+            SearchRequest request,
+            Class<T> clazz) {
 
-        SearchResponse<T> result = new SearchResponse<>();
-        result.setTotal(response.hits().total() != null ? response.hits().total().value() : 0);
+        com.intellihub.elasticsearch.model.SearchResponse<T> result = new com.intellihub.elasticsearch.model.SearchResponse<>();
+        result.setTotal(response.getHits().getTotalHits() != null ? 
+                response.getHits().getTotalHits().value : 0);
         result.setPage(request.getPage());
         result.setSize(request.getSize());
-        result.setTook(response.took());
+        result.setTook(0L);
 
-        List<SearchResponse.SearchHit<T>> hits = new ArrayList<>();
-        for (Hit<T> hit : response.hits().hits()) {
-            SearchResponse.SearchHit<T> searchHit = new SearchResponse.SearchHit<>();
-            searchHit.setId(hit.id());
-            searchHit.setIndex(hit.index());
-            searchHit.setScore(hit.score());
-            searchHit.setSource(hit.source());
+        List<com.intellihub.elasticsearch.model.SearchResponse.SearchHit<T>> hits = new ArrayList<>();
+        for (SearchHit hit : response.getHits().getHits()) {
+            com.intellihub.elasticsearch.model.SearchResponse.SearchHit<T> searchHit = new com.intellihub.elasticsearch.model.SearchResponse.SearchHit<>();
+            searchHit.setId(hit.getId());
+            searchHit.setIndex(hit.getIndex());
+            searchHit.setScore(Double.valueOf(hit.getScore()));
+            
+            try {
+                T source = objectMapper.readValue(hit.getSourceAsString(), clazz);
+                searchHit.setSource(source);
+            } catch (IOException e) {
+                log.warn("解析文档失败: {}", hit.getId(), e);
+            }
 
             // 处理高亮
-            if (hit.highlight() != null && !hit.highlight().isEmpty()) {
-                searchHit.setHighlights(hit.highlight());
+            if (hit.getHighlightFields() != null && !hit.getHighlightFields().isEmpty()) {
+                Map<String, List<String>> highlights = new HashMap<>();
+                hit.getHighlightFields().forEach((field, highlightField) -> {
+                    List<String> fragments = Arrays.stream(highlightField.fragments())
+                            .map(Object::toString)
+                            .collect(Collectors.toList());
+                    highlights.put(field, fragments);
+                });
+                searchHit.setHighlights(highlights);
             }
 
             hits.add(searchHit);
@@ -410,7 +446,7 @@ public class ElasticsearchTemplate {
      */
     public boolean ping() {
         try {
-            return client.ping().value();
+            return client.ping(RequestOptions.DEFAULT);
         } catch (IOException e) {
             log.error("ES ping 失败: {}", e.getMessage());
             return false;
@@ -423,8 +459,11 @@ public class ElasticsearchTemplate {
     public long count(String indexName) {
         String fullIndexName = getFullIndexName(indexName);
         try {
-            CountResponse response = client.count(c -> c.index(fullIndexName));
-            return response.count();
+            org.elasticsearch.client.core.CountRequest request = 
+                    new org.elasticsearch.client.core.CountRequest(fullIndexName);
+            org.elasticsearch.client.core.CountResponse response = 
+                    client.count(request, RequestOptions.DEFAULT);
+            return response.getCount();
         } catch (IOException e) {
             throw new ElasticsearchException(
                     ElasticsearchException.ErrorCode.UNKNOWN,
@@ -447,14 +486,14 @@ public class ElasticsearchTemplate {
     /**
      * 获取刷新策略
      */
-    private Refresh getRefresh() {
+    private WriteRequest.RefreshPolicy getRefreshPolicy() {
         switch (properties.getRefreshPolicy()) {
             case "true":
-                return Refresh.True;
+                return WriteRequest.RefreshPolicy.IMMEDIATE;
             case "wait_for":
-                return Refresh.WaitFor;
+                return WriteRequest.RefreshPolicy.WAIT_UNTIL;
             default:
-                return Refresh.False;
+                return WriteRequest.RefreshPolicy.NONE;
         }
     }
 }

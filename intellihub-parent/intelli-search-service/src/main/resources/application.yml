@@ -22,12 +22,6 @@ spring:
         namespace: dev
         group: DEFAULT_GROUP
 
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.200.130:3306/intelli_hub_search?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
-    username: root
-    password: root
-
   redis:
     host: 192.168.200.130
     port: 6379
@@ -65,21 +59,6 @@ intellihub:
       user-full-cron: "0 0 2 * * ?"
       user-incremental-cron: "0 */5 * * * ?"
 
-mybatis-plus:
-  mapper-locations: classpath*:mapper/**/*.xml
-  type-aliases-package: com.intellihub.search.entity
-  configuration:
-    map-underscore-to-camel-case: true
-    cache-enabled: false
-    call-setters-on-nulls: true
-    jdbc-type-for-null: 'null'
-  global-config:
-    db-config:
-      id-type: AUTO
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
-
 logging:
   level:
     com.intellihub.search: debug
@@ -106,5 +85,6 @@ dubbo:
     parameters:
       namespace: dev
   consumer:
+    group: ${DUBBO_GROUP:intellihub}
     check: false
     timeout: 30000

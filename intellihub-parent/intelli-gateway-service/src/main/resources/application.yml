@@ -81,7 +81,7 @@ spring:
         - id: search-service
           uri: lb://intelli-search-service
           predicates:
-            - Path=/api/search/**
+            - Path=/api/v1/search/**,/api/search/**
           filters:
             - StripPrefix=1
 
@@ -152,6 +152,25 @@ management:
 # 网关自定义配置
 intellihub:
   gateway:
+    # 白名单配置
+    whitelist:
+      paths:
+        - /actuator/**
+        - /health/**
+        - /api/auth/**
+        - /api/iam/v1/auth/**
+        - /iam/v1/auth/**
+        - /swagger-ui/**
+        - /v3/api-docs/**
+        - /
+        - /api/public/**
+        - /api/v1/search/**
+        - /api/search/**
+        - /open/**
+        - /external/**
+        - /api/open/**
+        - /api/external/**
+    
     auth:
       enabled: true
       secret: intellihub-iam-jwt-secret-key-2024
@@ -208,6 +227,7 @@ dubbo:
     parameters:
       namespace: dev
   consumer:
+    group: ${DUBBO_GROUP:intellihub}
     check: false
     timeout: 5000
 

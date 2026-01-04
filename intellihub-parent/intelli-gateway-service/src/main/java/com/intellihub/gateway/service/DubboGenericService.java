@@ -1,6 +1,7 @@
 package com.intellihub.gateway.service;
 
-import com.intellihub.dubbo.ApiRouteDTO;
+import com.intellihub.gateway.service.dubbo.DubboInvocationContext;
+import com.intellihub.gateway.service.dubbo.strategy.InvocationStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.RegistryConfig;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.PostConstruct;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,138 +36,139 @@ public class DubboGenericService {
     @Value("${dubbo.application.name:intelli-gateway-service}")
     private String applicationName;
 
+    @Value("${dubbo.consumer.group:}")
+    private String defaultGroup;
+
     private ApplicationConfig applicationConfig;
     private RegistryConfig registryConfig;
 
     /**
-     * GenericService缓存（接口名 -> GenericService）
+     * 调用策略列表（Spring自动注入）
+     */
+    private final List<InvocationStrategy> strategies;
+
+    /**
+     * GenericService缓存（接口名:version:group -> GenericService）
      */
     private final Map<String, GenericService> genericServiceCache = new ConcurrentHashMap<>();
 
+    public DubboGenericService(List<InvocationStrategy> strategies) {
+        this.strategies = strategies;
+    }
+
     @PostConstruct
     public void init() {
-        // 初始化Dubbo应用配置
         applicationConfig = new ApplicationConfig();
         applicationConfig.setName(applicationName + "-generic");
 
-        // 初始化注册中心配置
         registryConfig = new RegistryConfig();
         registryConfig.setAddress(registryAddress);
 
-        log.info("Dubbo泛化调用服务初始化完成 - registry: {}", registryAddress);
+        log.info("Dubbo泛化调用服务初始化完成: registry={}, strategies={}", 
+                registryAddress, strategies.stream().map(InvocationStrategy::getStrategyName).collect(java.util.stream.Collectors.toList()));
     }
 
     /**
-     * 执行Dubbo泛化调用
+     * 执行Dubbo泛化调用（使用调用上下文）
+     * <p>
+     * 策略模式：根据参数数量自动选择合适的调用策略
+     * </p>
      *
-     * @param route          路由配置
-     * @param parameterTypes 参数类型数组
-     * @param args           参数值数组
+     * @param context Dubbo调用上下文
      * @return 调用结果
      */
-    public Mono<Object> invoke(ApiRouteDTO route, String[] parameterTypes, Object[] args) {
+    public Mono<Object> invoke(DubboInvocationContext context) {
         return Mono.fromCallable(() -> {
             try {
-                String interfaceName = route.getDubboInterface();
-                String methodName = route.getDubboMethod();
-                String version = route.getDubboVersion();
-                String group = route.getDubboGroup();
-
-                log.debug("执行Dubbo泛化调用 - interface: {}, method: {}, version: {}, group: {}",
-                        interfaceName, methodName, version, group);
+                log.info("[DubboGenericService] 开始泛化调用: {}", context.toSummary());
 
                 // 获取或创建GenericService
-                String cacheKey = buildCacheKey(interfaceName, version, group);
+                String cacheKey = buildCacheKey(context.getInterfaceName(), context.getVersion(), context.getGroup());
                 GenericService genericService = genericServiceCache.computeIfAbsent(cacheKey,
-                        k -> createGenericService(interfaceName, version, group, route.getTimeout()));
+                        k -> createGenericService(context.getInterfaceName(), context.getVersion(), 
+                                context.getGroup(), context.getTimeout()));
 
-                // 执行泛化调用
-                Object result = genericService.$invoke(methodName, parameterTypes, args);
+                // 选择并执行调用策略
+                InvocationStrategy strategy = selectStrategy(context);
+                log.debug("[DubboGenericService] 使用策略: {}", strategy.getStrategyName());
+                
+                Object result = strategy.invoke(genericService, context);
 
-                log.debug("Dubbo泛化调用成功 - interface: {}, method: {}", interfaceName, methodName);
+                log.info("[DubboGenericService] 泛化调用成功: interface={}, method={}, resultType={}", 
+                        context.getInterfaceName(), context.getMethodName(), 
+                        result != null ? result.getClass().getSimpleName() : "null");
                 return result;
 
             } catch (Exception e) {
-                log.error("Dubbo泛化调用失败 - interface: {}, method: {}",
-                        route.getDubboInterface(), route.getDubboMethod(), e);
+                log.error("[DubboGenericService] 泛化调用失败: {}, error={}", context.toSummary(), e.getMessage(), e);
                 throw e;
             }
         });
     }
 
     /**
-     * 执行Dubbo泛化调用（简化版，无参数类型）
+     * 选择合适的调用策略
      *
-     * @param route 路由配置
-     * @param args  参数值（Map形式）
-     * @return 调用结果
+     * @param context 调用上下文
+     * @return 匹配的调用策略
+     * @throws IllegalStateException 如果没有找到合适的策略
      */
-    public Mono<Object> invoke(ApiRouteDTO route, Map<String, Object> args) {
-        return Mono.fromCallable(() -> {
-            try {
-                String interfaceName = route.getDubboInterface();
-                String methodName = route.getDubboMethod();
-                String version = route.getDubboVersion();
-                String group = route.getDubboGroup();
-
-                log.debug("执行Dubbo泛化调用（Map参数） - interface: {}, method: {}",
-                        interfaceName, methodName);
-
-                // 获取或创建GenericService
-                String cacheKey = buildCacheKey(interfaceName, version, group);
-                GenericService genericService = genericServiceCache.computeIfAbsent(cacheKey,
-                        k -> createGenericService(interfaceName, version, group, route.getTimeout()));
-
-                // 执行泛化调用（使用Map作为参数）
-                Object result;
-                if (args == null || args.isEmpty()) {
-                    result = genericService.$invoke(methodName, new String[]{}, new Object[]{});
-                } else {
-                    result = genericService.$invoke(methodName,
-                            new String[]{"java.util.Map"},
-                            new Object[]{args});
-                }
-
-                log.debug("Dubbo泛化调用成功 - interface: {}, method: {}", interfaceName, methodName);
-                return result;
-
-            } catch (Exception e) {
-                log.error("Dubbo泛化调用失败 - interface: {}, method: {}",
-                        route.getDubboInterface(), route.getDubboMethod(), e);
-                throw e;
+    private InvocationStrategy selectStrategy(DubboInvocationContext context) {
+        for (InvocationStrategy strategy : strategies) {
+            if (strategy.supports(context)) {
+                return strategy;
             }
-        });
+        }
+        throw new IllegalStateException("没有找到合适的调用策略: paramCount=" + context.getParameterCount());
     }
 
     /**
-     * 创建GenericService
+     * 创建GenericService实例
+     * <p>
+     * 根据接口配置创建Dubbo泛化服务引用，支持版本和分组配置
+     * </p>
+     *
+     * @param interfaceName 接口全限定名
+     * @param version       版本号（可为空）
+     * @param group         分组（可为空，为空时使用默认分组）
+     * @param timeout       超时时间（毫秒）
+     * @return GenericService实例
      */
     private GenericService createGenericService(String interfaceName, String version, String group, Integer timeout) {
+        log.info("[DubboGenericService] 创建GenericService: interface={}, version={}, group={}, timeout={}, registry={}", 
+                interfaceName, version, group, timeout, registryAddress);
+        
         ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
         reference.setApplication(applicationConfig);
         reference.setRegistry(registryConfig);
         reference.setInterface(interfaceName);
         reference.setGeneric("true");
 
+        // 设置版本号
         if (version != null && !version.isEmpty()) {
             reference.setVersion(version);
         }
-        if (group != null && !group.isEmpty()) {
-            reference.setGroup(group);
+        
+        // 设置分组（优先使用传入的group，为空时使用默认配置）
+        String effectiveGroup = (group != null && !group.isEmpty()) ? group : defaultGroup;
+        if (effectiveGroup != null && !effectiveGroup.isEmpty()) {
+            reference.setGroup(effectiveGroup);
         }
-        if (timeout != null && timeout > 0) {
-            reference.setTimeout(timeout);
-        } else {
-            reference.setTimeout(5000);
-        }
-
-        // 设置重试次数
+        
+        // 设置超时时间
+        reference.setTimeout(timeout != null && timeout > 0 ? timeout : 5000);
         reference.setRetries(0);
 
-        log.info("创建GenericService - interface: {}, version: {}, group: {}, timeout: {}",
-                interfaceName, version, group, timeout);
-
-        return reference.get();
+        try {
+            GenericService service = reference.get();
+            log.info("[DubboGenericService] GenericService创建成功: interface={}, effectiveGroup={}", 
+                    interfaceName, effectiveGroup);
+            return service;
+        } catch (Exception e) {
+            log.error("[DubboGenericService] GenericService创建失败: interface={}, version={}, group={}, error={}", 
+                    interfaceName, version, effectiveGroup, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**

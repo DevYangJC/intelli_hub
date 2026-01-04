@@ -19,7 +19,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/search/health")
+@RequestMapping("/v1/search/health")
 @RequiredArgsConstructor
 public class HealthController {
 

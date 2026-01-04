@@ -9,6 +9,8 @@ import com.intellihub.app.entity.AppInfo;
 import com.intellihub.app.mapper.AppApiSubscriptionMapper;
 import com.intellihub.app.mapper.AppInfoMapper;
 import com.intellihub.app.service.AppService;
+import com.intellihub.dubbo.ApiPlatformDubboService;
+import com.intellihub.dubbo.ApiRouteDTO;
 import com.intellihub.enums.AppStatus;
 import com.intellihub.enums.AppType;
 import com.intellihub.enums.SubscriptionStatus;
@@ -18,6 +20,7 @@ import com.intellihub.exception.BusinessException;
 import com.intellihub.page.PageData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +43,9 @@ public class AppServiceImpl implements AppService {
 
     private final AppInfoMapper appInfoMapper;
     private final AppApiSubscriptionMapper subscriptionMapper;
+    
+    @DubboReference(check = false, timeout = 5000)
+    private ApiPlatformDubboService apiPlatformDubboService;
 
     @Override
     @Transactional
@@ -275,10 +281,25 @@ public class AppServiceImpl implements AppService {
             throw new BusinessException(ResponseStatus.BAD_REQUEST.getCode(), "已订阅该API");
         }
 
+        // 从 API 平台服务获取 API 信息
+        ApiRouteDTO apiRoute = null;
+        try {
+            apiRoute = apiPlatformDubboService.getRouteByApiId(request.getApiId());
+        } catch (Exception e) {
+            log.warn("获取API信息失败: apiId={}", request.getApiId(), e);
+        }
+
         // 创建订阅
         AppApiSubscription subscription = new AppApiSubscription();
         subscription.setAppId(appId);
         subscription.setApiId(request.getApiId());
+        
+        // 保存 API 名称和路径
+        if (apiRoute != null) {
+            subscription.setApiName(apiRoute.getApiName());
+            subscription.setApiPath(apiRoute.getPath());
+        }
+        
         subscription.setStatus(SubscriptionStatus.ACTIVE);
         subscription.setQuotaLimit(request.getQuotaLimit());
         subscription.setEffectiveTime(LocalDateTime.now());
@@ -288,7 +309,8 @@ public class AppServiceImpl implements AppService {
 
         subscriptionMapper.insert(subscription);
 
-        log.info("API订阅成功: appId={}, apiId={}", appId, request.getApiId());
+        log.info("API订阅成功: appId={}, apiId={}, apiName={}, apiPath={}", 
+                appId, request.getApiId(), subscription.getApiName(), subscription.getApiPath());
 
         return convertToSubscriptionResponse(subscription);
     }

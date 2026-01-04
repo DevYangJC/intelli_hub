@@ -73,16 +73,26 @@ public class OpenApiRouteMatchFilter implements GlobalFilter, Ordered {
         log.debug("开放API路由匹配 - {} {}", method, path);
 
         // 匹配路由配置（支持路径参数）
+        log.info("[OpenApiRouteMatchFilter] 开始匹配路由 - method: {}, path: {}", method, path);
         return routeService.matchRoute(path, method)
                 .doOnNext(route -> {
                     // 将API信息存入exchange属性，供后续过滤器使用
                     exchange.getAttributes().put(ATTR_API_ROUTE, route);
                     exchange.getAttributes().put(ATTR_API_ID, route.getApiId());
-                    log.debug("API路由匹配成功 - path: {}, apiId: {}, apiName: {}",
-                            path, route.getApiId(), route.getApiName());
+                    log.info("[OpenApiRouteMatchFilter] API路由匹配成功 - path: {}, apiId: {}, apiName: {}, backendType: {}",
+                            path, route.getApiId(), route.getApiName(), route.getBackendType());
+                    if ("dubbo".equalsIgnoreCase(route.getBackendType())) {
+                        log.info("[OpenApiRouteMatchFilter] Dubbo配置 - interface: {}, method: {}, version: {}, group: {}",
+                                route.getDubboInterface(), route.getDubboMethod(), 
+                                route.getDubboVersion(), route.getDubboGroup());
+                    }
                 })
+                .doOnError(e -> log.error("[OpenApiRouteMatchFilter] 路由匹配失败 - path: {}, error: {}", path, e.getMessage()))
                 .then(chain.filter(exchange))
-                .switchIfEmpty(chain.filter(exchange));
+                .switchIfEmpty(Mono.defer(() -> {
+                    log.warn("[OpenApiRouteMatchFilter] 未找到匹配的路由 - path: {}", path);
+                    return chain.filter(exchange);
+                }));
     }
 
     /**

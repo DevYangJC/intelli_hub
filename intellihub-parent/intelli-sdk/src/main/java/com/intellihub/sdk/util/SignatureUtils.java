@@ -68,11 +68,11 @@ public final class SignatureUtils {
     }
 
     /**
-     * 获取当前时间戳（毫秒）
+     * 获取当前时间戳（秒级）
      *
      * @return 时间戳字符串
      */
     public static String getTimestamp() {
-        return String.valueOf(System.currentTimeMillis());
+        return String.valueOf(System.currentTimeMillis() / 1000);
     }
 }

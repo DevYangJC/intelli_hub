@@ -94,8 +94,11 @@ dubbo:
     name: dubbo
     port: 20883
   scan:
-    base-packages: com.intellihub.app.service.dubbo
+    base-packages: com.intellihub.app.dubbo
+  provider:
+    group: ${DUBBO_GROUP:intellihub}
   consumer:
+    group: ${DUBBO_GROUP:intellihub}
     check: false
     timeout: 5000
 

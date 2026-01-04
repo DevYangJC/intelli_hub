@@ -358,11 +358,11 @@
           </template>
 
           <el-form-item label="认证方式">
-            <el-checkbox-group v-model="formData.authMethods">
-              <el-checkbox value="jwt">JWT Token</el-checkbox>
-              <el-checkbox value="appkey">AppKey/Secret</el-checkbox>
-              <el-checkbox value="none">无需认证</el-checkbox>
-            </el-checkbox-group>
+            <el-radio-group v-model="formData.authMethod">
+              <el-radio value="jwt">JWT Token</el-radio>
+              <el-radio value="appkey">AppKey/Secret</el-radio>
+              <el-radio value="none">无需认证</el-radio>
+            </el-radio-group>
           </el-form-item>
 
           <el-form-item label="限流策略">
@@ -521,11 +521,11 @@ const fetchApiDetail = async () => {
       
       // 认证方式转换
       if (data.authType === 'none') {
-        formData.authMethods = ['none']
+        formData.authMethod = 'none'
       } else if (data.authType === 'signature') {
-        formData.authMethods = ['appkey']
+        formData.authMethod = 'appkey'
       } else {
-        formData.authMethods = ['jwt']
+        formData.authMethod = 'jwt'
       }
       
       // 响应示例
@@ -676,7 +676,7 @@ const formData = reactive({
   backendPath: '',
   timeout: 5000,
   retryCount: 0,
-  authMethods: ['jwt'],
+  authMethod: 'jwt',
   rateLimitEnabled: true,
   rateLimit: 100,
   rateLimitUnit: 'second',
@@ -738,10 +738,26 @@ const handleSubmit = async () => {
         path: formData.httpBackend.path || formData.path,
         timeout: formData.timeout,
       }
+    } else if (formData.backendType === 'dubbo') {
+      backend = {
+        type: 'dubbo',
+        registry: formData.dubboBackend.registry,
+        interfaceName: formData.dubboBackend.interfaceName,
+        methodName: formData.dubboBackend.methodName,
+        dubboVersion: formData.dubboBackend.version,
+        dubboGroup: formData.dubboBackend.group,
+        timeout: formData.timeout,
+      }
+    } else if (formData.backendType === 'internal') {
+      backend = {
+        type: 'internal',
+        refApiId: formData.internalBackend.apiId,
+      }
     } else if (formData.backendType === 'mock') {
       backend = {
         type: 'mock',
         mockResponse: formData.mockBackend.response,
+        mockDelay: formData.mockBackend.delay,
       }
     }
 
@@ -763,7 +779,7 @@ const handleSubmit = async () => {
         method: formData.method,
         path: formData.path,
         contentType: formData.contentType,
-        authType: formData.authMethods.includes('none') ? 'none' : (formData.authMethods.includes('jwt') ? 'token' : 'signature'),
+        authType: formData.authMethod === 'none' ? 'none' : (formData.authMethod === 'jwt' ? 'token' : 'signature'),
         timeout: formData.timeout,
         retryCount: formData.retryCount,
         rateLimitEnabled: formData.rateLimitEnabled,
@@ -786,7 +802,7 @@ const handleSubmit = async () => {
         method: formData.method,
         path: formData.path,
         contentType: formData.contentType,
-        authType: formData.authMethods.includes('none') ? 'none' : (formData.authMethods.includes('jwt') ? 'token' : 'signature'),
+        authType: formData.authMethod === 'none' ? 'none' : (formData.authMethod === 'jwt' ? 'token' : 'signature'),
         timeout: formData.timeout,
         retryCount: formData.retryCount,
         rateLimitEnabled: formData.rateLimitEnabled,

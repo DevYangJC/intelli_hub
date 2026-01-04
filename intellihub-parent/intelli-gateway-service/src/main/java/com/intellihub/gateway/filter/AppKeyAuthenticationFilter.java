@@ -66,8 +66,11 @@ public class AppKeyAuthenticationFilter implements GlobalFilter, Ordered {
 
         ServerHttpRequest request = exchange.getRequest();
         ServerHttpResponse response = exchange.getResponse();
-        String path = request.getPath().value();
-        String method = request.getMethod().name();
+        // 使用原始请求路径（签名验证必须使用客户端发送的原始路径）
+        // 从 OriginalPathSaveFilter 保存的属性中获取
+        String originalPath = exchange.getAttribute(OriginalPathSaveFilter.ATTR_ORIGINAL_PATH);
+        final String path = (originalPath != null) ? originalPath : request.getURI().getPath();
+        final String method = request.getMethod().name();
 
         // 优先从API路由配置中获取认证类型（由OpenApiRouteMatchFilter设置）
         ApiRouteDTO route = (ApiRouteDTO) exchange.getAttributes().get(OpenApiRouteMatchFilter.ATTR_API_ROUTE);
@@ -97,16 +100,16 @@ public class AppKeyAuthenticationFilter implements GlobalFilter, Ordered {
 
         // 验证必要参数
         if (!StringUtils.hasText(appKey)) {
-            return handleUnauthorized(response, "缺少X-App-Key请求头");
+            return handleUnauthorized(response, "缺少X-App-Key请求头。请先在控制台创建应用并获取AppKey和AppSecret，然后在请求头中添加认证信息");
         }
         if (!StringUtils.hasText(timestamp)) {
-            return handleUnauthorized(response, "缺少X-Timestamp请求头");
+            return handleUnauthorized(response, "缺少X-Timestamp请求头。请在请求头中添加时间戳（Unix秒级时间戳）");
         }
         if (!StringUtils.hasText(nonce)) {
-            return handleUnauthorized(response, "缺少X-Nonce请求头");
+            return handleUnauthorized(response, "缺少X-Nonce请求头。请在请求头中添加随机字符串（用于防止重放攻击）");
         }
         if (!StringUtils.hasText(signature)) {
-            return handleUnauthorized(response, "缺少X-Signature请求头");
+            return handleUnauthorized(response, "缺少X-Signature请求头。请使用AppSecret对请求参数进行签名");
         }
 
         // 验证时间戳（防止重放攻击）
@@ -139,20 +142,20 @@ public class AppKeyAuthenticationFilter implements GlobalFilter, Ordered {
                             .flatMap(appKeyInfo -> {
                                 if (appKeyInfo == null) {
                                     log.warn("AppKey不存在 - AppKey: {}", appKey);
-                                    return handleUnauthorized(response, "无效的AppKey");
+                                    return handleUnauthorized(response, "无效的AppKey。请检查AppKey是否正确，或在控制台重新创建应用");
                                 }
                                 
                                 // 检查应用状态
                                 if (!"active".equals(appKeyInfo.getStatus())) {
                                     log.warn("应用已禁用 - AppKey: {}, Status: {}", appKey, appKeyInfo.getStatus());
-                                    return handleUnauthorized(response, "应用已禁用");
+                                    return handleUnauthorized(response, "应用已禁用。请在控制台启用应用后重试");
                                 }
                                 
                                 // 检查应用是否过期
                                 if (appKeyInfo.getExpireTime() != null && 
                                     appKeyInfo.getExpireTime() < System.currentTimeMillis()) {
                                     log.warn("应用已过期 - AppKey: {}", appKey);
-                                    return handleUnauthorized(response, "应用凭证已过期");
+                                    return handleUnauthorized(response, "应用凭证已过期。请在控制台续期或重新创建应用");
                                 }
                                 
                                 // 验证签名
@@ -161,7 +164,7 @@ public class AppKeyAuthenticationFilter implements GlobalFilter, Ordered {
                                 
                                 if (!signatureValid) {
                                     log.warn("签名验证失败 - AppKey: {}, Path: {}", appKey, path);
-                                    return handleUnauthorized(response, "签名验证失败");
+                                    return handleUnauthorized(response, "签名验证失败。请检查AppSecret是否正确，并确保签名算法符合规范");
                                 }
                                 
                                 // 检查订阅关系 - 优先使用API ID（由OpenApiRouteMatchFilter提供）
