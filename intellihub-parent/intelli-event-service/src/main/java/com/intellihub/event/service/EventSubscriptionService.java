@@ -63,12 +63,12 @@ public interface EventSubscriptionService {
      * 获取事件的所有激活订阅
      * 查询指定租户和事件的所有激活状态的订阅
      * 结果按优先级降序、创建时间升序排列
+     * <p>租户ID由多租户拦截器自动处理</p>
      *
-     * @param tenantId  租户ID
      * @param eventCode 事件编码
      * @return 订阅列表，按优先级和创建时间排序
      */
-    List<EventSubscription> getSubscriptionsByEvent(String tenantId, String eventCode);
+    List<EventSubscription> getSubscriptionsByEvent(String eventCode);
 
     /**
      * 获取订阅详情

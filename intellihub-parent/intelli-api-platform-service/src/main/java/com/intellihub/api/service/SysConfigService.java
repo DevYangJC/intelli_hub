@@ -6,20 +6,25 @@ import com.intellihub.api.mapper.SysConfigMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import com.intellihub.context.UserContextHolder;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 系统配置服务
+ * <p>租户ID由多租户拦截器自动处理</p>
+ */
 @Service
 @RequiredArgsConstructor
 public class SysConfigService {
 
     private final SysConfigMapper sysConfigMapper;
 
-    public Map<String, Object> getAllConfigs(String tenantId) {
+    public Map<String, Object> getAllConfigs() {
+        // 租户条件由拦截器自动添加
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysConfig::getTenantId, tenantId);
         List<SysConfig> configs = sysConfigMapper.selectList(wrapper);
         
         Map<String, Object> result = new HashMap<>();
@@ -29,18 +34,19 @@ public class SysConfigService {
         return result;
     }
 
-    public String getConfig(String tenantId, String key) {
+    public String getConfig(String key) {
+        // 租户条件由拦截器自动添加
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysConfig::getTenantId, tenantId)
-               .eq(SysConfig::getConfigKey, key);
+        wrapper.eq(SysConfig::getConfigKey, key);
         SysConfig config = sysConfigMapper.selectOne(wrapper);
         return config != null ? config.getConfigValue() : null;
     }
 
-    public void setConfig(String tenantId, String key, String value, String type, String description) {
+    public void setConfig(String key, String value, String type, String description) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
+        // 租户条件由拦截器自动添加
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysConfig::getTenantId, tenantId)
-               .eq(SysConfig::getConfigKey, key);
+        wrapper.eq(SysConfig::getConfigKey, key);
         SysConfig config = sysConfigMapper.selectOne(wrapper);
         
         if (config == null) {
@@ -66,20 +72,20 @@ public class SysConfigService {
         }
     }
 
-    public void batchSetConfigs(String tenantId, Map<String, Object> configs) {
+    public void batchSetConfigs(Map<String, Object> configs) {
         for (Map.Entry<String, Object> entry : configs.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
             String strValue = value != null ? String.valueOf(value) : null;
             String type = inferType(value);
-            setConfig(tenantId, key, strValue, type, null);
+            setConfig(key, strValue, type, null);
         }
     }
 
-    public void deleteConfig(String tenantId, String key) {
+    public void deleteConfig(String key) {
+        // 租户条件由拦截器自动添加
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysConfig::getTenantId, tenantId)
-               .eq(SysConfig::getConfigKey, key);
+        wrapper.eq(SysConfig::getConfigKey, key);
         sysConfigMapper.delete(wrapper);
     }
 

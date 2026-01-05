@@ -44,8 +44,13 @@
 
     <!-- 用户列表 -->
     <el-card class="table-card" shadow="never">
-      <el-table :data="userList" style="width: 100%" v-loading="loading">
-        <el-table-column label="用户信息" min-width="220">
+      <el-table
+        :data="userList"
+        style="width: 100%"
+        v-loading="loading"
+        :header-cell-style="{ background: '#fafafa', color: '#606266', fontWeight: '600' }"
+      >
+        <el-table-column label="用户信息" min-width="240">
           <template #default="{ row }">
             <div class="user-info">
               <el-avatar :size="40" :src="row.avatar">
@@ -68,28 +73,36 @@
             {{ row.phone || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="角色" width="150">
+        <el-table-column label="角色" width="160">
           <template #default="{ row }">
-            <el-tag v-for="role in (row.roleNames || [])" :key="role" size="small" style="margin-right: 4px;">
-              {{ role }}
-            </el-tag>
-            <span v-if="!row.roleNames?.length">-</span>
+            <div class="role-tags">
+              <el-tag
+                v-for="role in (row.roleNames || [])"
+                :key="role"
+                size="small"
+                :type="getRoleTagType(role)"
+                class="role-tag"
+              >
+                {{ role }}
+              </el-tag>
+              <span v-if="!row.roleNames?.length" class="empty-text">未分配</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="55" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="最后登录" width="160">
+        <el-table-column label="最后登录" width="180">
           <template #default="{ row }">
-            <div v-if="row.lastLoginAt">
-              <div>{{ formatDate(row.lastLoginAt) }}</div>
-              <div class="sub-text">{{ row.lastLoginIp }}</div>
+            <div v-if="row.lastLoginAt" class="login-info">
+              <div class="login-time">{{ formatDate(row.lastLoginAt) }}</div>
+              <div class="login-ip">IP: {{ row.lastLoginIp || '-' }}</div>
             </div>
-            <span v-else>-</span>
+            <span v-else class="empty-text">从未登录</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -363,6 +376,13 @@ const getStatusType = (status: string) => {
   return map[status] || 'info'
 }
 
+// 获取角色标签类型
+const getRoleTagType = (role: string) => {
+  if (role.includes('超级') || role.includes('platform')) return 'danger'
+  if (role.includes('管理') || role.includes('admin')) return 'warning'
+  return ''
+}
+
 // 获取状态文本
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
@@ -484,11 +504,11 @@ const handleCommand = async (command: string, row: UserResponse) => {
 // 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return
-  
+
   try {
     await formRef.value.validate()
     submitLoading.value = true
-    
+
     if (isEdit.value) {
       await userApi.update(formData.id, {
         nickname: formData.nickname,
@@ -504,7 +524,7 @@ const handleSubmit = async () => {
         phone: formData.phone,
       })
     }
-    
+
     ElMessage.success(isEdit.value ? '用户更新成功' : '用户创建成功')
     dialogVisible.value = false
     fetchUserList()
@@ -518,7 +538,7 @@ const handleSubmit = async () => {
 // 保存角色
 const saveRoles = async () => {
   if (!currentUser.value) return
-  
+
   roleLoading.value = true
   try {
     await userApi.assignRoles(currentUser.value.id, {
@@ -581,6 +601,12 @@ const copyPassword = () => {
   margin-bottom: 16px;
 }
 
+/* 表格列间距 */
+:deep(.el-table .cell) {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
 /* 用户信息 */
 .user-info {
   display: flex;
@@ -606,6 +632,38 @@ const copyPassword = () => {
 .sub-text {
   font-size: 12px;
   color: #999;
+}
+
+/* 角色标签 */
+.role-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.role-tag {
+  border-radius: 4px;
+}
+
+/* 登录信息 */
+.login-info {
+  line-height: 1.5;
+}
+
+.login-time {
+  font-size: 13px;
+  color: #606266;
+}
+
+.login-ip {
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 空文本 */
+.empty-text {
+  color: #c0c4cc;
+  font-size: 13px;
 }
 
 /* 分页 */

@@ -36,8 +36,8 @@ public class AppController {
      */
     @GetMapping("/list")
     public ApiResponse<PageData<AppInfoResponse>> listApps(AppQueryRequest request) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        PageData<AppInfoResponse> pageData = appService.listApps(tenantId, request);
+        // 租户ID由多租户拦截器自动处理
+        PageData<AppInfoResponse> pageData = appService.listApps(request);
         return ApiResponse.success(pageData);
     }
 
@@ -88,10 +88,10 @@ public class AppController {
      */
     @PostMapping("/create")
     public ApiResponse<AppCreateResponse> createApp(@Valid @RequestBody CreateAppRequest request) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
+        // 租户ID由多租户拦截器自动处理
         String userId = UserContextHolder.getCurrentUserId();
         String username = UserContextHolder.getCurrentUsername();
-        AppCreateResponse app = appService.createApp(tenantId, userId, username, request);
+        AppCreateResponse app = appService.createApp(userId, username, request);
         return ApiResponse.success("创建成功，请妥善保管AppSecret", app);
     }
 

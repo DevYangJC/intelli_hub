@@ -10,12 +10,12 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
-        namespace: dev
+        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
         group: DEFAULT_GROUP
       config:
         server-addr: 127.0.0.1:8848
         file-extension: yml
-        namespace: dev
+        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
         group: DEFAU
 
 
@@ -62,6 +62,14 @@ mybatis-plus:
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
+
+# MyBatis-Plus 多租户配置
+intellihub:
+  mybatis:
+    tenant:
+      enabled: true
+      column: tenant_id
+      ignore-tables: []  # 治理中心所有表都需要租户隔离
 
 logging:
   level:

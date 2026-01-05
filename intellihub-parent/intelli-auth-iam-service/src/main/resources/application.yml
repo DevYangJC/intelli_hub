@@ -9,7 +9,7 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
-        namespace: dev
+        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
         group: DEFAULT_GROUP
         # 明确指定 HTTP 端口，避免网关路由到 Dubbo 端口
         metadata:
@@ -37,6 +37,15 @@ spring:
         max-idle: 8
         min-idle: 0
 
+  kafka:
+    bootstrap-servers: 192.168.200.130:9092
+    consumer:
+      group-id: governance-call-log-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: true
+      auto-commit-interval: 1000
 # MyBatis Plus 配置
 mybatis-plus:
   configuration:
@@ -91,24 +100,18 @@ intellihub:
       default-tenant-id: "2"    # 默认租户ID
       default-role-id: "5"      # 默认角色ID（普通用户）
 
-    # 多租户配置
+  # MyBatis-Plus 多租户配置（使用 mybatis-helper-spring-boot-starter）
+  mybatis:
     tenant:
       enabled: true
-      ignore-tenant-tables:
-        - sys_tenant
-        - sys_tenant_user
-        - sys_role
-        - sys_permission
-        - sys_menu
-        - sys_dict
-        - sys_dict_type
-        - sys_config
-        - sys_region
-        - sys_log
-        - sys_online_user
-        - sys_quartz_job
-        - sys_quartz_log
-        - flyway_schema_history
+      column: tenant_id
+      ignore-tables:
+        # IAM 服务特有的忽略表（无 tenant_id 字段或全局共享）
+        - iam_tenant
+        - iam_permission
+        - iam_menu
+        - iam_login_log
+        - iam_role_permission
 
 # 管理端点配置
 management:
@@ -137,7 +140,10 @@ dubbo:
     base-packages: com.intellihub.auth.dubbo
   provider:
     group: ${DUBBO_GROUP:intellihub}
-
+  consumer:
+    group: ${DUBBO_GROUP:intellihub}
+    check: false
+    timeout: 5000
 # 日志配置
 logging:
   level:

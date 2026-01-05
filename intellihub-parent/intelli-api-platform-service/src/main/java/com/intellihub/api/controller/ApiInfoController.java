@@ -39,8 +39,8 @@ public class ApiInfoController {
      */
     @GetMapping("/list")
     public ApiResponse<PageData<ApiInfoResponse>> listApis(ApiQueryRequest request) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        PageData<ApiInfoResponse> pageData = apiInfoService.listApis(tenantId, request);
+        // 租户ID由多租户拦截器自动处理
+        PageData<ApiInfoResponse> pageData = apiInfoService.listApis(request);
         return ApiResponse.success(pageData);
     }
 
@@ -67,10 +67,10 @@ public class ApiInfoController {
      */
     @PostMapping("/create")
     public ApiResponse<ApiInfoResponse> createApi(@Valid @RequestBody CreateApiRequest request) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
+        // 租户ID由多租户拦截器自动处理
         String userId = UserContextHolder.getCurrentUserId();
         String username = UserContextHolder.getCurrentUsername();
-        ApiInfoResponse api = apiInfoService.createApi(tenantId, userId, username, request);
+        ApiInfoResponse api = apiInfoService.createApi(userId, username, request);
         return ApiResponse.success(ApiResponseMessage.CREATE_SUCCESS, api);
     }
 
@@ -157,10 +157,10 @@ public class ApiInfoController {
      */
     @PostMapping("/{id}/copy")
     public ApiResponse<ApiInfoResponse> copyApi(@PathVariable String id) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
+        // 租户ID由多租户拦截器自动处理
         String userId = UserContextHolder.getCurrentUserId();
         String username = UserContextHolder.getCurrentUsername();
-        ApiInfoResponse api = apiInfoService.copyApi(id, tenantId, userId, username);
+        ApiInfoResponse api = apiInfoService.copyApi(id, userId, username);
         return ApiResponse.success(ApiResponseMessage.COPY_SUCCESS, api);
     }
 

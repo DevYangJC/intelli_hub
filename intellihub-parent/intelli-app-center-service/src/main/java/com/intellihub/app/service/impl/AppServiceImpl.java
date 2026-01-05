@@ -18,6 +18,7 @@ import com.intellihub.util.AppKeyGenerator;
 import com.intellihub.constants.ResponseStatus;
 import com.intellihub.exception.BusinessException;
 import com.intellihub.page.PageData;
+import com.intellihub.context.UserContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
@@ -49,11 +50,13 @@ public class AppServiceImpl implements AppService {
 
     @Override
     @Transactional
-    public AppCreateResponse createApp(String tenantId, String userId, String username, CreateAppRequest request) {
-        // 检查应用编码是否已存在
+    public AppCreateResponse createApp(String userId, String username, CreateAppRequest request) {
+        // 获取当前租户ID（用于日志和实体设置）
+        String tenantId = UserContextHolder.getCurrentTenantId();
+        
+        // 检查应用编码是否已存在（租户条件由拦截器自动添加）
         LambdaQueryWrapper<AppInfo> codeQuery = new LambdaQueryWrapper<>();
-        codeQuery.eq(AppInfo::getTenantId, tenantId)
-                .eq(AppInfo::getCode, request.getCode());
+        codeQuery.eq(AppInfo::getCode, request.getCode());
         if (appInfoMapper.selectCount(codeQuery) > 0) {
             throw new BusinessException(ResponseStatus.BAD_REQUEST.getCode(), "应用编码已存在");
         }
@@ -65,6 +68,7 @@ public class AppServiceImpl implements AppService {
         // 创建应用实体
         AppInfo appInfo = new AppInfo();
         BeanUtils.copyProperties(request, appInfo);
+        // 设置租户ID（INSERT 时需要手动设置，拦截器只在 WHERE 条件添加）
         appInfo.setTenantId(tenantId);
         appInfo.setAppKey(appKey);
         appInfo.setAppSecret(appSecret);
@@ -98,11 +102,11 @@ public class AppServiceImpl implements AppService {
     }
 
     @Override
-    public PageData<AppInfoResponse> listApps(String tenantId, AppQueryRequest request) {
+    public PageData<AppInfoResponse> listApps(AppQueryRequest request) {
         Page<AppInfo> page = new Page<>(request.getPageNum(), request.getPageSize());
 
+        // 租户条件由 MyBatis-Plus 多租户拦截器自动添加
         LambdaQueryWrapper<AppInfo> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(AppInfo::getTenantId, tenantId);
 
         if (StringUtils.hasText(request.getName())) {
             queryWrapper.like(AppInfo::getName, request.getName());

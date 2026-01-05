@@ -70,4 +70,12 @@ public interface AppCenterDubboService {
      * @return 应用信息列表
      */
     java.util.List<AppInfoDTO> getAppInfoUpdatedAfter(String tenantId, java.time.LocalDateTime lastSyncTime);
+
+    /**
+     * 获取租户应用数量统计
+     *
+     * @param tenantId 租户ID
+     * @return 应用数量
+     */
+    int countAppsByTenantId(String tenantId);
 }

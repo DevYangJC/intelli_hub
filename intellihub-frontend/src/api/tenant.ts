@@ -34,7 +34,8 @@ export interface TenantQuotaRequest {
   maxUsers?: number
   maxApps?: number
   maxApis?: number
-  maxQps?: number
+  maxCallsPerDay?: number
+  maxCallsPerMonth?: number
 }
 
 // 租户响应
@@ -57,10 +58,8 @@ export interface TenantQuotaInfo {
   maxUsers: number
   maxApps: number
   maxApis: number
-  maxQps: number
-  usedUsers: number
-  usedApps: number
-  usedApis: number
+  maxCallsPerDay: number
+  maxCallsPerMonth: number
 }
 
 // 分页数据

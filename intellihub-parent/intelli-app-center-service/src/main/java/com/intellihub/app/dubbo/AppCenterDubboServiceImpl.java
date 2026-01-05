@@ -258,4 +258,15 @@ public class AppCenterDubboServiceImpl implements AppCenterDubboService {
         dto.setUpdatedAt(appInfo.getUpdatedAt());
         return dto;
     }
+
+    @Override
+    public int countAppsByTenantId(String tenantId) {
+        log.debug("[统计] 查询租户应用数量，tenantId={}", tenantId);
+        
+        // 使用跳过租户拦截器的方法，避免 SQL 被自动拼接 tenant_id 条件
+        int result = appInfoMapper.countByTenantIdIgnoreTenant(tenantId);
+        
+        log.debug("[统计] 租户应用数量: tenantId={}, count={}", tenantId, result);
+        return result;
+    }
 }

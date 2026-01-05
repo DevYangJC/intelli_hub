@@ -19,9 +19,12 @@ import com.intellihub.auth.mapper.IamUserRoleMapper;
 import com.intellihub.auth.service.TenantService;
 import com.intellihub.constants.ResponseStatus;
 import com.intellihub.exception.BusinessException;
+import com.intellihub.dubbo.ApiPlatformDubboService;
+import com.intellihub.dubbo.AppCenterDubboService;
 import com.intellihub.page.PageData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +50,12 @@ public class TenantServiceImpl implements TenantService {
     private final IamRoleMapper roleMapper;
     private final IamUserRoleMapper userRoleMapper;
     private final PasswordEncoder passwordEncoder;
+
+    @DubboReference(check = false)
+    private AppCenterDubboService appCenterDubboService;
+
+    @DubboReference(check = false)
+    private ApiPlatformDubboService apiPlatformDubboService;
 
     @Override
     public PageData<TenantResponse> listTenants(TenantQueryRequest request) {
@@ -269,6 +278,34 @@ public class TenantServiceImpl implements TenantService {
         userWrapper.eq(IamUser::getTenantId, tenant.getId());
         Long userCount = userMapper.selectCount(userWrapper);
 
+        // 通过 Dubbo 获取应用数和API数
+        int appCount = 0;
+        int apiCount = 0;
+        long todayCalls = 0L;
+        
+        try {
+            if (appCenterDubboService != null) {
+                appCount = appCenterDubboService.countAppsByTenantId(tenant.getId());
+            }
+        } catch (Exception e) {
+            log.warn("[租户统计] 获取应用数量失败: tenantId={}, error={}", tenant.getId(), e.getMessage());
+        }
+        
+        try {
+            if (apiPlatformDubboService != null) {
+                apiCount = apiPlatformDubboService.countApisByTenantId(tenant.getId());
+                todayCalls = apiPlatformDubboService.countTodayCallsByTenantId(tenant.getId());
+            }
+        } catch (Exception e) {
+            log.warn("[租户统计] 获取API统计失败: tenantId={}, error={}", tenant.getId(), e.getMessage());
+        }
+
+        // 计算使用率百分比
+        Double userUsagePercent = calculatePercent(userCount.intValue(), tenant.getMaxUsers());
+        Double appUsagePercent = calculatePercent(appCount, tenant.getMaxApps());
+        Double apiUsagePercent = calculatePercent(apiCount, tenant.getMaxApis());
+        Double todayCallsPercent = calculatePercent(todayCalls, tenant.getMaxCallsPerDay());
+
         return TenantResponse.builder()
                 .id(tenant.getId())
                 .name(tenant.getName())
@@ -285,9 +322,13 @@ public class TenantServiceImpl implements TenantService {
                         .build())
                 .usage(TenantResponse.TenantUsageInfo.builder()
                         .userCount(userCount.intValue())
-                        .appCount(0)
-                        .apiCount(0)
-                        .todayCalls(0L)
+                        .appCount(appCount)
+                        .apiCount(apiCount)
+                        .todayCalls(todayCalls)
+                        .userUsagePercent(userUsagePercent)
+                        .appUsagePercent(appUsagePercent)
+                        .apiUsagePercent(apiUsagePercent)
+                        .todayCallsPercent(todayCallsPercent)
                         .build())
                 .contactName(tenant.getContactName())
                 .contactPhone(tenant.getContactPhone())
@@ -295,5 +336,20 @@ public class TenantServiceImpl implements TenantService {
                 .createdAt(tenant.getCreatedAt())
                 .updatedAt(tenant.getUpdatedAt())
                 .build();
+    }
+
+    /**
+     * 计算使用率百分比
+     */
+    private Double calculatePercent(Number used, Number max) {
+        if (max == null || max.doubleValue() <= 0) {
+            return 0.0;
+        }
+        if (used == null) {
+            return 0.0;
+        }
+        double percent = (used.doubleValue() / max.doubleValue()) * 100;
+        // 保留两位小数，最大100%
+        return Math.min(100.0, Math.round(percent * 100) / 100.0);
     }
 }

@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi, type LoginRequest, type RegisterRequest, type UserInfo } from '@/api/auth'
 
-export type UserRole = 'platform_admin' | 'tenant_admin' | 'api_developer' | 'api_consumer' | 'user'
+// 核心角色类型（与后端 RoleEnum 对应）
+export type UserRole = 'platform_admin' | 'tenant_admin' | 'user'
 
 export interface User {
   id: string
@@ -42,9 +43,10 @@ export const useAuthStore = defineStore('auth', () => {
   // 计算属性
   const isAuthenticated = computed(() => !!token.value && !!user.value)
   const userRole = computed(() => user.value?.role || 'user')
-  const isAdmin = computed(() => userRole.value === 'platform_admin')
+  const userPermissions = computed(() => user.value?.permissions || [])
+  const isPlatformAdmin = computed(() => userRole.value === 'platform_admin')
   const isTenantAdmin = computed(() => userRole.value === 'tenant_admin')
-  const isDeveloper = computed(() => userRole.value === 'api_developer')
+  const isAdmin = computed(() => isPlatformAdmin.value || isTenantAdmin.value)
 
   // 登录
   const login = async (loginData: LoginRequest): Promise<void> => {
@@ -191,10 +193,24 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 检查权限
-  const hasPermission = (requiredRoles: string[] | UserRole[]) => {
+  // 检查权限码（基于后端返回的 permissions 数组）
+  const hasPermission = (permissionCode: string): boolean => {
     if (!isAuthenticated.value) return false
-    return requiredRoles.includes(userRole.value)
+    // 超级管理员拥有所有权限
+    if (isPlatformAdmin.value) return true
+    return userPermissions.value.includes(permissionCode)
+  }
+
+  // 检查是否拥有任一权限
+  const hasAnyPermission = (permissionCodes: string[]): boolean => {
+    if (!isAuthenticated.value) return false
+    if (isPlatformAdmin.value) return true
+    return permissionCodes.some(code => userPermissions.value.includes(code))
+  }
+
+  // 检查角色（兼容旧代码）
+  const hasRole = (role: UserRole): boolean => {
+    return userRole.value === role
   }
 
   return {
@@ -207,9 +223,10 @@ export const useAuthStore = defineStore('auth', () => {
     // 计算属性
     isAuthenticated,
     userRole,
-    isAdmin,
+    userPermissions,
+    isPlatformAdmin,
     isTenantAdmin,
-    isDeveloper,
+    isAdmin,
 
     // 方法
     login,
@@ -220,6 +237,8 @@ export const useAuthStore = defineStore('auth', () => {
     clearAuth,
     updateUser,
     initAuth,
-    hasPermission
+    hasPermission,
+    hasAnyPermission,
+    hasRole
   }
 })

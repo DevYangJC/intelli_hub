@@ -302,4 +302,26 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
         return dto;
     }
 
+    @Override
+    public int countApisByTenantId(String tenantId) {
+        log.debug("[统计] 查询租户API数量，tenantId={}", tenantId);
+        
+        // 使用跳过租户拦截器的方法，避免 SQL 被自动拼接 tenant_id 条件
+        int result = apiInfoMapper.countByTenantIdIgnoreTenant(tenantId);
+        
+        log.debug("[统计] 租户API数量: tenantId={}, count={}", tenantId, result);
+        return result;
+    }
+
+    @Override
+    public long countTodayCallsByTenantId(String tenantId) {
+        log.debug("[统计] 查询租户今日调用次数，tenantId={}", tenantId);
+        
+        // 使用跳过租户拦截器的方法，避免 SQL 被自动拼接 tenant_id 条件
+        long totalCalls = apiInfoMapper.sumTodayCallsByTenantIdIgnoreTenant(tenantId);
+        
+        log.debug("[统计] 租户今日调用次数: tenantId={}, totalCalls={}", tenantId, totalCalls);
+        return totalCalls;
+    }
+
 }

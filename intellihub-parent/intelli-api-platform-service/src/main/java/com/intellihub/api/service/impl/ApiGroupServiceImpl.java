@@ -9,6 +9,7 @@ import com.intellihub.api.mapper.ApiInfoMapper;
 import com.intellihub.api.service.ApiGroupService;
 import com.intellihub.constants.ResponseStatus;
 import com.intellihub.exception.BusinessException;
+import com.intellihub.context.UserContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -32,10 +33,10 @@ public class ApiGroupServiceImpl implements ApiGroupService {
     private final ApiInfoMapper apiInfoMapper;
 
     @Override
-    public List<ApiGroupResponse> listGroups(String tenantId) {
+    public List<ApiGroupResponse> listGroups() {
+        // 租户条件由拦截器自动添加
         List<ApiGroup> groups = apiGroupMapper.selectList(
                 new LambdaQueryWrapper<ApiGroup>()
-                        .eq(ApiGroup::getTenantId, tenantId)
                         .orderByAsc(ApiGroup::getSort)
         );
 
@@ -54,21 +55,22 @@ public class ApiGroupServiceImpl implements ApiGroupService {
     }
 
     @Override
-    public ApiGroupResponse createGroup(String tenantId, String userId, String name, String code, String description, String color, String status) {
-        // 检查编码是否已存在
+    public ApiGroupResponse createGroup(String userId, String name, String code, String description, String color, String status) {
+        // 获取当前租户ID
+        String tenantId = UserContextHolder.getCurrentTenantId();
+        
+        // 检查编码是否已存在（租户条件由拦截器自动添加）
         ApiGroup existing = apiGroupMapper.selectOne(
                 new LambdaQueryWrapper<ApiGroup>()
-                        .eq(ApiGroup::getTenantId, tenantId)
                         .eq(ApiGroup::getCode, code)
         );
         if (existing != null) {
             throw new BusinessException(ResponseStatus.DATA_EXISTS.getCode(), "分组编码已存在");
         }
 
-        // 获取最大排序值
+        // 获取最大排序值（租户条件由拦截器自动添加）
         Integer maxSort = apiGroupMapper.selectList(
                 new LambdaQueryWrapper<ApiGroup>()
-                        .eq(ApiGroup::getTenantId, tenantId)
                         .orderByDesc(ApiGroup::getSort)
                         .last("LIMIT 1")
         ).stream().findFirst().map(ApiGroup::getSort).orElse(0);

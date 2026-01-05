@@ -79,4 +79,20 @@ public interface ApiPlatformDubboService {
      * @return API 信息列表
      */
     List<ApiInfoDTO> getApiInfoUpdatedAfter(Long tenantId, java.time.LocalDateTime lastSyncTime);
+
+    /**
+     * 获取租户API数量统计
+     *
+     * @param tenantId 租户ID
+     * @return API数量
+     */
+    int countApisByTenantId(String tenantId);
+
+    /**
+     * 获取租户今日API调用次数统计
+     *
+     * @param tenantId 租户ID
+     * @return 今日调用次数
+     */
+    long countTodayCallsByTenantId(String tenantId);
 }

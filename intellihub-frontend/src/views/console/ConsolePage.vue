@@ -10,13 +10,13 @@
         >
           <div class="menu-label">平台管理</div>
           
-          <el-sub-menu index="api">
+          <el-sub-menu index="api" v-if="hasPermission('api:list')">
             <template #title>
               <el-icon><Connection /></el-icon>
               <span>API管理</span>
             </template>
             <el-menu-item index="api-list">API列表</el-menu-item>
-            <el-menu-item index="api-create">创建API</el-menu-item>
+            <el-menu-item index="api-create" v-if="hasPermission('api:create')">创建API</el-menu-item>
             <el-menu-item index="api-groups">API分组</el-menu-item>
           </el-sub-menu>
 
@@ -30,57 +30,63 @@
             <el-menu-item index="gateway-ratelimit">限流策略</el-menu-item>
           </el-sub-menu>
 
-          <el-menu-item index="app-list">
+          <el-menu-item index="app-list" v-if="hasPermission('app:list')">
             <el-icon><Grid /></el-icon>
             <span>应用管理</span>
           </el-menu-item>
 
-          <div class="menu-divider"></div>
-          <div class="menu-label">监控统计</div>
+          <template v-if="hasAnyPermission(['monitor:view', 'monitor:alert', 'system:log'])">
+            <div class="menu-divider"></div>
+            <div class="menu-label">监控统计</div>
 
-          <el-menu-item index="logs">
-            <el-icon><Tickets /></el-icon>
-            <span>调用日志</span>
-          </el-menu-item>
+            <el-menu-item index="logs" v-if="hasPermission('system:log')">
+              <el-icon><Tickets /></el-icon>
+              <span>调用日志</span>
+            </el-menu-item>
 
-          <el-sub-menu index="alert">
-            <template #title>
-              <el-icon><Bell /></el-icon>
-              <span>告警管理</span>
-            </template>
-            <el-menu-item index="alert-rules">告警规则</el-menu-item>
-            <el-menu-item index="alert-records">告警历史</el-menu-item>
-          </el-sub-menu>
+            <el-sub-menu index="alert" v-if="hasPermission('monitor:alert')">
+              <template #title>
+                <el-icon><Bell /></el-icon>
+                <span>告警管理</span>
+              </template>
+              <el-menu-item index="alert-rules">告警规则</el-menu-item>
+              <el-menu-item index="alert-records">告警历史</el-menu-item>
+            </el-sub-menu>
+          </template>
 
-          <div class="menu-divider"></div>
-          <div class="menu-label">系统设置</div>
+          <template v-if="hasAnyPermission(['tenant:list', 'user:list', 'system:config'])">
+            <div class="menu-divider"></div>
+            <div class="menu-label">系统设置</div>
 
-          <el-sub-menu index="tenant">
-            <template #title>
-              <el-icon><OfficeBuilding /></el-icon>
-              <span>租户管理</span>
-            </template>
-            <el-menu-item index="tenant-list">租户列表</el-menu-item>
-            <el-menu-item index="tenant-quota">配额管理</el-menu-item>
-          </el-sub-menu>
+            <!-- 租户管理（仅超级管理员） -->
+            <el-sub-menu index="tenant" v-if="hasPermission('tenant:list')">
+              <template #title>
+                <el-icon><OfficeBuilding /></el-icon>
+                <span>租户管理</span>
+              </template>
+              <el-menu-item index="tenant-list">租户列表</el-menu-item>
+            </el-sub-menu>
 
-          <el-sub-menu index="users">
-            <template #title>
-              <el-icon><User /></el-icon>
-              <span>用户管理</span>
-            </template>
-            <el-menu-item index="users-list">用户列表</el-menu-item>
-            <el-menu-item index="users-roles">角色权限</el-menu-item>
-          </el-sub-menu>
+            <!-- 用户管理 -->
+            <el-sub-menu index="users" v-if="hasPermission('user:list')">
+              <template #title>
+                <el-icon><User /></el-icon>
+                <span>用户管理</span>
+              </template>
+              <el-menu-item index="users-list">用户列表</el-menu-item>
+              <el-menu-item index="users-roles">角色权限</el-menu-item>
+            </el-sub-menu>
 
-          <el-sub-menu index="system">
-            <template #title>
-              <el-icon><Setting /></el-icon>
-              <span>系统设置</span>
-            </template>
-            <el-menu-item index="settings">基础设置</el-menu-item>
-            <el-menu-item index="announcements">公告管理</el-menu-item>
-          </el-sub-menu>
+            <!-- 系统设置（仅超级管理员） -->
+            <el-sub-menu index="system" v-if="hasPermission('system:config')">
+              <template #title>
+                <el-icon><Setting /></el-icon>
+                <span>系统设置</span>
+              </template>
+              <el-menu-item index="settings">基础设置</el-menu-item>
+              <el-menu-item index="announcements" v-if="hasPermission('system:announcement')">公告管理</el-menu-item>
+            </el-sub-menu>
+          </template>
         </el-menu>
       </aside>
 
@@ -114,11 +120,17 @@ import {
   Bell,
 } from '@element-plus/icons-vue'
 import DashboardPage from './DashboardPage.vue'
+import { useAuthStore } from '@/stores/auth'
 
 // 用户信息
+const authStore = useAuthStore()
 const userName = ref('张三')
 const userRole = ref('开发者')
 const userInitial = computed(() => userName.value.charAt(0))
+
+// 权限检查快捷方法
+const hasPermission = (code: string) => authStore.hasPermission(code)
+const hasAnyPermission = (codes: string[]) => authStore.hasAnyPermission(codes)
 
 const router = useRouter()
 const route = useRoute()
@@ -147,7 +159,6 @@ const handleMenuSelect = (index: string) => {
     'gateway-ratelimit': '/console/gateway/ratelimit',
     'app-list': '/console/app/list',
     'tenant-list': '/console/tenant/list',
-    'tenant-quota': '/console/tenant/quota',
     'users-list': '/console/users/list',
     'users-roles': '/console/users/roles',
     'logs': '/console/logs',

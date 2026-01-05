@@ -14,6 +14,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import com.intellihub.context.UserContextHolder;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -108,15 +109,13 @@ public class CallLogService {
 
     /**
      * 分页查询调用日志
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    public PageData<ApiCallLog> pageCallLogs(String tenantId, String apiId, String apiPath, String appId,
+    public PageData<ApiCallLog> pageCallLogs(String apiId, String apiPath, String appId,
                                           LocalDateTime startTime, LocalDateTime endTime,
                                           Boolean success, int page, int size) {
+        // 租户条件由拦截器自动添加
         LambdaQueryWrapper<ApiCallLog> wrapper = new LambdaQueryWrapper<>();
-        
-        if (StringUtils.hasText(tenantId)) {
-            wrapper.eq(ApiCallLog::getTenantId, tenantId);
-        }
         if (StringUtils.hasText(apiId)) {
             wrapper.eq(ApiCallLog::getApiId, apiId);
         }
@@ -144,7 +143,8 @@ public class CallLogService {
     /**
      * 获取实时调用数
      */
-    public Long getRealtimeCount(String tenantId, String apiPath) {
+    public Long getRealtimeCount(String apiPath) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
         String key = RedisKeyConstants.buildStatsTotalKey(tenantId, apiPath, hour);
         String value = redisTemplate.opsForValue().get(key);
@@ -154,7 +154,8 @@ public class CallLogService {
     /**
      * 获取全局实时调用数
      */
-    public Long getGlobalRealtimeCount(String tenantId) {
+    public Long getGlobalRealtimeCount() {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
         String key = RedisKeyConstants.buildStatsTotalKey(tenantId, "global", hour);
         String value = redisTemplate.opsForValue().get(key);

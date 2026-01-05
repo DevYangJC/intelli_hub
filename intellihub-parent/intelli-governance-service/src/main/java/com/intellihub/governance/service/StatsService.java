@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import com.intellihub.context.UserContextHolder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -48,16 +49,17 @@ public class StatsService {
 
     /**
      * 获取统计概览
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    public StatsOverviewDTO getOverview(String tenantId) {
+    public StatsOverviewDTO getOverview() {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         StatsOverviewDTO overview = new StatsOverviewDTO();
         LocalDate today = LocalDate.now();
         LocalDate yesterday = today.minusDays(1);
 
-        // 查询今日统计
+        // 查询今日统计（租户条件由拦截器自动添加）
         LambdaQueryWrapper<ApiCallStatsDaily> todayWrapper = new LambdaQueryWrapper<>();
-        todayWrapper.eq(ApiCallStatsDaily::getTenantId, tenantId)
-                .eq(ApiCallStatsDaily::getStatDate, today);
+        todayWrapper.eq(ApiCallStatsDaily::getStatDate, today);
         List<ApiCallStatsDaily> todayStats = dailyMapper.selectList(todayWrapper);
 
         long todayTotal = 0, todaySuccess = 0, todayFail = 0;
@@ -80,10 +82,9 @@ public class StatsService {
         overview.setTodaySuccessRate(todayTotal > 0 ? (todaySuccess * 100.0 / todayTotal) : 100.0);
         overview.setTodayAvgLatency(latencyCount > 0 ? (int) (latencySum / latencyCount) : 0);
 
-        // 查询昨日统计
+        // 查询昨日统计（租户条件由拦截器自动添加）
         LambdaQueryWrapper<ApiCallStatsDaily> yesterdayWrapper = new LambdaQueryWrapper<>();
-        yesterdayWrapper.eq(ApiCallStatsDaily::getTenantId, tenantId)
-                .eq(ApiCallStatsDaily::getStatDate, yesterday);
+        yesterdayWrapper.eq(ApiCallStatsDaily::getStatDate, yesterday);
         List<ApiCallStatsDaily> yesterdayStats = dailyMapper.selectList(yesterdayWrapper);
 
         long yesterdayTotal = 0;
@@ -100,7 +101,7 @@ public class StatsService {
         }
 
         // 当前 QPS（从分钟级 Redis Key 获取）
-        double currentQps = getQps(tenantId);
+        double currentQps = getQps();
         overview.setCurrentQps(currentQps);
 
         return overview;
@@ -108,33 +109,41 @@ public class StatsService {
 
     /**
      * 获取调用趋势（小时维度）
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    public StatsTrendDTO getHourlyTrend(String tenantId, LocalDateTime startTime, LocalDateTime endTime) {
+    public StatsTrendDTO getHourlyTrend(LocalDateTime startTime, LocalDateTime endTime) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         List<ApiCallStatsHourly> stats = hourlyMapper.selectTrend(tenantId, startTime, endTime);
         return buildTrendDTO(stats);
     }
 
     /**
      * 获取调用趋势（天维度）
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    public StatsTrendDTO getDailyTrend(String tenantId, LocalDate startDate, LocalDate endDate) {
+    public StatsTrendDTO getDailyTrend(LocalDate startDate, LocalDate endDate) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         List<ApiCallStatsDaily> stats = dailyMapper.selectTrend(tenantId, startDate, endDate);
         return buildDailyTrendDTO(stats);
     }
 
     /**
      * 获取单个API的统计趋势（小时维度）
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    public StatsTrendDTO getApiHourlyTrend(String tenantId, String apiPath, 
+    public StatsTrendDTO getApiHourlyTrend(String apiPath, 
                                            LocalDateTime startTime, LocalDateTime endTime) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         List<ApiCallStatsHourly> stats = hourlyMapper.selectApiTrend(tenantId, apiPath, startTime, endTime);
         return buildTrendDTO(stats);
     }
 
     /**
      * 获取Top N API
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    public List<ApiCallStatsDaily> getTopApis(String tenantId, int limit) {
+    public List<ApiCallStatsDaily> getTopApis(int limit) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         return dailyMapper.selectTopApis(tenantId, LocalDate.now(), limit);
     }
 
@@ -184,7 +193,8 @@ public class StatsService {
      * 字段: totalCount, successCount, failCount, latencySum
      * </p>
      */
-    public Map<String, Object> getRealtimeStats(String tenantId, String apiId) {
+    public Map<String, Object> getRealtimeStats(String apiId) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         Map<String, Object> stats = new HashMap<>();
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
         
@@ -229,7 +239,8 @@ public class StatsService {
     /**
      * 获取告警相关的请求详情列表
      */
-    public List<String> getAlertRequests(String tenantId, String hour) {
+    public List<String> getAlertRequests(String hour) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         String requestsKey = RedisKeyConstants.buildAlertRequestsKey(tenantId, hour);
         log.info("[实时统计] 获取请求列表 Key: {}", requestsKey);
         
@@ -241,7 +252,8 @@ public class StatsService {
     /**
      * 删除告警相关的Redis数据（告警触发后调用，避免重复告警）
      */
-    public void deleteAlertData(String tenantId, String hour) {
+    public void deleteAlertData(String hour) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         String statsKey = RedisKeyConstants.buildAlertStatsKey(tenantId, hour);
         String requestsKey = RedisKeyConstants.buildAlertRequestsKey(tenantId, hour);
         
@@ -269,7 +281,8 @@ public class StatsService {
      * minute 格式: yyyyMMddHHmm
      * </p>
      */
-    public double getQps(String tenantId) {
+    public double getQps() {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         // 获取上一分钟的时间标识
         LocalDateTime lastMinute = LocalDateTime.now().minusMinutes(1);
         String minute = lastMinute.format(MINUTE_FORMATTER);
@@ -302,7 +315,8 @@ public class StatsService {
      * @param apiId    API ID
      * @return API统计详情
      */
-    public ApiStatsDetailDTO getApiStatsDetail(String tenantId, String apiId) {
+    public ApiStatsDetailDTO getApiStatsDetail(String apiId) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         ApiStatsDetailDTO dto = new ApiStatsDetailDTO();
         
         LocalDateTime now = LocalDateTime.now();
@@ -328,10 +342,9 @@ public class StatsService {
         long yesterdaySuccess = 0;
         int yesterdayAvgLatency = 0;
         
-        // 尝试从预聚合表获取昨日数据
+        // 尝试从预聚合表获取昨日数据（租户条件由拦截器自动添加）
         LambdaQueryWrapper<ApiCallStatsDaily> dailyWrapper = new LambdaQueryWrapper<>();
-        dailyWrapper.eq(ApiCallStatsDaily::getTenantId, tenantId)
-                   .eq(ApiCallStatsDaily::getStatDate, yesterday);
+        dailyWrapper.eq(ApiCallStatsDaily::getStatDate, yesterday);
         List<ApiCallStatsDaily> yesterdayDailyStats = dailyMapper.selectList(dailyWrapper);
         
         if (!yesterdayDailyStats.isEmpty()) {
@@ -352,7 +365,7 @@ public class StatsService {
         }
         
         // 3. 获取历史总调用次数（从预聚合表汇总）
-        Long totalCalls = getTotalCallsFromDailyStats(tenantId, apiId);
+        Long totalCalls = getTotalCallsFromDailyStats(apiId);
         totalCalls = totalCalls + todayCalls; // 加上今日实时数据
         
         // 设置基本统计
@@ -384,9 +397,9 @@ public class StatsService {
     /**
      * 从预聚合表获取历史总调用次数
      */
-    private Long getTotalCallsFromDailyStats(String tenantId, String apiId) {
+    private Long getTotalCallsFromDailyStats(String apiId) {
+        // 租户条件由拦截器自动添加
         LambdaQueryWrapper<ApiCallStatsDaily> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApiCallStatsDaily::getTenantId, tenantId);
         // 注意：apiId可能需要通过apiPath关联，这里简化处理
         List<ApiCallStatsDaily> stats = dailyMapper.selectList(wrapper);
         

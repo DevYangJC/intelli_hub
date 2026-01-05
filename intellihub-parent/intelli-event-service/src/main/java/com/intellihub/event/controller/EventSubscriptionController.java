@@ -25,16 +25,12 @@ public class EventSubscriptionController {
 
     @GetMapping("/list")
     public ApiResponse<Page<EventSubscription>> list(
-            @RequestParam(required = false) String tenantId,
             @RequestParam(required = false) String eventCode,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
-        
+        // 租户ID由多租户拦截器自动处理
         LambdaQueryWrapper<EventSubscription> queryWrapper = new LambdaQueryWrapper<>();
-        if (tenantId != null) {
-            queryWrapper.eq(EventSubscription::getTenantId, tenantId);
-        }
         if (eventCode != null) {
             queryWrapper.eq(EventSubscription::getEventCode, eventCode);
         }

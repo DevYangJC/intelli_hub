@@ -32,10 +32,9 @@ public class UserController {
      * 获取用户列表
      */
     @GetMapping
-    public ApiResponse<PageData<UserInfoResponse>> listUsers(
-            @RequestHeader("X-Tenant-Id") String tenantId,
-            UserQueryRequest request) {
-        PageData<UserInfoResponse> pageData = userService.listUsers(tenantId, request);
+    public ApiResponse<PageData<UserInfoResponse>> listUsers(UserQueryRequest request) {
+        // 租户ID由多租户拦截器自动处理
+        PageData<UserInfoResponse> pageData = userService.listUsers(request);
         return ApiResponse.success(pageData);
     }
 
@@ -43,10 +42,9 @@ public class UserController {
      * 创建用户
      */
     @PostMapping
-    public ApiResponse<UserInfoResponse> createUser(
-            @RequestHeader("X-Tenant-Id") String tenantId,
-            @Valid @RequestBody CreateUserRequest request) {
-        UserInfoResponse user = userService.createUser(tenantId, request);
+    public ApiResponse<UserInfoResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+        // 租户ID由多租户拦截器自动处理
+        UserInfoResponse user = userService.createUser(request);
         return ApiResponse.success("创建成功", user);
     }
 

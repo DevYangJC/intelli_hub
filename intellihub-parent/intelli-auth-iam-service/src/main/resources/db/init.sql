@@ -183,40 +183,45 @@ INSERT INTO `iam_tenant` (`id`, `name`, `code`, `description`, `status`, `max_us
 ('1', '平台管理', 'platform', '平台管理租户', 'active', 1000, 100, 1000, '系统管理员', 'admin@intellihub.com'),
 ('2', '示例租户', 'demo', '示例租户', 'active', 100, 10, 100, '张三', 'zhangsan@example.com');
 
--- 2. 创建系统角色
+-- 2. 创建系统核心角色（3个核心角色）
 INSERT INTO `iam_role` (`id`, `tenant_id`, `code`, `name`, `description`, `is_system`, `sort`, `status`) VALUES
-('1', NULL, 'platform_admin', '平台管理员', '平台超级管理员，拥有所有权限', 1, 1, 'active'),
-('2', NULL, 'tenant_admin', '租户管理员', '租户管理员，管理本租户内的用户和应用', 1, 2, 'active'),
-('3', NULL, 'api_developer', 'API开发者', '创建和维护API', 1, 3, 'active'),
-('4', NULL, 'api_consumer', 'API调用方', '使用API进行开发', 1, 4, 'active'),
-('5', NULL, 'user', '普通用户', '普通用户，只能查看权限内的数据', 1, 5, 'active');
+('1', NULL, 'platform_admin', '超级管理员', '跨租户全权限，可管理所有租户、用户、系统配置', 1, 1, 'active'),
+('2', NULL, 'tenant_admin', '租户管理员', '本租户管理权限，可管理本租户内的API、应用、用户', 1, 2, 'active'),
+('3', NULL, 'user', '普通用户', '基础使用权限，可浏览API市场、使用已授权的API', 1, 3, 'active');
 
--- 3. 创建管理员用户 (密码: admin123，使用BCrypt加密)
--- BCrypt加密后的密码: $2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi
+-- 3. 创建示例用户 (密码: admin123，使用BCrypt加密)
+-- BCrypt加密后的密码: $2a$10$SxdXvMth5xuhQoe6NLIZVOBQhtq.3/US4eVfjD/0t4bwO3yVRV15u
 INSERT INTO `iam_user` (`id`, `tenant_id`, `username`, `password`, `nickname`, `email`, `status`) VALUES
-('1', '1', 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '系统管理员', 'admin@intellihub.com', 'active'),
-('2', '2', 'demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '演示用户', 'demo@example.com', 'active');
+('1', '1', 'admin', '$2a$10$SxdXvMth5xuhQoe6NLIZVOBQhtq.3/US4eVfjD/0t4bwO3yVRV15u', '超级管理员', 'admin@intellihub.com', 'active'),
+('2', '2', 'tenant_admin', '$2a$10$SxdXvMth5xuhQoe6NLIZVOBQhtq.3/US4eVfjD/0t4bwO3yVRV15u', '租户管理员', 'tenant@example.com', 'active'),
+('3', '2', 'user', '$2a$10$SxdXvMth5xuhQoe6NLIZVOBQhtq.3/US4eVfjD/0t4bwO3yVRV15u', '普通用户', 'user@example.com', 'active');
 
 -- 4. 分配角色
 INSERT INTO `iam_user_role` (`user_id`, `role_id`) VALUES
-('1', '1'),  -- admin -> platform_admin
-('2', '3');  -- demo -> api_developer
+('1', '1'),  -- admin -> platform_admin (超级管理员)
+('2', '2'),  -- tenant_admin -> tenant_admin (租户管理员)
+('3', '3');  -- user -> user (普通用户)
 
 -- 5. 创建基础菜单
 INSERT INTO `iam_menu` (`id`, `parent_id`, `name`, `path`, `component`, `icon`, `permission`, `type`, `visible`, `sort`) VALUES
--- 首页
+-- 首页（所有用户可见）
 ('1', NULL, '首页', '/', 'HomePage', 'HomeFilled', NULL, 1, 1, 1),
--- API市场
-('2', NULL, 'API市场', '/api-market', 'ApiMarketPage', 'Shop', NULL, 1, 1, 2),
--- 控制台
-('3', NULL, '控制台', '/console', 'ConsolePage', 'Monitor', NULL, 1, 1, 3),
+-- API市场（所有用户可见）
+('2', NULL, 'API市场', '/api-market', 'ApiMarketPage', 'Shop', 'market:view', 1, 1, 2),
+-- 控制台（管理员可见）
+('3', NULL, '控制台', '/console', 'ConsolePage', 'Monitor', 'api:list', 1, 1, 3),
 ('31', '3', 'API管理', '/console/api/list', 'ApiListPage', 'Document', 'api:list', 1, 1, 1),
 ('32', '3', '应用管理', '/console/app/list', 'AppListPage', 'Grid', 'app:list', 1, 1, 2),
 ('33', '3', '租户管理', '/console/tenant/list', 'TenantListPage', 'OfficeBuilding', 'tenant:list', 1, 1, 3),
 ('34', '3', '用户管理', '/console/users/list', 'UserListPage', 'User', 'user:list', 1, 1, 4),
--- 监控中心
-('4', NULL, '监控中心', '/monitor', 'MonitorPage', 'DataLine', NULL, 1, 1, 4),
--- 开发文档
+-- 监控中心（管理员可见）
+('4', NULL, '监控中心', '/monitor', 'MonitorPage', 'DataLine', 'monitor:view', 1, 1, 4),
+-- 系统设置（仅超级管理员可见）
+('6', NULL, '系统设置', '/system', 'SystemPage', 'Setting', 'system:config', 1, 1, 6),
+('61', '6', '系统配置', '/system/config', 'SystemConfigPage', 'Tools', 'system:config', 1, 1, 1),
+('62', '6', '公告管理', '/system/announcement', 'AnnouncementPage', 'Bell', 'system:announcement', 1, 1, 2),
+('63', '6', '日志管理', '/system/log', 'LogPage', 'Document', 'system:log', 1, 1, 3),
+-- 开发文档（所有用户可见）
 ('5', NULL, '开发文档', '/docs', 'DocsPage', 'Reading', NULL, 1, 1, 5);
 
 -- 6. 创建基础权限
@@ -232,23 +237,64 @@ INSERT INTO `iam_permission` (`id`, `code`, `name`, `group_name`, `description`,
 ('11', 'app:create', '创建应用', '应用管理', '创建新的应用', 11),
 ('12', 'app:update', '更新应用', '应用管理', '更新应用信息', 12),
 ('13', 'app:delete', '删除应用', '应用管理', '删除应用', 13),
--- 租户管理权限
-('20', 'tenant:list', '租户列表', '租户管理', '查看租户列表', 20),
-('21', 'tenant:create', '创建租户', '租户管理', '创建新的租户', 21),
-('22', 'tenant:update', '更新租户', '租户管理', '更新租户信息', 22),
 -- 用户管理权限
-('30', 'user:list', '用户列表', '用户管理', '查看用户列表', 30),
-('31', 'user:create', '创建用户', '用户管理', '创建新的用户', 31),
-('32', 'user:update', '更新用户', '用户管理', '更新用户信息', 32);
+('20', 'user:list', '用户列表', '用户管理', '查看用户列表', 20),
+('21', 'user:create', '创建用户', '用户管理', '创建新的用户', 21),
+('22', 'user:update', '更新用户', '用户管理', '更新用户信息', 22),
+('23', 'user:delete', '删除用户', '用户管理', '删除用户', 23),
+-- 租户管理权限（仅超级管理员）
+('30', 'tenant:list', '租户列表', '租户管理', '查看租户列表', 30),
+('31', 'tenant:create', '创建租户', '租户管理', '创建新的租户', 31),
+('32', 'tenant:update', '更新租户', '租户管理', '更新租户信息', 32),
+('33', 'tenant:delete', '删除租户', '租户管理', '删除租户', 33),
+-- 系统管理权限（仅超级管理员）
+('40', 'system:config', '系统配置', '系统管理', '系统配置管理', 40),
+('41', 'system:announcement', '公告管理', '系统管理', '系统公告管理', 41),
+('42', 'system:log', '日志管理', '系统管理', '系统日志查看', 42),
+-- 监控权限
+('50', 'monitor:view', '监控查看', '监控中心', '查看监控数据', 50),
+('51', 'monitor:alert', '告警管理', '监控中心', '管理告警规则', 51),
+-- API市场权限（所有用户）
+('60', 'market:view', 'API市场浏览', 'API市场', '浏览API市场', 60),
+('61', 'market:subscribe', 'API订阅', 'API市场', '订阅API', 61);
 
--- 7. 角色权限关联（平台管理员拥有所有权限）
+-- 7. 角色权限关联
+
+-- 超级管理员（platform_admin）- 拥有所有权限
 INSERT INTO `iam_role_permission` (`role_id`, `permission_id`) VALUES
+-- API管理
 ('1', '1'), ('1', '2'), ('1', '3'), ('1', '4'), ('1', '5'),
+-- 应用管理
 ('1', '10'), ('1', '11'), ('1', '12'), ('1', '13'),
-('1', '20'), ('1', '21'), ('1', '22'),
-('1', '30'), ('1', '31'), ('1', '32');
+-- 用户管理
+('1', '20'), ('1', '21'), ('1', '22'), ('1', '23'),
+-- 租户管理
+('1', '30'), ('1', '31'), ('1', '32'), ('1', '33'),
+-- 系统管理
+('1', '40'), ('1', '41'), ('1', '42'),
+-- 监控
+('1', '50'), ('1', '51'),
+-- API市场
+('1', '60'), ('1', '61');
 
--- API开发者权限
+-- 租户管理员（tenant_admin）- 本租户管理权限
 INSERT INTO `iam_role_permission` (`role_id`, `permission_id`) VALUES
-('3', '1'), ('3', '2'), ('3', '3'), ('3', '5'),
-('3', '10'), ('3', '11');
+-- API管理
+('2', '1'), ('2', '2'), ('2', '3'), ('2', '4'), ('2', '5'),
+-- 应用管理
+('2', '10'), ('2', '11'), ('2', '12'), ('2', '13'),
+-- 用户管理（本租户）
+('2', '20'), ('2', '21'), ('2', '22'), ('2', '23'),
+-- 监控
+('2', '50'), ('2', '51'),
+-- API市场
+('2', '60'), ('2', '61');
+
+-- 普通用户（user）- 基础使用权限
+INSERT INTO `iam_role_permission` (`role_id`, `permission_id`) VALUES
+-- API列表（只读）
+('3', '1'),
+-- 应用列表（只读）
+('3', '10'),
+-- API市场
+('3', '60'), ('3', '61');

@@ -39,8 +39,8 @@ public class StatsController {
      */
     @GetMapping("/overview")
     public ApiResponse<StatsOverviewDTO> getOverview() {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        StatsOverviewDTO overview = statsService.getOverview(tenantId);
+        // 租户ID由多租户拦截器自动处理
+        StatsOverviewDTO overview = statsService.getOverview();
         return ApiResponse.success(overview);
     }
 
@@ -51,8 +51,8 @@ public class StatsController {
     public ApiResponse<StatsTrendDTO> getHourlyTrend(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        StatsTrendDTO trend = statsService.getHourlyTrend(tenantId, startTime, endTime);
+        // 租户ID由多租户拦截器自动处理
+        StatsTrendDTO trend = statsService.getHourlyTrend(startTime, endTime);
         return ApiResponse.success(trend);
     }
 
@@ -63,8 +63,8 @@ public class StatsController {
     public ApiResponse<StatsTrendDTO> getDailyTrend(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        StatsTrendDTO trend = statsService.getDailyTrend(tenantId, startDate, endDate);
+        // 租户ID由多租户拦截器自动处理
+        StatsTrendDTO trend = statsService.getDailyTrend(startDate, endDate);
         return ApiResponse.success(trend);
     }
 
@@ -76,10 +76,10 @@ public class StatsController {
             @PathVariable String apiPath,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
+        // 租户ID由多租户拦截器自动处理
         // 解码路径
         String decodedPath = "/" + apiPath.replace("_", "/");
-        StatsTrendDTO trend = statsService.getApiHourlyTrend(tenantId, decodedPath, startTime, endTime);
+        StatsTrendDTO trend = statsService.getApiHourlyTrend(decodedPath, startTime, endTime);
         return ApiResponse.success(trend);
     }
 
@@ -89,8 +89,8 @@ public class StatsController {
     @GetMapping("/top")
     public ApiResponse<List<ApiCallStatsDaily>> getTopApis(
             @RequestParam(defaultValue = "10") int limit) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        List<ApiCallStatsDaily> topApis = statsService.getTopApis(tenantId, limit);
+        // 租户ID由多租户拦截器自动处理
+        List<ApiCallStatsDaily> topApis = statsService.getTopApis(limit);
         return ApiResponse.success(topApis);
     }
 
@@ -107,9 +107,9 @@ public class StatsController {
             @RequestParam(required = false) Boolean success,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
+        // 租户ID由多租户拦截器自动处理
         PageData<ApiCallLog> logs = callLogService.pageCallLogs(
-                tenantId, apiId, apiPath, appId, startTime, endTime, success, page, size);
+                apiId, apiPath, appId, startTime, endTime, success, page, size);
         return ApiResponse.success(logs);
     }
 
@@ -118,8 +118,8 @@ public class StatsController {
      */
     @GetMapping("/realtime")
     public ApiResponse<Long> getRealtimeCount() {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        Long count = callLogService.getGlobalRealtimeCount(tenantId);
+        // 租户ID由多租户拦截器自动处理
+        Long count = callLogService.getGlobalRealtimeCount();
         return ApiResponse.success(count);
     }
 
@@ -134,8 +134,8 @@ public class StatsController {
      */
     @GetMapping("/api-detail/{apiId}")
     public ApiResponse<ApiStatsDetailDTO> getApiStatsDetail(@PathVariable String apiId) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        ApiStatsDetailDTO detail = statsService.getApiStatsDetail(tenantId, apiId);
+        // 租户ID由多租户拦截器自动处理
+        ApiStatsDetailDTO detail = statsService.getApiStatsDetail(apiId);
         return ApiResponse.success(detail);
     }
 }

@@ -601,15 +601,5 @@ const confirmPublish = async () => {
   padding-top: 16px;
 }
 
-/* 操作列按钮对齐 */
-:deep(.el-table-fixed-column--right) .cell {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
-:deep(.el-table-fixed-column--right) .el-dropdown {
-  display: inline-flex;
-  align-items: center;
-}
+/* 操作列按钮对齐已移至全局样式 global.css */
 </style>

@@ -1,0 +1,66 @@
+/**
+ * 全局样式 - IntelliHub 前端
+ */
+
+/* ===== 表格操作列按钮对齐修复 ===== */
+
+/* 固定操作列内的按钮水平对齐 */
+.el-table .el-table-fixed-column--right .cell {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 0;
+}
+
+/* 操作列 link 按钮紧凑间距 */
+.el-table .el-table-fixed-column--right .el-button.is-link {
+  padding: 4px 6px;
+  margin: 0;
+}
+
+/* 确保操作列的 dropdown 也对齐 */
+.el-table .el-table-fixed-column--right .el-dropdown {
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* 表格行统一高度，确保按钮垂直位置一致 */
+.el-table .el-table__row .cell {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+}
+
+/* 允许某些单元格内容换行但保持对齐 */
+.el-table .el-table__row .cell.allow-wrap {
+  flex-wrap: wrap;
+  align-content: center;
+}
+
+/* 操作列 link 按钮统一样式 */
+.el-table .el-button--small.is-link {
+  padding: 4px 8px;
+  height: auto;
+}
+
+/* ===== 通用工具类 ===== */
+
+/* Flex 居中 */
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Flex 垂直居中 */
+.flex-align-center {
+  display: flex;
+  align-items: center;
+}
+
+/* 文本省略 */
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

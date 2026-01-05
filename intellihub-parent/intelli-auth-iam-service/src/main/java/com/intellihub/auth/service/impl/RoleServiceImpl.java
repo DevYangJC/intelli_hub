@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.intellihub.context.UserContextHolder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -40,9 +41,10 @@ public class RoleServiceImpl implements RoleService {
     private final IamMenuMapper menuMapper;
 
     @Override
-    public List<RoleResponse> listRoles(String tenantId) {
+    public List<RoleResponse> listRoles() {
+        String tenantId = UserContextHolder.getCurrentTenantId();
         LambdaQueryWrapper<IamRole> wrapper = new LambdaQueryWrapper<>();
-        // 查询系统角色和当前租户角色
+        // 查询系统角色和当前租户角色（角色表特殊处理，不能完全依赖拦截器）
         wrapper.and(w -> w
                 .isNull(IamRole::getTenantId)
                 .or()
@@ -79,8 +81,10 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
-    public RoleResponse createRole(String tenantId, CreateRoleRequest request) {
-        // 检查角色编码是否已存在
+    public RoleResponse createRole(CreateRoleRequest request) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
+        
+        // 检查角色编码是否已存在（角色表特殊处理）
         LambdaQueryWrapper<IamRole> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(IamRole::getCode, request.getCode());
         wrapper.and(w -> w

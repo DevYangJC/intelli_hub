@@ -1,5 +1,6 @@
 package com.intellihub.governance.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.intellihub.governance.entity.ApiCallLog;
 import org.apache.ibatis.annotations.Mapper;
@@ -21,7 +22,9 @@ public interface ApiCallLogMapper extends BaseMapper<ApiCallLog> {
 
     /**
      * 统计指定时间段内的调用数据（用于聚合）
+     * 跳过租户拦截器：跨租户聚合统计
      */
+    @InterceptorIgnore(tenantLine = "true")
     @Select("SELECT " +
             "tenant_id, api_id, api_path, app_id, " +
             "COUNT(*) as total_count, " +
@@ -39,7 +42,9 @@ public interface ApiCallLogMapper extends BaseMapper<ApiCallLog> {
 
     /**
      * 删除指定时间之前的日志（用于清理）
+     * 跳过租户拦截器：跨租户清理
      */
+    @InterceptorIgnore(tenantLine = "true")
     @Select("DELETE FROM api_call_log WHERE request_time < #{beforeTime}")
     int deleteBeforeTime(@Param("beforeTime") LocalDateTime beforeTime);
 
