@@ -31,8 +31,8 @@ public class SysConfigController {
      */
     @GetMapping
     public ApiResponse<Map<String, Object>> getAllConfigs() {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        return ApiResponse.success(sysConfigService.getAllConfigs(tenantId));
+        // 租户ID由多租户拦截器自动处理
+        return ApiResponse.success(sysConfigService.getAllConfigs());
     }
 
     /**
@@ -44,8 +44,8 @@ public class SysConfigController {
      */
     @GetMapping("/{key}")
     public ApiResponse<String> getConfig(@PathVariable String key) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        String value = sysConfigService.getConfig(tenantId, key);
+        // 租户ID由多租户拦截器自动处理
+        String value = sysConfigService.getConfig(key);
         return ApiResponse.success(value);
     }
 
@@ -59,8 +59,8 @@ public class SysConfigController {
      */
     @PostMapping
     public ApiResponse<Void> batchSetConfigs(@RequestBody Map<String, Object> configs) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        sysConfigService.batchSetConfigs(tenantId, configs);
+        // 租户ID由多租户拦截器自动处理
+        sysConfigService.batchSetConfigs(configs);
         return ApiResponse.success();
     }
 
@@ -76,8 +76,8 @@ public class SysConfigController {
     public ApiResponse<Void> setConfig(
             @PathVariable String key,
             @RequestBody ConfigRequest request) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        sysConfigService.setConfig(tenantId, key, request.getValue(), request.getType(), request.getDescription());
+        // 租户ID由多租户拦截器自动处理
+        sysConfigService.setConfig(key, request.getValue(), request.getType(), request.getDescription());
         return ApiResponse.success();
     }
 
@@ -90,8 +90,8 @@ public class SysConfigController {
      */
     @DeleteMapping("/{key}")
     public ApiResponse<Void> deleteConfig(@PathVariable String key) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        sysConfigService.deleteConfig(tenantId, key);
+        // 租户ID由多租户拦截器自动处理
+        sysConfigService.deleteConfig(key);
         return ApiResponse.success();
     }
 

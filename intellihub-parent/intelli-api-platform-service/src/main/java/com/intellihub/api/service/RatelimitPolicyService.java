@@ -15,8 +15,9 @@ public interface RatelimitPolicyService {
 
     /**
      * 分页查询限流策略列表
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    Page<RatelimitPolicyResponse> listPolicies(String tenantId, int page, int size, String keyword, String status);
+    Page<RatelimitPolicyResponse> listPolicies(int page, int size, String keyword, String status);
 
     /**
      * 查询限流策略详情
@@ -25,8 +26,9 @@ public interface RatelimitPolicyService {
 
     /**
      * 创建限流策略
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    String createPolicy(String tenantId, RatelimitPolicyCreateRequest request);
+    String createPolicy(RatelimitPolicyCreateRequest request);
 
     /**
      * 更新限流策略

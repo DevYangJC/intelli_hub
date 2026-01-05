@@ -51,6 +51,11 @@ public class UserInfoResponse {
     private String avatar;
 
     /**
+     * 状态
+     */
+    private String status;
+
+    /**
      * 角色编码
      */
     private String role;

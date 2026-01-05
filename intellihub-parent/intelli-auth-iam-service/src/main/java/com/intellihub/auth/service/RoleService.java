@@ -19,13 +19,15 @@ public interface RoleService {
 
     /**
      * 获取角色列表
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    List<RoleResponse> listRoles(String tenantId);
+    List<RoleResponse> listRoles();
 
     /**
      * 创建角色
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    RoleResponse createRole(String tenantId, CreateRoleRequest request);
+    RoleResponse createRole(CreateRoleRequest request);
 
     /**
      * 更新角色

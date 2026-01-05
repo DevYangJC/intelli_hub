@@ -17,13 +17,15 @@ public interface UserService {
 
     /**
      * 分页查询用户
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    PageData<UserInfoResponse> listUsers(String tenantId, UserQueryRequest request);
+    PageData<UserInfoResponse> listUsers(UserQueryRequest request);
 
     /**
      * 创建用户
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    UserInfoResponse createUser(String tenantId, CreateUserRequest request);
+    UserInfoResponse createUser(CreateUserRequest request);
 
     /**
      * 获取用户详情

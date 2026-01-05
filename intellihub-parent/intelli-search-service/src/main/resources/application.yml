@@ -14,12 +14,12 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
-        namespace: dev
+        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
         group: DEFAULT_GROUP
       config:
         server-addr: 127.0.0.1:8848
         file-extension: yml
-        namespace: dev
+        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
         group: DEFAULT_GROUP
 
   redis:
@@ -36,6 +36,12 @@ spring:
         min-idle: 0
 
 intellihub:
+  # MyBatis-Plus 多租户配置
+  mybatis:
+    tenant:
+      enabled: true
+      column: tenant_id
+      ignore-tables: []  # 搜索服务使用 ES，此配置为预留
   elasticsearch:
     enabled: true
     hosts:

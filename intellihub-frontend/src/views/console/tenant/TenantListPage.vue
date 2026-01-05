@@ -39,46 +39,43 @@
 
     <!-- 租户列表 -->
     <el-card class="table-card" shadow="never">
-      <el-table :data="tenantList" style="width: 100%" v-loading="loading">
-        <el-table-column label="租户信息" min-width="250">
+      <el-table :data="tenantList" style="width: 100%" v-loading="loading" border>
+        <el-table-column label="租户信息" min-width="200">
           <template #default="{ row }">
             <div class="tenant-info">
               <div class="tenant-avatar" :style="{ background: row.avatarBg }">
-                {{ row.name.charAt(0) }}
+                {{ row.name?.charAt(0) }}
               </div>
               <div class="tenant-detail">
                 <div class="tenant-name">{{ row.name }}</div>
-                <div class="tenant-id">ID: {{ row.tenantId }}</div>
+                <div class="tenant-id">{{ row.tenantId }}</div>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="联系人" width="150">
+        <el-table-column label="联系人" width="130" align="center">
           <template #default="{ row }">
-            <div>{{ row.contactName }}</div>
-            <div class="sub-text">{{ row.contactPhone }}</div>
+            <span>{{ row.contactName || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="配额使用" width="200">
+        <el-table-column label="配额使用" width="200" align="center">
           <template #default="{ row }">
-            <div class="quota-info">
-              <div class="quota-item">
-                <span class="quota-label">API调用:</span>
-                <el-progress
-                  :percentage="row.apiUsagePercent"
-                  :stroke-width="6"
-                  :color="getProgressColor(row.apiUsagePercent)"
-                  style="width: 100px"
-                />
-                <span class="quota-text">{{ row.apiUsage }}/{{ row.apiQuota }}</span>
-              </div>
+            <div class="quota-usage-cell">
+              <el-progress
+                :percentage="row.apiUsagePercent || 0"
+                :stroke-width="8"
+                :color="getProgressColor(row.apiUsagePercent || 0)"
+                :show-text="false"
+                style="width: 100px; display: inline-block;"
+              />
+              <span class="quota-text">{{ row.apiUsage }}/{{ row.apiQuota }}</span>
             </div>
           </template>
         </el-table-column>
@@ -92,14 +89,12 @@
             {{ row.appCount }}
           </template>
         </el-table-column>
-        <el-table-column label="到期时间" width="120">
+        <el-table-column label="创建时间" width="110" align="center">
           <template #default="{ row }">
-            <span :class="{ 'text-warning': isExpiringSoon(row.expireAt) }">
-              {{ formatDate(row.expireAt) }}
-            </span>
+            <span>{{ formatDate(row.createdAt) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">
               编辑
@@ -226,45 +221,88 @@
     <el-dialog
       v-model="quotaDialogVisible"
       title="配额管理"
-      width="500px"
+      width="560px"
     >
-      <div v-if="currentTenant" class="quota-dialog">
+      <div v-if="currentTenant" class="quota-dialog" v-loading="quotaLoading">
         <div class="tenant-header">
-          <div class="tenant-avatar" :style="{ background: currentTenant.avatarBg }">
-            {{ currentTenant.name.charAt(0) }}
+          <div class="tenant-avatar" :style="{ background: currentTenant.avatarBg || '#409eff' }">
+            {{ currentTenant.name?.charAt(0) }}
           </div>
           <div>
             <div class="tenant-name">{{ currentTenant.name }}</div>
-            <div class="tenant-id">{{ currentTenant.tenantId }}</div>
+            <div class="tenant-id">{{ currentTenant.code || currentTenant.tenantId }}</div>
           </div>
         </div>
 
-        <el-form label-width="120px" style="margin-top: 20px">
-          <el-form-item label="API调用配额">
-            <el-input-number v-model="quotaForm.apiQuota" :min="0" :step="10000" />
-            <span class="form-unit">次/月</span>
-          </el-form-item>
-          <el-form-item label="最大用户数">
-            <el-input-number v-model="quotaForm.maxUsers" :min="1" :max="10000" />
-            <span class="form-unit">人</span>
-          </el-form-item>
-          <el-form-item label="最大应用数">
-            <el-input-number v-model="quotaForm.maxApps" :min="1" :max="100" />
-            <span class="form-unit">个</span>
-          </el-form-item>
-          <el-form-item label="最大API数">
-            <el-input-number v-model="quotaForm.maxApis" :min="1" :max="1000" />
-            <span class="form-unit">个</span>
-          </el-form-item>
-          <el-form-item label="存储空间">
-            <el-input-number v-model="quotaForm.storageQuota" :min="1" :step="10" />
-            <span class="form-unit">GB</span>
-          </el-form-item>
-        </el-form>
+        <!-- 使用量概览 -->
+        <div class="quota-usage-section" v-if="currentTenant.usage">
+          <div class="section-title">使用量概览</div>
+          <div class="usage-grid">
+            <div class="usage-item">
+              <div class="usage-label">用户数</div>
+              <el-progress 
+                :percentage="currentTenant.usage.userUsagePercent || 0"
+                :color="getProgressColor(currentTenant.usage.userUsagePercent || 0)"
+              />
+              <div class="usage-text">{{ currentTenant.usage.userCount }} / {{ quotaForm.maxUsers }}</div>
+            </div>
+            <div class="usage-item">
+              <div class="usage-label">应用数</div>
+              <el-progress 
+                :percentage="currentTenant.usage.appUsagePercent || 0"
+                :color="getProgressColor(currentTenant.usage.appUsagePercent || 0)"
+              />
+              <div class="usage-text">{{ currentTenant.usage.appCount }} / {{ quotaForm.maxApps }}</div>
+            </div>
+            <div class="usage-item">
+              <div class="usage-label">API数</div>
+              <el-progress 
+                :percentage="currentTenant.usage.apiUsagePercent || 0"
+                :color="getProgressColor(currentTenant.usage.apiUsagePercent || 0)"
+              />
+              <div class="usage-text">{{ currentTenant.usage.apiCount }} / {{ quotaForm.maxApis }}</div>
+            </div>
+            <div class="usage-item">
+              <div class="usage-label">今日调用</div>
+              <el-progress 
+                :percentage="currentTenant.usage.todayCallsPercent || 0"
+                :color="getProgressColor(currentTenant.usage.todayCallsPercent || 0)"
+              />
+              <div class="usage-text">{{ currentTenant.usage.todayCalls }} / {{ quotaForm.maxCallsPerDay }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 配额设置 -->
+        <div class="quota-settings-section">
+          <div class="section-title">配额设置</div>
+          <el-form label-width="120px">
+            <el-form-item label="最大用户数">
+              <el-input-number v-model="quotaForm.maxUsers" :min="1" :max="10000" />
+              <span class="form-unit">人</span>
+            </el-form-item>
+            <el-form-item label="最大应用数">
+              <el-input-number v-model="quotaForm.maxApps" :min="1" :max="1000" />
+              <span class="form-unit">个</span>
+            </el-form-item>
+            <el-form-item label="最大API数">
+              <el-input-number v-model="quotaForm.maxApis" :min="1" :max="10000" />
+              <span class="form-unit">个</span>
+            </el-form-item>
+            <el-form-item label="每日调用次数">
+              <el-input-number v-model="quotaForm.maxCallsPerDay" :min="1000" :step="10000" />
+              <span class="form-unit">次</span>
+            </el-form-item>
+            <el-form-item label="每月调用次数">
+              <el-input-number v-model="quotaForm.maxCallsPerMonth" :min="10000" :step="100000" />
+              <span class="form-unit">次</span>
+            </el-form-item>
+          </el-form>
+        </div>
       </div>
       <template #footer>
         <el-button @click="quotaDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveQuota">保存配额</el-button>
+        <el-button type="primary" @click="saveQuota" :loading="quotaLoading">保存配额</el-button>
       </template>
     </el-dialog>
   </div>
@@ -332,11 +370,11 @@ const fetchTenantList = async () => {
     tenantList.value = (data.records || []).map((item: TenantResponse, index: number) => ({
       ...item,
       tenantId: item.code || item.id,
-      apiUsage: item.quota?.usedApis || 0,
+      apiUsage: item.usage?.apiCount || 0,
       apiQuota: item.quota?.maxApis || 100,
-      apiUsagePercent: item.quota ? Math.round((item.quota.usedApis / item.quota.maxApis) * 100) : 0,
-      userCount: item.quota?.usedUsers || 0,
-      appCount: item.quota?.usedApps || 0,
+      apiUsagePercent: item.usage?.apiUsagePercent || 0,
+      userCount: item.usage?.userCount || 0,
+      appCount: item.usage?.appCount || 0,
       avatarBg: avatarColors[index % avatarColors.length],
       expireAt: item.updatedAt || item.createdAt,
     }))
@@ -385,12 +423,13 @@ const formRules: FormRules = {
 
 // 配额表单
 const quotaForm = reactive({
-  apiQuota: 100000,
   maxUsers: 50,
   maxApps: 10,
   maxApis: 100,
-  storageQuota: 10,
+  maxCallsPerDay: 100000,
+  maxCallsPerMonth: 3000000,
 })
+const quotaLoading = ref(false)
 
 // 获取状态类型
 const getStatusType = (status: string) => {
@@ -471,10 +510,30 @@ const handleEdit = (row: any) => {
 }
 
 // 配额管理
-const handleQuota = (row: any) => {
+const handleQuota = async (row: any) => {
   currentTenant.value = row
-  quotaForm.apiQuota = row.apiQuota
   quotaDialogVisible.value = true
+  quotaLoading.value = true
+  
+  try {
+    // 从后端获取最新配额数据
+    const res = await tenantApi.getQuota(row.id)
+    const quota = res.data
+    quotaForm.maxUsers = quota.maxUsers || 50
+    quotaForm.maxApps = quota.maxApps || 10
+    quotaForm.maxApis = quota.maxApis || 100
+    quotaForm.maxCallsPerDay = quota.maxCallsPerDay || 100000
+    quotaForm.maxCallsPerMonth = quota.maxCallsPerMonth || 3000000
+  } catch (error: any) {
+    // 如果获取失败，使用列表中的数据
+    quotaForm.maxUsers = row.quota?.maxUsers || 50
+    quotaForm.maxApps = row.quota?.maxApps || 10
+    quotaForm.maxApis = row.quota?.maxApis || 100
+    quotaForm.maxCallsPerDay = row.quota?.maxCallsPerDay || 100000
+    quotaForm.maxCallsPerMonth = row.quota?.maxCallsPerMonth || 3000000
+  } finally {
+    quotaLoading.value = false
+  }
 }
 
 // 更多操作
@@ -559,7 +618,8 @@ const saveQuota = async () => {
       maxUsers: quotaForm.maxUsers,
       maxApps: quotaForm.maxApps,
       maxApis: quotaForm.maxApis,
-      maxQps: quotaForm.apiQuota,
+      maxCallsPerDay: quotaForm.maxCallsPerDay,
+      maxCallsPerMonth: quotaForm.maxCallsPerMonth,
     })
     quotaDialogVisible.value = false
     ElMessage.success('配额已更新')
@@ -651,25 +711,18 @@ const saveQuota = async () => {
   color: #999;
 }
 
-/* 配额信息 */
-.quota-info {
-  font-size: 12px;
-}
-
-.quota-item {
+/* 配额使用单元格 */
+.quota-usage-cell {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
-.quota-label {
-  color: #999;
-  width: 50px;
-}
-
 .quota-text {
-  color: #666;
-  font-size: 11px;
+  font-size: 12px;
+  color: #606266;
+  white-space: nowrap;
 }
 
 /* 分页 */
@@ -699,6 +752,45 @@ const saveQuota = async () => {
   padding: 16px;
   background: #f5f7fa;
   border-radius: 8px;
+}
+
+.quota-usage-section,
+.quota-settings-section {
+  margin-top: 20px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.usage-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.usage-item {
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.usage-label {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 8px;
+}
+
+.usage-text {
+  font-size: 12px;
+  color: #606266;
+  margin-top: 4px;
+  text-align: right;
 }
 
 /* 警告文本 */

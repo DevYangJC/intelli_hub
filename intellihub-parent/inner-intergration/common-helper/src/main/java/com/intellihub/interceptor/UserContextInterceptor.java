@@ -23,6 +23,7 @@ public class UserContextInterceptor implements HandlerInterceptor {
         String userIdStr = request.getHeader(CommonConstants.USER_ID_HEADER);
         String tenantIdStr = request.getHeader(CommonConstants.TENANT_ID_HEADER);
         String username = request.getHeader("X-Username");
+        String rolesHeader = request.getHeader("X-User-Roles");
 
         if (userIdStr != null && !userIdStr.isEmpty()) {
             UserContext context = new UserContext();
@@ -42,6 +43,17 @@ public class UserContextInterceptor implements HandlerInterceptor {
                     context.setTenantId(Long.parseLong(tenantIdStr));
                 } catch (NumberFormatException ignored) {
                     // UUID格式，仅保留String类型
+                }
+            }
+            
+            // 解析用户角色列表
+            if (rolesHeader != null && !rolesHeader.isEmpty()) {
+                java.util.List<String> roles = java.util.Arrays.asList(rolesHeader.split(","));
+                context.setRoles(roles);
+                
+                // 如果是系统管理员，自动豁免租户隔离
+                if (roles.contains("SYSTEM_ADMIN")) {
+                    context.setIgnoreTenant(true);
                 }
             }
             

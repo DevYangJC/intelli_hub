@@ -33,8 +33,9 @@ public class RoleController {
      * 获取角色列表
      */
     @GetMapping("/roles")
-    public ApiResponse<List<RoleResponse>> listRoles(@RequestHeader("X-Tenant-Id") String tenantId) {
-        List<RoleResponse> roles = roleService.listRoles(tenantId);
+    public ApiResponse<List<RoleResponse>> listRoles() {
+        // 租户ID由多租户拦截器自动处理
+        List<RoleResponse> roles = roleService.listRoles();
         return ApiResponse.success(roles);
     }
 
@@ -42,10 +43,9 @@ public class RoleController {
      * 创建角色
      */
     @PostMapping("/roles")
-    public ApiResponse<RoleResponse> createRole(
-            @RequestHeader("X-Tenant-Id") String tenantId,
-            @Valid @RequestBody CreateRoleRequest request) {
-        RoleResponse role = roleService.createRole(tenantId, request);
+    public ApiResponse<RoleResponse> createRole(@Valid @RequestBody CreateRoleRequest request) {
+        // 租户ID由多租户拦截器自动处理
+        RoleResponse role = roleService.createRole(request);
         return ApiResponse.success("创建成功", role);
     }
 

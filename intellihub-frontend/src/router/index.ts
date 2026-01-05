@@ -7,7 +7,8 @@ declare module 'vue-router' {
     title?: string
     requiresAuth?: boolean
     layout?: string
-    roles?: string[]
+    permission?: string  // 权限码（单个）
+    permissions?: string[]  // 权限码（多个，满足任一即可）
     icon?: string
     hidden?: boolean
   }
@@ -31,12 +32,12 @@ const router = createRouter({
           component: () => import('../views/HomePage.vue'),
           meta: { title: '首页', requiresAuth: false }
         },
-        // API市场
+        // API市场（所有用户可见）
         {
           path: 'api-market',
           name: 'ApiMarket',
           component: () => import('../views/api-market/ApiMarketPage.vue'),
-          meta: { title: 'API市场', requiresAuth: false }
+          meta: { title: 'API市场', requiresAuth: false, permission: 'market:view' }
         },
         // 控制台
         {
@@ -57,31 +58,31 @@ const router = createRouter({
               path: 'api/list',
               name: 'ApiList',
               component: () => import('../views/console/api/ApiListPage.vue'),
-              meta: { title: 'API列表' }
+              meta: { title: 'API列表', permission: 'api:list' }
             },
             {
               path: 'api/create',
               name: 'ApiCreate',
               component: () => import('../views/console/api/ApiCreatePage.vue'),
-              meta: { title: '创建API' }
+              meta: { title: '创建API', permission: 'api:create' }
             },
             {
               path: 'api/:id/edit',
               name: 'ApiEdit',
               component: () => import('../views/console/api/ApiCreatePage.vue'),
-              meta: { title: '编辑API' }
+              meta: { title: '编辑API', permission: 'api:update' }
             },
             {
               path: 'api/:id',
               name: 'ApiDetail',
               component: () => import('../views/console/api/ApiDetailPage.vue'),
-              meta: { title: 'API详情' }
+              meta: { title: 'API详情', permission: 'api:list' }
             },
             {
               path: 'api/groups',
               name: 'ApiGroups',
               component: () => import('../views/console/api/ApiGroupPage.vue'),
-              meta: { title: 'API分组' }
+              meta: { title: 'API分组', permission: 'api:list' }
             },
             // 网关配置
             {
@@ -113,78 +114,73 @@ const router = createRouter({
               path: 'app/list',
               name: 'AppList',
               component: () => import('../views/console/app/AppListPage.vue'),
-              meta: { title: '应用列表' }
+              meta: { title: '应用列表', permission: 'app:list' }
             },
-            // 租户管理
+            // 租户管理（仅超级管理员）
             {
               path: 'tenant',
               name: 'TenantSecurity',
               component: () => import('../views/console/tenant/TenantSecurityPage.vue'),
-              meta: { title: '多租户安全' }
+              meta: { title: '多租户安全', permission: 'tenant:list' }
             },
             {
               path: 'tenant/list',
               name: 'TenantList',
               component: () => import('../views/console/tenant/TenantListPage.vue'),
-              meta: { title: '租户列表' }
-            },
-            {
-              path: 'tenant/quota',
-              name: 'TenantQuota',
-              component: () => import('../views/console/tenant/TenantListPage.vue'),
-              meta: { title: '配额管理' }
+              meta: { title: '租户列表', permission: 'tenant:list' }
             },
             // 用户管理
             {
               path: 'users/list',
               name: 'UsersList',
               component: () => import('../views/console/user/UserListPage.vue'),
-              meta: { title: '用户列表' }
+              meta: { title: '用户列表', permission: 'user:list' }
             },
             {
               path: 'users/roles',
               name: 'UsersRoles',
               component: () => import('../views/console/user/RolePermissionPage.vue'),
-              meta: { title: '角色权限' }
+              meta: { title: '角色权限', permission: 'user:list' }
             },
             // 统计监控
             {
               path: 'stats',
               name: 'Stats',
               component: () => import('../views/console/stats/StatsPage.vue'),
-              meta: { title: '调用统计' }
+              meta: { title: '调用统计', permission: 'monitor:view' }
             },
             // 日志
             {
               path: 'logs',
               name: 'Logs',
               component: () => import('../views/console/stats/CallLogsPage.vue'),
-              meta: { title: '调用日志' }
+              meta: { title: '调用日志', permission: 'system:log' }
             },
             // 告警管理
             {
               path: 'alert/rules',
               name: 'AlertRules',
               component: () => import('../views/console/alert/AlertRulesPage.vue'),
-              meta: { title: '告警规则' }
+              meta: { title: '告警规则', permission: 'monitor:alert' }
             },
             {
               path: 'alert/records',
               name: 'AlertRecords',
               component: () => import('../views/console/alert/AlertRecordsPage.vue'),
-              meta: { title: '告警历史' }
+              meta: { title: '告警历史', permission: 'monitor:alert' }
             },
+            // 系统设置（仅超级管理员）
             {
               path: 'settings',
               name: 'Settings',
               component: () => import('../views/console/settings/SettingsPage.vue'),
-              meta: { title: '系统设置' }
+              meta: { title: '系统设置', permission: 'system:config' }
             },
             {
               path: 'announcements',
               name: 'Announcements',
               component: () => import('../views/console/settings/AnnouncementsPage.vue'),
-              meta: { title: '公告管理' }
+              meta: { title: '公告管理', permission: 'system:announcement' }
             },
           ]
         },
@@ -193,7 +189,7 @@ const router = createRouter({
           path: 'monitor',
           name: 'Monitor',
           component: () => import('../views/monitor/MonitorPage.vue'),
-          meta: { title: '监控中心', requiresAuth: true }
+          meta: { title: '监控中心', requiresAuth: true, permission: 'monitor:view' }
         },
         // 开发文档
         {
@@ -243,11 +239,25 @@ router.beforeEach(async (to, from, next) => {
       })
       return
     }
+  }
 
-    // 检查角色权限
-    if (to.meta.roles && !to.meta.roles.includes(authStore.userRole)) {
-      // 权限不足，重定向到首页
-      next('/')
+  // 检查权限码
+  const permission = to.meta.permission
+  const permissions = to.meta.permissions
+  
+  if (permission && authStore.isAuthenticated) {
+    if (!authStore.hasPermission(permission)) {
+      // 权限不足，重定向到控制台首页
+      console.warn(`权限不足: 需要 ${permission}`)
+      next('/console')
+      return
+    }
+  }
+  
+  if (permissions && permissions.length > 0 && authStore.isAuthenticated) {
+    if (!authStore.hasAnyPermission(permissions)) {
+      console.warn(`权限不足: 需要其中之一 ${permissions.join(', ')}`)
+      next('/console')
       return
     }
   }

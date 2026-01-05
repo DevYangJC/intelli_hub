@@ -78,8 +78,10 @@
           <div class="nav-actions">
             <!-- 未登录状态 -->
             <template v-if="!isAuthenticated">
-              <el-button type="primary" size="small" @click="openLoginDialog">登录</el-button>
-              <el-button size="small" @click="openRegisterDialog">注册</el-button>
+              <el-button type="primary" class="login-btn" @click="openLoginDialog">
+                <el-icon><User /></el-icon>
+                登录 / 注册
+              </el-button>
             </template>
             <!-- 已登录状态 -->
             <template v-else>
@@ -123,136 +125,137 @@
     <!-- 登录弹窗 -->
     <el-dialog
       v-model="showLoginDialog"
-      title="登录"
-      width="400px"
+      width="420px"
       :close-on-click-modal="false"
-      class="login-dialog"
+      class="auth-dialog"
+      :show-close="true"
     >
-      <el-form
-        ref="loginFormRef"
-        :model="loginForm"
-        :rules="loginRules"
-        label-position="top"
-        @keyup.enter="handleLogin"
-      >
-        <el-form-item label="用户名" prop="username">
-          <el-input
-            v-model="loginForm.username"
-            placeholder="请输入用户名"
-            prefix-icon="User"
-            size="large"
-          />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input
-            v-model="loginForm.password"
-            type="password"
-            placeholder="请输入密码"
-            prefix-icon="Lock"
-            size="large"
-            show-password
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-row :gutter="16" style="width: 100%">
-            <el-col :span="16">
+      <template #header>
+        <div class="auth-dialog-header">
+          <div class="auth-tabs">
+            <span class="auth-tab" :class="{ active: !isRegisterMode }" @click="isRegisterMode = false">登录</span>
+            <span class="auth-tab" :class="{ active: isRegisterMode }" @click="switchToRegister">注册</span>
+          </div>
+        </div>
+      </template>
+      
+      <!-- 登录表单 -->
+      <div v-show="!isRegisterMode" class="auth-form">
+        <el-form
+          ref="loginFormRef"
+          :model="loginForm"
+          :rules="loginRules"
+          label-position="top"
+          @keyup.enter="handleLogin"
+        >
+          <el-form-item prop="username">
+            <el-input
+              v-model="loginForm.username"
+              placeholder="请输入用户名"
+              size="large"
+              :prefix-icon="User"
+            />
+          </el-form-item>
+          <el-form-item prop="password">
+            <el-input
+              v-model="loginForm.password"
+              type="password"
+              placeholder="请输入密码"
+              size="large"
+              :prefix-icon="Lock"
+              show-password
+            />
+          </el-form-item>
+          <el-form-item>
+            <div class="captcha-row">
               <el-input
                 v-model="loginForm.captcha"
                 placeholder="请输入验证码"
-                prefix-icon="Key"
                 size="large"
+                class="captcha-input"
               />
-            </el-col>
-            <el-col :span="8">
-              <div class="captcha-box" @click="fetchCaptcha" style="cursor: pointer;">
-                <img v-if="captchaImage" :src="captchaImage" alt="验证码" style="height: 100%; width: 100%;" />
+              <div class="captcha-box" @click="fetchCaptcha">
+                <img v-if="captchaImage" :src="captchaImage" alt="验证码" />
                 <span v-else>点击获取</span>
               </div>
-            </el-col>
-          </el-row>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showLoginDialog = false">取消</el-button>
-        <el-button type="primary" :loading="loginLoading" @click="handleLogin">登录</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 注册弹窗 -->
-    <el-dialog
-      v-model="showRegisterDialog"
-      title="注册"
-      width="450px"
-      :close-on-click-modal="false"
-      class="register-dialog"
-    >
-      <el-form
-        ref="registerFormRef"
-        :model="registerForm"
-        :rules="registerRules"
-        label-position="top"
-        @keyup.enter="handleRegister"
-      >
-        <el-form-item label="用户名" prop="username">
-          <el-input
-            v-model="registerForm.username"
-            placeholder="请输入用户名（3-20个字符）"
-            prefix-icon="User"
-            size="large"
-          />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input
-            v-model="registerForm.password"
-            type="password"
-            placeholder="请输入密码（6-20个字符）"
-            prefix-icon="Lock"
-            size="large"
-            show-password
-          />
-        </el-form-item>
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input
-            v-model="registerForm.confirmPassword"
-            type="password"
-            placeholder="请再次输入密码"
-            prefix-icon="Lock"
-            size="large"
-            show-password
-          />
-        </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input
-            v-model="registerForm.email"
-            placeholder="请输入邮箱（选填）"
-            prefix-icon="Message"
-            size="large"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-row :gutter="16" style="width: 100%">
-            <el-col :span="16">
+            </div>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="large" class="auth-submit-btn" :loading="loginLoading" @click="handleLogin">
+              登录
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+      
+      <!-- 注册表单 -->
+      <div v-show="isRegisterMode" class="auth-form">
+        <el-form
+          ref="registerFormRef"
+          :model="registerForm"
+          :rules="registerRules"
+          label-position="top"
+          @keyup.enter="handleRegister"
+        >
+          <el-form-item prop="username">
+            <el-input
+              v-model="registerForm.username"
+              placeholder="请输入用户名（3-20个字符）"
+              size="large"
+              :prefix-icon="User"
+            />
+          </el-form-item>
+          <el-form-item prop="password">
+            <el-input
+              v-model="registerForm.password"
+              type="password"
+              placeholder="请输入密码（6-20个字符）"
+              size="large"
+              :prefix-icon="Lock"
+              show-password
+            />
+          </el-form-item>
+          <el-form-item prop="confirmPassword">
+            <el-input
+              v-model="registerForm.confirmPassword"
+              type="password"
+              placeholder="请再次输入密码"
+              size="large"
+              :prefix-icon="Lock"
+              show-password
+            />
+          </el-form-item>
+          <el-form-item prop="email">
+            <el-input
+              v-model="registerForm.email"
+              placeholder="请输入邮箱（选填）"
+              size="large"
+              :prefix-icon="Message"
+            />
+          </el-form-item>
+          <el-form-item>
+            <div class="captcha-row">
               <el-input
                 v-model="registerForm.captcha"
                 placeholder="请输入验证码"
-                prefix-icon="Key"
                 size="large"
+                class="captcha-input"
               />
-            </el-col>
-            <el-col :span="8">
-              <div class="captcha-box" @click="fetchRegisterCaptcha" style="cursor: pointer;">
-                <img v-if="registerCaptchaImage" :src="registerCaptchaImage" alt="验证码" style="height: 100%; width: 100%;" />
+              <div class="captcha-box" @click="fetchRegisterCaptcha">
+                <img v-if="registerCaptchaImage" :src="registerCaptchaImage" alt="验证码" />
                 <span v-else>点击获取</span>
               </div>
-            </el-col>
-          </el-row>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showRegisterDialog = false">取消</el-button>
-        <el-button type="primary" :loading="registerLoading" @click="handleRegister">注册</el-button>
-      </template>
+            </div>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="large" class="auth-submit-btn" :loading="registerLoading" @click="handleRegister">
+              注册
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
     </el-dialog>
+
   </div>
 </template>
 
@@ -268,6 +271,8 @@ import {
   SwitchButton,
   Close,
   Loading,
+  Lock,
+  Message,
 } from '@element-plus/icons-vue'
 import { searchApi, type SearchItem } from '@/api/search'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
@@ -309,8 +314,9 @@ const isActiveRoute = (path: string) => {
 // 登录状态
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
-// 登录弹窗
+// 登录/注册弹窗
 const showLoginDialog = ref(false)
+const isRegisterMode = ref(false)
 const loginLoading = ref(false)
 const loginFormRef = ref<FormInstance>()
 const loginForm = reactive({
@@ -394,11 +400,18 @@ const fetchCaptcha = async () => {
 
 // 打开登录弹窗时获取验证码
 const openLoginDialog = () => {
+  isRegisterMode.value = false
   showLoginDialog.value = true
   fetchCaptcha()
 }
 
-// 注册弹窗
+// 切换到注册模式
+const switchToRegister = () => {
+  isRegisterMode.value = true
+  fetchRegisterCaptcha()
+}
+
+// 注册弹窗（保留变量兼容）
 const showRegisterDialog = ref(false)
 const registerLoading = ref(false)
 const registerFormRef = ref<FormInstance>()
@@ -886,19 +899,128 @@ const handleNavCommand = async (command: string) => {
   opacity: 0;
 }
 
+/* 登录按钮样式 */
+.login-btn {
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
 /* 登录弹窗样式 */
+:deep(.auth-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+:deep(.auth-dialog .el-dialog__header) {
+  padding: 0;
+  margin: 0;
+}
+
+:deep(.auth-dialog .el-dialog__body) {
+  padding: 24px 32px;
+}
+
+.auth-dialog-header {
+  padding: 20px 32px 0;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 32px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.auth-tab {
+  padding: 12px 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #999;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.auth-tab:hover {
+  color: #666;
+}
+
+.auth-tab.active {
+  color: #1890ff;
+}
+
+.auth-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #1890ff;
+  border-radius: 1px;
+}
+
+.auth-form {
+  padding-top: 8px;
+}
+
+.auth-form :deep(.el-form-item) {
+  margin-bottom: 20px;
+}
+
+.auth-form :deep(.el-input__wrapper) {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #dcdfe6;
+}
+
+.auth-form :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #c0c4cc;
+}
+
+.auth-form :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #1890ff;
+}
+
+.captcha-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.captcha-input {
+  flex: 1;
+}
+
 .captcha-box {
+  width: 120px;
   height: 40px;
-  line-height: 40px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #f5f7fa;
   border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  font-size: 18px;
-  font-weight: bold;
+  border-radius: 8px;
+  font-size: 14px;
   color: #666;
-  letter-spacing: 4px;
   cursor: pointer;
+  overflow: hidden;
+}
+
+.captcha-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.captcha-box:hover {
+  border-color: #c0c4cc;
+}
+
+.auth-submit-btn {
+  width: 100%;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 /* 响应式设计 */

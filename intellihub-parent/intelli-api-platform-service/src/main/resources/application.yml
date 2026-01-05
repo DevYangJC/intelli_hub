@@ -10,7 +10,7 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
-        namespace: dev
+        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
         group: DEFAULT_GROUP
 
   datasource:
@@ -32,15 +32,6 @@ spring:
         max-idle: 8
         min-idle: 0
 
-#  rabbitmq:
-#    host: ${RABBITMQ_HOST:localhost}
-#    port: ${RABBITMQ_PORT:5672}
-#    username: ${RABBITMQ_USERNAME:guest}
-#    password: ${RABBITMQ_PASSWORD:guest}
-#    virtual-host: ${RABBITMQ_VHOST:/}
-#    publisher-confirm-type: correlated
-#    publisher-returns: true
-
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
   type-aliases-package: com.intellihub.api.entity
@@ -56,6 +47,17 @@ mybatis-plus:
       logic-delete-field: deletedAt
       logic-delete-value: "NOW()"
       logic-not-delete-value: "NULL"
+
+# MyBatis-Plus 多租户配置
+intellihub:
+  mybatis:
+    tenant:
+      enabled: true
+      column: tenant_id
+      ignore-tables:
+        # 全局共享表（无 tenant_id 或全局配置）
+        - sys_config
+        - sys_announcement
 
 logging:
   level:

@@ -120,5 +120,25 @@ public class TenantResponse {
         private Integer appCount;
         private Integer apiCount;
         private Long todayCalls;
+        
+        /**
+         * 用户使用率百分比
+         */
+        private Double userUsagePercent;
+        
+        /**
+         * 应用使用率百分比
+         */
+        private Double appUsagePercent;
+        
+        /**
+         * API使用率百分比
+         */
+        private Double apiUsagePercent;
+        
+        /**
+         * 今日调用使用率百分比
+         */
+        private Double todayCallsPercent;
     }
 }

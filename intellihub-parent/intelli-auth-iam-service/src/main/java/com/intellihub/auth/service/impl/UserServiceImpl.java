@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.intellihub.context.UserContextHolder;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -47,15 +48,11 @@ public class UserServiceImpl implements UserService {
     private final UserEventPublisher userEventPublisher;
 
     @Override
-    public PageData<UserInfoResponse> listUsers(String tenantId, UserQueryRequest request) {
-        log.info("查询用户列表 - tenantId: '{}', page: {}, size: {}", tenantId, request.getPage(), request.getSize());
+    public PageData<UserInfoResponse> listUsers(UserQueryRequest request) {
+        log.info("查询用户列表 - page: {}, size: {}", request.getPage(), request.getSize());
         
-        // 先查询总数，用于调试
-        Long totalCount = userMapper.selectCount(new LambdaQueryWrapper<IamUser>().eq(IamUser::getTenantId, tenantId));
-        log.info("租户 {} 下的用户总数: {}", tenantId, totalCount);
-        
+        // 租户条件由拦截器自动添加
         LambdaQueryWrapper<IamUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(IamUser::getTenantId, tenantId);
 
         // 关键词搜索
         if (StringUtils.hasText(request.getKeyword())) {
@@ -94,14 +91,18 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserInfoResponse createUser(String tenantId, CreateUserRequest request) {
-        // 检查用户名是否已存在
-        IamUser existingUser = userMapper.selectByUsernameAndTenantId(request.getUsername(), tenantId);
+    public UserInfoResponse createUser(CreateUserRequest request) {
+        String tenantId = UserContextHolder.getCurrentTenantId();
+        
+        // 检查用户名是否已存在（租户条件由拦截器自动添加）
+        LambdaQueryWrapper<IamUser> existWrapper = new LambdaQueryWrapper<>();
+        existWrapper.eq(IamUser::getUsername, request.getUsername());
+        IamUser existingUser = userMapper.selectOne(existWrapper);
         if (existingUser != null) {
             throw new BusinessException(ResultCode.DATA_EXISTS.getCode(), "用户名已存在");
         }
 
-        // 创建用户
+        // 创建用户（手动设置 tenantId 用于 INSERT）
         IamUser user = IamUser.builder()
                 .tenantId(tenantId)
                 .username(request.getUsername())
@@ -305,6 +306,7 @@ public class UserServiceImpl implements UserService {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .avatar(user.getAvatar())
+                .status(user.getStatus())
                 .role(roleCodes.isEmpty() ? null : roleCodes.get(0))
                 .roleNames(roleNames)
                 .permissions(permissionCodes)

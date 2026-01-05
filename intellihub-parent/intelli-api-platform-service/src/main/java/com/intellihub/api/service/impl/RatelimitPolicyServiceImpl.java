@@ -39,12 +39,12 @@ public class RatelimitPolicyServiceImpl implements RatelimitPolicyService {
     private final ApiRouteEventPublisher eventPublisher;
 
     @Override
-    public Page<RatelimitPolicyResponse> listPolicies(String tenantId, int page, int size, String keyword, String status) {
+    public Page<RatelimitPolicyResponse> listPolicies(int page, int size, String keyword, String status) {
         Page<RatelimitPolicy> pageParam = new Page<>(page, size);
         
+        // 租户条件由拦截器自动添加
         LambdaQueryWrapper<RatelimitPolicy> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(RatelimitPolicy::getTenantId, tenantId)
-               .eq(status != null, RatelimitPolicy::getStatus, status)
+        wrapper.eq(status != null, RatelimitPolicy::getStatus, status)
                .and(keyword != null && !keyword.isEmpty(), w -> 
                    w.like(RatelimitPolicy::getName, keyword)
                     .or()
@@ -75,8 +75,9 @@ public class RatelimitPolicyServiceImpl implements RatelimitPolicyService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String createPolicy(String tenantId, RatelimitPolicyCreateRequest request) {
+    public String createPolicy(RatelimitPolicyCreateRequest request) {
         String userId = UserContextHolder.getCurrentUserId();
+        String tenantId = UserContextHolder.getCurrentTenantId();
         
         RatelimitPolicy policy = new RatelimitPolicy();
         BeanUtils.copyProperties(request, policy);

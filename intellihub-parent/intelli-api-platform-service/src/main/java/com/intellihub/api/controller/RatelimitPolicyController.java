@@ -45,9 +45,8 @@ public class RatelimitPolicyController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status) {
-        
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        Page<RatelimitPolicyResponse> result = policyService.listPolicies(tenantId, page, size, keyword, status);
+        // 租户ID由多租户拦截器自动处理
+        Page<RatelimitPolicyResponse> result = policyService.listPolicies(page, size, keyword, status);
         return ApiResponse.success(result);
     }
 
@@ -73,8 +72,8 @@ public class RatelimitPolicyController {
      */
     @PostMapping("/policies")
     public ApiResponse<String> createPolicy(@Valid @RequestBody RatelimitPolicyCreateRequest request) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        String policyId = policyService.createPolicy(tenantId, request);
+        // 租户ID由多租户拦截器自动处理
+        String policyId = policyService.createPolicy(request);
         return ApiResponse.success(policyId, ApiResponseMessage.POLICY_CREATE_SUCCESS);
     }
 

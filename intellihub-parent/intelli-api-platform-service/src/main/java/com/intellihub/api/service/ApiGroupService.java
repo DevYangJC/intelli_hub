@@ -14,8 +14,9 @@ public interface ApiGroupService {
 
     /**
      * 获取分组列表
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    List<ApiGroupResponse> listGroups(String tenantId);
+    List<ApiGroupResponse> listGroups();
 
     /**
      * 获取分组详情
@@ -24,8 +25,9 @@ public interface ApiGroupService {
 
     /**
      * 创建分组
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    ApiGroupResponse createGroup(String tenantId, String userId, String name, String code, String description, String color, String status);
+    ApiGroupResponse createGroup(String userId, String name, String code, String description, String color, String status);
 
     /**
      * 更新分组

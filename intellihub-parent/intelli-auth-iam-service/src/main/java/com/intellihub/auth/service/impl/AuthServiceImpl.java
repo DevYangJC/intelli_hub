@@ -12,6 +12,7 @@ import com.intellihub.auth.mapper.*;
 import com.intellihub.auth.service.AuthService;
 import com.intellihub.auth.util.CaptchaUtil;
 import com.intellihub.auth.util.JwtUtil;
+import com.intellihub.context.UserContextHolder;
 import com.intellihub.exception.BusinessException;
 import com.intellihub.constants.ResponseStatus;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -82,6 +83,9 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResponseStatus.ACCOUNT_INCORRECT);
         }
 
+        // 设置租户上下文（登录成功后，用于后续数据库操作）
+        UserContextHolder.setCurrentTenantId(user.getTenantId());
+        
         // 重置登录失败次数
         user.setLoginFailCount(0);
         user.setLastLoginAt(LocalDateTime.now());
@@ -122,6 +126,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .avatar(user.getAvatar())
+                .status(user.getStatus())
                 .role(roleCodes.isEmpty() ? null : roleCodes.get(0))
                 .roleNames(roleNames)
                 .permissions(permissionCodes)
@@ -322,6 +327,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .avatar(user.getAvatar())
+                .status(user.getStatus())
                 .role(roleCodes.isEmpty() ? null : roleCodes.get(0))
                 .roleNames(roleNames)
                 .permissions(permissionCodes)
@@ -522,6 +528,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .avatar(user.getAvatar())
+                .status(user.getStatus())
                 .role(roleCodes.isEmpty() ? "user" : roleCodes.get(0))
                 .roleNames(roleNames.isEmpty() ? Collections.singletonList("普通用户") : roleNames)
                 .permissions(permissionCodes)

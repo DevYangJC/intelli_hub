@@ -19,8 +19,9 @@ public interface ApiInfoService {
 
     /**
      * 分页查询API列表
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    PageData<ApiInfoResponse> listApis(String tenantId, ApiQueryRequest request);
+    PageData<ApiInfoResponse> listApis(ApiQueryRequest request);
 
     /**
      * 获取API详情
@@ -29,8 +30,9 @@ public interface ApiInfoService {
 
     /**
      * 创建API
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    ApiInfoResponse createApi(String tenantId, String userId, String username, CreateApiRequest request);
+    ApiInfoResponse createApi(String userId, String username, CreateApiRequest request);
 
     /**
      * 更新API
@@ -59,8 +61,9 @@ public interface ApiInfoService {
 
     /**
      * 复制API
+     * <p>租户ID由多租户拦截器自动处理</p>
      */
-    ApiInfoResponse copyApi(String id, String tenantId, String userId, String username);
+    ApiInfoResponse copyApi(String id, String userId, String username);
 
     /**
      * 获取所有已发布API的路由配置

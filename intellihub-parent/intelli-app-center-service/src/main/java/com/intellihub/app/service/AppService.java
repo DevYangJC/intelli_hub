@@ -20,23 +20,27 @@ public interface AppService {
 
     /**
      * 创建应用
+     * <p>
+     * 租户ID由多租户拦截器自动处理
+     * </p>
      *
-     * @param tenantId  租户ID
      * @param userId    创建人ID
      * @param username  创建人姓名
      * @param request   创建请求
      * @return 创建结果，包含AppKey和AppSecret
      */
-    AppCreateResponse createApp(String tenantId, String userId, String username, CreateAppRequest request);
+    AppCreateResponse createApp(String userId, String username, CreateAppRequest request);
 
     /**
      * 分页查询应用列表
+     * <p>
+     * 租户ID由多租户拦截器自动处理
+     * </p>
      *
-     * @param tenantId 租户ID
      * @param request  查询条件
      * @return 应用分页列表
      */
-    PageData<AppInfoResponse> listApps(String tenantId, AppQueryRequest request);
+    PageData<AppInfoResponse> listApps(AppQueryRequest request);
 
     /**
      * 获取应用详情

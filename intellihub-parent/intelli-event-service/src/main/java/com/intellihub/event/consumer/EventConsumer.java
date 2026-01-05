@@ -17,6 +17,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import com.intellihub.context.UserContextHolder;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -60,8 +61,11 @@ public class EventConsumer {
             EventMessage eventMessage = objectMapper.readValue(eventJson, EventMessage.class);
             log.info("收到事件: eventId={}, eventCode={}", eventMessage.getEventId(), eventMessage.getEventCode());
 
+            // 从消息中设置租户上下文（异步消息处理场景）
+            UserContextHolder.setCurrentTenantId(eventMessage.getTenantId());
+            
             List<EventSubscription> subscriptions = subscriptionService.getSubscriptionsByEvent(
-                    eventMessage.getTenantId(), eventMessage.getEventCode());
+                    eventMessage.getEventCode());
 
             if (subscriptions.isEmpty()) {
                 log.warn("事件无订阅者: eventCode={}", eventMessage.getEventCode());

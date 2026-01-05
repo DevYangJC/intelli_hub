@@ -34,8 +34,8 @@ public class ApiGroupController {
      */
     @GetMapping("/list")
     public ApiResponse<List<ApiGroupResponse>> listGroups() {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        List<ApiGroupResponse> groups = apiGroupService.listGroups(tenantId);
+        // 租户ID由多租户拦截器自动处理
+        List<ApiGroupResponse> groups = apiGroupService.listGroups();
         return ApiResponse.success(groups);
     }
 
@@ -62,10 +62,9 @@ public class ApiGroupController {
      */
     @PostMapping("/create")
     public ApiResponse<ApiGroupResponse> createGroup(@RequestBody Map<String, String> request) {
-        String tenantId = UserContextHolder.getCurrentTenantId();
+        // 租户ID由多租户拦截器自动处理
         String userId = UserContextHolder.getCurrentUserId();
         ApiGroupResponse group = apiGroupService.createGroup(
-                tenantId,
                 userId,
                 request.get("name"),
                 request.get("code"),

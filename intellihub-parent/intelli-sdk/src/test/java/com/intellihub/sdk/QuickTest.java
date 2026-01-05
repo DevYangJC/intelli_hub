@@ -11,20 +11,7 @@ import java.util.Map;
  * @author intellihub
  */
 public class QuickTest {
-    /**
-     * INSERT INTO intelli_hub_app_center.app_api_subscription
-     * (id, app_id, api_id, api_name, api_path, status, quota_limit, effective_time, expire_time, created_at, updated_at)
-     * VALUES('802c19ae85f4534b976e498d59257d19', '315203d0386c8f6bafebcaafd259e44d', '2007729662223376385', '根据AppKey获取应用信息', '/open/app/{appkey}', 'ACTIVE', NULL, '2026-01-04 16:24:53', NULL, '2026-01-04 16:24:53', '2026-01-04 16:24:53');
-     *
-     * INSERT INTO intelli_hub_api_platform.api_backend
-     * (id, api_id, `type`, protocol, `method`, host, `path`, timeout, connect_timeout, registry, interface_name, method_name, dubbo_version, dubbo_group, ref_api_id, mock_delay, created_at, updated_at)
-     * VALUES('2007725269700763650', '2007696330425032706', 'dubbo', 'HTTP', NULL, NULL, NULL, 5000, 5000, 'nacos://127.0.0.1:8848', 'com.intellihub.dubbo.AuthDubboService', 'getUserById', '', 'intellihub', NULL, 0, '2026-01-04 16:06:21', '2026-01-04 08:42:24');
-     * INSERT INTO intelli_hub_api_platform.api_backend
-     * (id, api_id, `type`, protocol, `method`, host, `path`, timeout, connect_timeout, registry, interface_name, method_name, dubbo_version, dubbo_group, ref_api_id, mock_delay, created_at, updated_at)
-     * VALUES('2007729662290485251', '2007729662223376385', 'dubbo', 'HTTP', NULL, NULL, NULL, 5000, 5000, 'nacos://127.0.0.1:8848', 'com.intellihub.dubbo.AppCenterDubboService', 'getAppKeyInfo', '', 'intellihub', NULL, 0, '2026-01-04 16:23:48', '2026-01-04 08:42:24');
-     *
-    * @param args
-     */
+
 
     public static void main(String[] args) {
         System.out.println("========================================");

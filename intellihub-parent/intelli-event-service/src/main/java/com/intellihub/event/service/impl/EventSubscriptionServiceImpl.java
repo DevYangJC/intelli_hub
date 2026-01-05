@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import com.intellihub.context.UserContextHolder;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -115,16 +116,16 @@ public class EventSubscriptionServiceImpl implements EventSubscriptionService {
     /**
      * 获取事件的所有激活订阅
      * 查询结果按优先级降序、创建时间升序排列
+     * <p>租户ID由多租户拦截器自动处理</p>
      *
-     * @param tenantId  租户ID
      * @param eventCode 事件编码
      * @return 订阅列表
      */
     @Override
-    public List<EventSubscription> getSubscriptionsByEvent(String tenantId, String eventCode) {
+    public List<EventSubscription> getSubscriptionsByEvent(String eventCode) {
+        // 租户条件由拦截器自动添加
         LambdaQueryWrapper<EventSubscription> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(EventSubscription::getTenantId, tenantId)
-                .eq(EventSubscription::getEventCode, eventCode)
+        queryWrapper.eq(EventSubscription::getEventCode, eventCode)
                 .eq(EventSubscription::getStatus, EventStatus.ACTIVE.getCode())
                 .orderByDesc(EventSubscription::getPriority)
                 .orderByAsc(EventSubscription::getCreatedAt);

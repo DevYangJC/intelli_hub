@@ -61,6 +61,14 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
+# MyBatis-Plus 多租户配置
+intellihub:
+  mybatis:
+    tenant:
+      enabled: true
+      column: tenant_id
+      ignore-tables: []  # 事件服务所有表都需要租户隔离
+
 logging:
   level:
     com.vibe.intellihub: debug

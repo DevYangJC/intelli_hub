@@ -23,6 +23,7 @@ import com.intellihub.api.service.ApiRouteEventPublisher;
 import com.intellihub.constants.ResponseStatus;
 import com.intellihub.exception.BusinessException;
 import com.intellihub.page.PageData;
+import com.intellihub.context.UserContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -54,11 +55,11 @@ public class ApiInfoServiceImpl implements ApiInfoService {
     private final ApiEventPublisher apiEventPublisher;
 
     @Override
-    public PageData<ApiInfoResponse> listApis(String tenantId, ApiQueryRequest request) {
-        log.info("查询API列表 - tenantId: {}, request: {}", tenantId, request);
+    public PageData<ApiInfoResponse> listApis(ApiQueryRequest request) {
+        log.info("查询API列表 - request: {}", request);
 
+        // 租户条件由 MyBatis-Plus 多租户拦截器自动添加
         LambdaQueryWrapper<ApiInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApiInfo::getTenantId, tenantId);
 
         // 关键词搜索
         if (StringUtils.hasText(request.getKeyword())) {
@@ -143,18 +144,20 @@ public class ApiInfoServiceImpl implements ApiInfoService {
 
     @Override
     @Transactional
-    public ApiInfoResponse createApi(String tenantId, String userId, String username, CreateApiRequest request) {
-        // 检查编码是否已存在
+    public ApiInfoResponse createApi(String userId, String username, CreateApiRequest request) {
+        // 获取当前租户ID（用于实体设置）
+        String tenantId = UserContextHolder.getCurrentTenantId();
+        
+        // 检查编码是否已存在（租户条件由拦截器自动添加）
         ApiInfo existing = apiInfoMapper.selectOne(
                 new LambdaQueryWrapper<ApiInfo>()
-                        .eq(ApiInfo::getTenantId, tenantId)
                         .eq(ApiInfo::getCode, request.getCode())
         );
         if (existing != null) {
             throw new BusinessException(ResponseStatus.DATA_EXISTS.getCode(), "API编码已存在");
         }
 
-        // 创建API
+        // 创建API（手动设置 tenantId 用于 INSERT）
         ApiInfo apiInfo = ApiInfo.builder()
                 .tenantId(tenantId)
                 .groupId(request.getGroupId())
@@ -330,7 +333,7 @@ public class ApiInfoServiceImpl implements ApiInfoService {
 
     @Override
     @Transactional
-    public ApiInfoResponse copyApi(String id, String tenantId, String userId, String username) {
+    public ApiInfoResponse copyApi(String id, String userId, String username) {
         ApiInfoResponse source = getApiById(id);
 
         CreateApiRequest request = new CreateApiRequest();
@@ -353,7 +356,7 @@ public class ApiInfoServiceImpl implements ApiInfoService {
         request.setMockEnabled(source.getMockEnabled());
         request.setMockResponse(source.getMockResponse());
 
-        return createApi(tenantId, userId, username, request);
+        return createApi(userId, username, request);
     }
 
     private void saveRequestParams(String apiId, List<ApiParamRequest> params) {
