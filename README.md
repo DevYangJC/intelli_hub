@@ -61,64 +61,117 @@ IntelliHub 是一个面向企业与开发者的**智能 API 开放平台**，旨
 
 ### 架构总览
 
-![Uploading image.png…]()
-
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  客户端层 - Console前端 / 第三方系统 / SDK                        │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ HTTP/HTTPS
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  网关层 - Spring Cloud Gateway (WebFlux)                        │
-│  • JWT鉴权 / AppKey+签名  • 限流/熔断  • 动态路由                │
-└────────────────────────────┬────────────────────────────────────┘
-         │                   │                   │
-         ▼                   ▼                   ▼
-    ┌─────────┐         ┌─────────┐        ┌─────────┐
-    │  Nacos  │         │  Kafka  │        │  Redis  │
-    │ 注册/配置│         │  消息队列│        │ 缓存/限流│
-    └─────────┘         └─────────┘        └─────────┘
-         │                   │                   │
-         ▼                   ▼                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  业务服务层 - Spring Boot 微服务集群                             │
-│  • IAM认证  • API平台  • 应用中心  • 治理中心  • 扩展服务        │
-└────────────────────────────┬────────────────────────────────────┘
-                             ▼
-                        ┌─────────┐
-                        │  MySQL  │
-                        └─────────┘
+```mermaid
+graph TB
+    subgraph "客户端层"
+        FE[前端控制台<br/>Vue3 + TypeScript<br/>端口: 5173]
+        SDK[Java SDK<br/>签名认证 + HTTP客户端]
+        THIRD[第三方系统<br/>通过SDK调用]
+    end
+    
+    subgraph "网关层"
+        GW[统一网关<br/>Spring Cloud Gateway<br/>端口: 8080]
+    end
+    
+    subgraph "中间件层"
+        NACOS[Nacos<br/>服务注册 + 配置中心]
+        KAFKA[Kafka<br/>消息队列 + 事件驱动]
+        REDIS[Redis<br/>缓存 + 限流 + 统计]
+        ES[Elasticsearch<br/>全文搜索]
+    end
+    
+    subgraph "核心服务层 ✅已完成"
+        IAM[IAM认证服务<br/>端口: 8081<br/>✅多租户 + RBAC]
+        API[API平台服务<br/>端口: 8082<br/>✅生命周期管理]
+        APP[应用中心服务<br/>端口: 8085<br/>✅订阅授权]
+        GOV[治理中心服务<br/>端口: 8083<br/>✅监控告警]
+    end
+    
+    subgraph "扩展服务层 ✅已完成"
+        SEARCH[聚合搜索服务<br/>端口: 8086<br/>✅全文检索]
+        EVENT[事件中心服务<br/>端口: 8087<br/>✅事件驱动]
+    end
+    
+    subgraph "扩展服务层 ⏳规划中"
+        AIGC[AIGC服务<br/>端口: 8084<br/>⏳智能分析]
+        LOG[日志审计服务<br/>端口: 8088<br/>⏳日志归档]
+    end
+    
+    subgraph "数据层"
+        MYSQL[(MySQL 8.0+<br/>主数据库)]
+    end
+    
+    FE -->|HTTPS| GW
+    SDK -->|HTTPS| GW
+    THIRD -->|HTTPS| GW
+    
+    GW -->|服务发现| NACOS
+    GW -->|缓存路由| REDIS
+    GW -->|上报日志| KAFKA
+    GW --> IAM
+    GW --> API
+    GW --> APP
+    
+    IAM --> MYSQL
+    API --> MYSQL
+    API -->|发布事件| KAFKA
+    APP --> MYSQL
+    GOV --> MYSQL
+    GOV -->|消费日志| KAFKA
+    GOV -->|实时统计| REDIS
+    GOV -->|发布告警| KAFKA
+    
+    SEARCH --> ES
+    SEARCH --> MYSQL
+    
+    EVENT -->|消费事件| KAFKA
+    EVENT --> MYSQL
+    
+    KAFKA --> EVENT
+    
+    style GW fill:#4A90E2,color:#fff
+    style IAM fill:#7ED321,color:#fff
+    style API fill:#7ED321,color:#fff
+    style APP fill:#7ED321,color:#fff
+    style GOV fill:#7ED321,color:#fff
+    style SEARCH fill:#7ED321,color:#fff
+    style EVENT fill:#7ED321,color:#fff
+    style AIGC fill:#F5A623,color:#fff
+    style LOG fill:#F5A623,color:#fff
 ```
 
 ### 📦 模块架构
 
-#### 核心服务（已实现）
+#### 核心服务（✅ 已完成）
 
-| 模块 | 端口 | 职责 |
+| 模块 | 端口 | 状态 | 核心能力 |
+|------|:----:|:----:|----------|
+| **intelli-gateway-service** | 8080 | ✅ | 🌐 统一网关：双认证机制、多维限流、动态路由、异步日志上报 |
+| **intelli-auth-iam-service** | 8081 | ✅ | 🔐 身份认证：多租户隔离、JWT本地验签、RBAC权限体系 |
+| **intelli-api-platform-service** | 8082 | ✅ | 📊 API平台：完整生命周期、版本管理、事件驱动下发 |
+| **intelli-app-center-service** | 8085 | ✅ | 🔑 应用中心：AppKey生成、订阅授权、配额管理 |
+| **intelli-governance-service** | 8083 | ✅ | 📈 治理中心：Kafka日志消费、实时统计、智能告警 |
+
+#### 扩展服务（✅ 已完成）
+
+| 模块 | 端口 | 状态 | 核心能力 |
+|------|:----:|:----:|----------|
+| **intelli-search-service** | 8086 | ✅ | 🔍 聚合搜索：Elasticsearch全文检索、多索引聚合、高亮显示 |
+| **intelli-event-service** | 8087 | ✅ | 📮 事件中心：Kafka事件消费、Webhook订阅、失败重试 |
+
+#### 扩展服务（⏳ 规划中）
+
+| 模块 | 端口 | 状态 | 规划能力 |
+|------|:----:|:----:|----------|
+| intelli-aigc-service | 8084 | ⏳ | 🤖 AI辅助API设计、智能文档生成、异常诊断 |
+| intelli-log-audit-service | 8088 | ⏳ | 📝 操作审计、合规报表、日志归档 |
+
+#### 客户端 SDK（✅ 已完成）
+
+| 模块 | 状态 | 说明 |
 |------|:----:|------|
-| **intelli-gateway-service** | 8080 | 🌐 统一网关：认证鉴权、限流熔断、动态路由、日志上报 |
-| **intelli-auth-iam-service** | 8081 | 🔐 身份认证：多租户管理、JWT 签发、RBAC 权限 |
-| **intelli-api-platform-service** | 8082 | 📊 API 平台：生命周期管理、路由配置、文档生成 |
-| **intelli-app-center-service** | 8085 | 🔑 应用中心：AppKey 管理、订阅授权、配额控制 |
-| **intelli-governance-service** | 8083 | 📈 治理中心：日志消费、统计分析、告警检测 |
-
-#### 客户端 SDK
-
-| 模块 | 说明 |
-|------|------|
-| **intelli-sdk** | ☕ Java SDK：签名生成、HTTP 客户端、异常处理 |
-| **intellihub-frontend** | 🖥️ 管理控制台：Vue3 + TypeScript，端口 5173 |
-
-#### 扩展服务（规划中）
-
-| 模块 | 端口 | 说明 |
-|------|:----:|------|
-| intelli-aigc-service | 8084 | 🤖 AIGC 智能分析 |
-| intelli-search-service | 8086 | 🔍 统一搜索服务 |
-| intelli-event-service | 8087 | 📮 事件中心 |
-| intelli-log-audit-service | 8088 | 📝 日志审计 |
+| **intelli-sdk** | ✅ | ☕ Java SDK：HMAC-SHA256签名、HTTP客户端封装、统一异常处理 |
+| **intellihub-frontend** | ✅ | 🖥️ 管理控制台：Vue3 + TypeScript + Element Plus，端口 5173 |
 
 ### 🔄 核心流程
 
@@ -304,6 +357,286 @@ npm run dev
 - **[系统架构图](系统架构图.drawio)** - Draw.io 可编辑架构图
 - **[事件中心设计](intellihub-parent/intelli-event-service/docs/事件中心设计文档.md)** - 事件驱动架构设计
 - **[多租户实现](intellihub-parent/intelli-auth-iam-service/docs/MultiTenant.md)** - 多租户技术方案
+
+---
+
+## 📚 模块功能详解
+
+### 1️⃣ 统一网关服务 (intelli-gateway-service) ✅
+
+统一网关是IntelliHub的流量入口，作为所有API请求的第一道关卡，它承载着关键的认证、路由、限流和监控职责。基于Spring Cloud Gateway响应式框架（WebFlux），网关在保证高并发性能的同时，实现了非阻塞的请求处理机制。
+
+#### 核心能力
+
+**双流量认证机制** - 网关智能区分两种不同的流量类型，采用最适合的认证方式：
+- **管理后台流量** (`/api/**`)：使用JWT Token本地验签，无需远程调用，极速响应
+- **开放API流量** (`/open/**`)：采用AppKey + HMAC-SHA256签名，防止重放攻击
+
+**动态路由引擎** - 网关支持三种路由类型，满足不同场景需求：
+- **HTTP转发**：基于Nacos的服务发现，自动负载均衡
+- **Dubbo泛化调用**：无需依赖业务JAR包，动态调用RPC接口  
+- **Mock响应**：返回配置的预设数据，便于测试
+
+最关键的是，路由配置支持**热更新**：当API平台修改路由配置后，通过Redis Pub/Sub通知网关刷新，无需重启。
+
+**多维度限流保护** - 网关实现了精细化的限流策略：
+- **IP维度**：防止单个IP恶意攻击
+- **Path维度**：保护特定API不被击穿
+- **IP+Path组合**：更精确的流量控制
+
+**异步日志上报** - 每个API调用都会被记录，但不会阻塞业务流程：
+
+- **双通道上报**：同时写入Kafka（持久化）和Redis（实时统计）
+- **异步处理**：采用响应式编程，日志上报完全不影响响应时间
+
+```mermaid
+sequenceDiagram
+    participant C as 客户端
+    participant GW as 网关
+    participant B as 后端服务
+    participant K as Kafka
+    participant R as Redis
+    
+    C->>GW: 1.发起请求
+    GW->>GW: 2.认证验证
+    GW->>GW: 3.限流检查
+    GW->>GW: 4.路由匹配
+    GW->>B: 5.转发请求
+    B-->>GW: 6.返回响应
+    GW-->>C: 7.返回结果
+    
+    Note over GW,R: 异步日志上报
+    GW--)K: 8.发送日志
+    GW--)R: 9.写统计
+```
+
+#### 技术亮点
+
+| 特性 | 实现方式 | 优势 |
+|------|----------|------|
+| 响应式架构 | WebFlux + Reactor | 高并发、低延迟 |
+| 本地缓存 | ConcurrentHashMap + Redis | 毫秒级路由匹配 |
+| Filter链 | 自定义优先级 | 灵活扩展 |
+| 灰度发布 | 基于权重路由 | 平滑升级 |
+
+---
+
+### 2️⃣ IAM认证服务 (intelli-auth-iam-service) ✅
+
+IAM（Identity and Access Management）服务是IntelliHub的安全基座，负责用户身份认证、权限管理和多租户隔离。它采用业界成熟的RBAC（基于角色的访问控制）模型，同时实现了企业级的多租户体系。
+
+#### 核心能力
+
+**多租户架构** - IntelliHub采用**逻辑隔离**的多租户方案，所有租户共享同一个数据库，通过`tenant_id`字段实现数据隔离。
+
+**全链路隔离机制**：
+
+1. **网关层**：从JWT中解析租户ID，注入请求头 `X-Tenant-Id`
+2. **服务层**：拦截器提取租户ID，存入`UserContextHolder`
+3. **数据层**：MyBatis Plus租户插件自动添加WHERE条件
+
+```mermaid
+graph LR
+    A[用户请求] -->|JWT| B[网关解析]
+    B -->|X-Tenant-Id| C[服务拦截器]
+    C -->|UserContext| D[MyBatis拦截器]
+    D -->|WHERE tenant_id| E[数据库查询]
+```
+
+**RBAC权限体系** - IAM服务实现了三级角色体系：
+
+| 角色 | 权限范围 | 适用场景 |
+|------|----------|----------|
+| **超级管理员** | 跨租户全权限 | 平台运营、系统配置 |
+| **租户管理员** | 本租户全权限 | 企业管理员、团队管理 |
+| **普通用户** | 限制权限 | 开发者、业务人员 |
+
+**JWT Token管理** - JWT采用HMAC-SHA256对称加密，网关可以本地验签：
+- **Payload包含**：userId、tenantId、username、roles
+- **过期时间**：24小时（可配置）
+- **刷新机制**：支持Refresh Token
+
+---
+
+### 3️⃣ API平台服务 (intelli-api-platform-service) ✅
+
+API平台服务是IntelliHub的核心，负责API的全生命周期管理。从API创建、配置、测试到发布、版本管理再到下线，每个环节都有完善的流程和校验。
+
+#### 核心能力
+
+**完整生命周期管理** - API在平台中经历完整的生命周期：
+
+```mermaid
+stateDiagram-v2
+    [*] --> 未发布: 创建
+    未发布 --> 已发布: 发布
+    已发布 --> 已下线: 下线
+    已发布 --> 已废弃: 废弃
+    已下线 --> 已发布: 重新发布
+    已下线 --> [*]: 删除
+    已废弃 --> [*]: 删除
+```
+
+**关键操作流程**：
+1. **创建API**：定义基本信息（名称、路径、方法、协议）
+2. **配置后端**：设置后端服务（HTTP/Dubbo/Mock）
+3. **定义参数**：配置请求参数和响应结构
+4. **发布API**：发送事件到Kafka，通知网关刷新路由
+5. **版本管理**：自动生成版本快照，支持回滚
+
+**事件驱动下发** - API配置变更后，通过事件机制通知相关服务：
+
+```mermaid
+sequenceDiagram
+    participant A as 管理员
+    participant API as API平台
+    participant K as Kafka
+    participant GW as 网关
+    
+    A->>API: 1.发布API
+    API->>API: 2.更新状态
+    API->>K: 3.发送事件
+    K->>GW: 4.通知网关
+    GW->>GW: 5.刷新路由
+    API-->>A: 6.发布成功
+```
+
+**版本管理** - 每次API发布都会自动生成版本快照：
+- **快照内容**：API基本信息 + 后端配置 + 参数定义
+- **版本比较**：支持任意两个版本的差异对比
+- **版本回滚**：一键恢复到历史版本
+
+---
+
+### 4️⃣ 应用中心服务 (intelli-app-center-service) ✅
+
+应用中心服务管理第三方应用的接入、认证和授权。它为每个应用生成唯一的AppKey和AppSecret，并管理应用与API之间的订阅关系。
+
+#### 核心能力
+
+**AppKey/AppSecret管理** - 应用创建后自动生成密钥对：
+- **AppKey**：以"IH"开头的唯一标识
+- **AppSecret**：用于签名的密钥，不在网络中传输
+- **重置功能**：支持AppSecret重置，不影响AppKey
+
+**订阅授权机制**：
+
+| 步骤 | 操作 | 说明 |
+|------|------|------|
+| 1 | 选择API | 从市场选择需要的API |
+| 2 | 提交订阅 | 创建订阅关系记录 |
+| 3 | 审核通过 | 状态变为active |
+| 4 | 开始调用 | 网关校验订阅关系 |
+
+**配额管理** - 每个应用都有调用配额限制：
+- **配额设置**：`quotaLimit`（每日最大调用次数）
+- **实时统计**：`quotaUsed`（当日已使用次数）
+- **自动重置**：每日0点自动清零
+- **超限处理**：网关自动拦截超配额请求
+
+---
+
+### 5️⃣ 治理中心服务 (intelli-governance-service) ✅
+
+治理中心是IntelliHub的智能大脑，负责API调用的实时监控、统计分析和智能告警。它通过消费Kafka消息队列中的日志，实现近实时的数据分析和告警。
+
+#### 核心能力
+
+**Kafka日志消费** - 治理中心通过@KafkaListener消费网关上报的调用日志
+
+**多维度统计分析**：
+
+| 统计类型 | 指标 | 作用 |
+|----------|------|------|
+| **全局统计** | 总调用量、成功率、平均延迟 | 全局监控 |
+| **API统计** | Top10 API、慢API识别 | 性能优化 |
+| **租户统计** | 各租户调用量、配额使用 | 资源分配 |
+| **应用统计** | 各应用调用量、错误率 | 问题定位 |
+| **时间统计** | 按小时/天/月聚合 | 趋势分析 |
+
+**智能告警系统** - 支持多种告警规则：
+
+| 告警类型 | 触发条件 | 告警级别 |
+|----------|----------|----------|
+| **错误率告警** | error_rate > 10% | CRITICAL/WARNING |
+| **延迟告警** | latency > 1000ms | WARNING/INFO |
+| **QPS告警** | qps > 1000/s | INFO |
+
+---
+
+### 6️⃣ 聚合搜索服务 (intelli-search-service) ✅
+
+聚合搜索服务基于Elasticsearch，为IntelliHub提供强大的全文搜索能力。它支持跨多个索引（API、应用、用户）的聚合搜索，并按照相关性排序返回结果。
+
+#### 核心能力
+
+**多索引聚合搜索** - 一次搜索，同时查询多个索引：
+
+```mermaid
+graph TB
+    U[用户搜索] --> S[搜索服务]
+    S --> API[API索引]
+    S --> APP[应用索引]
+    S --> USER[用户索引]
+    API --> M[结果合并]
+    APP --> M
+    USER --> M
+    M --> R[排序返回]
+```
+
+**搜索特性**：
+
+| 功能 | 说明 | 作用 |
+|------|------|------|
+| **分词搜索** | IK中文分词器 | 提高中文搜索精度 |
+| **高亮显示** | 关键词高亮 | 增强用户体验 |
+| **相关性排序** | TF-IDF算法 | 更准确的结果 |
+| **分面统计** | 按类型聚合 | 支持筛选 |
+| **租户隔离** | 自动过滤 | 数据安全 |
+
+---
+
+### 7️⃣ 事件中心服务 (intelli-event-service) ✅
+
+事件中心是IntelliHub的事件驱动引擎，实现了分布式系统中的事件发布-订阅机制。它通过Kafka消费事件，并根据订阅配置分发给不同的订阅者。
+
+#### 核心能力
+
+**事件发布-订阅模型**：
+
+```mermaid
+graph LR
+    subgraph "发布者"
+        A[API服务]
+        B[治理服务]
+    end
+    
+    subgraph "事件中心"
+        K[(Kafka)]
+        C[事件消费者]
+    end
+    
+    subgraph "订阅者"
+        W1[Webhook1]
+        W2[Webhook2]
+    end
+    
+    A -->|发布| K
+    B -->|发布| K
+    K --> C
+    C -->|分发| W1
+    C -->|分发| W2
+```
+
+**订阅类型**：
+- **Webhook**：HTTP回调，适用于外部系统集成
+- **MQ**：消息队列转发，适用于内部服务通信
+- **Service**：内部服务调用（预留）
+
+**失败重试机制**：
+- **固定间隔**：每60秒重试一次
+- **指数退避**：60秒、120秒、240秒...
+- **最大次数**：可配置最大重试次数
 
 ---
 
@@ -497,13 +830,7 @@ IP+Path 维度   ┘
 - 🗨️ **功能建议**：[GitHub Discussions](https://github.com/yourusername/intelli_hub/discussions)
 - 📧 **商务合作**：[Email](mailto:your-email@example.com)
 
----
 
-<div align="center">
-
-### ⭐️ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/intelli_hub&type=Date)](https://star-history.com/#yourusername/intelli_hub&Date)
 
 ---
 
