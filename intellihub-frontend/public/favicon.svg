@@ -1,0 +1,35 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆角矩形 - 主品牌色 -->
+  <rect width="32" height="32" rx="7" fill="url(#gradient)"/>
+  
+  <!-- 渐变定义 -->
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#409EFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5CADFF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 中心连接节点 -->
+  <circle cx="16" cy="16" r="4" fill="white" opacity="0.95"/>
+  
+  <!-- 四个方向的连接线和节点 - 代表API连接 -->
+  <!-- 上方节点 -->
+  <line x1="16" y1="16" x2="16" y2="6" stroke="white" stroke-width="1.5" opacity="0.9"/>
+  <circle cx="16" cy="6" r="2" fill="white" opacity="0.9"/>
+  
+  <!-- 右方节点 -->
+  <line x1="16" y1="16" x2="26" y2="16" stroke="white" stroke-width="1.5" opacity="0.9"/>
+  <circle cx="26" cy="16" r="2" fill="white" opacity="0.9"/>
+  
+  <!-- 下方节点 -->
+  <line x1="16" y1="16" x2="16" y2="26" stroke="white" stroke-width="1.5" opacity="0.9"/>
+  <circle cx="16" cy="26" r="2" fill="white" opacity="0.9"/>
+  
+  <!-- 左方节点 -->
+  <line x1="16" y1="16" x2="6" y2="16" stroke="white" stroke-width="1.5" opacity="0.9"/>
+  <circle cx="6" cy="16" r="2" fill="white" opacity="0.9"/>
+  
+  <!-- 智能标识 - 小型闪电图标 -->
+  <path d="M15 14 L17 14 L15.5 16 L16.5 16 L14.5 18 L15 16.5 L14 16.5 Z" fill="#409EFF" opacity="0.8"/>
+</svg>
