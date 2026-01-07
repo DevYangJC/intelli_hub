@@ -6,6 +6,8 @@
 -- 第一阶段：API 生命周期事件 + 告警事件
 -- ========================================
 
+    use intelli_hub_event;
+
 -- API 生命周期事件
 INSERT INTO event_definition (id, tenant_id, event_code, event_name, event_type, description, status, created_at, updated_at)
 VALUES (REPLACE(UUID(), '-', ''), 'system', 'api.published', 'API发布事件', 'API', 'API发布时触发', 'ACTIVE', NOW(), NOW());

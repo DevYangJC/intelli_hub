@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  * @author IntelliHub
  */
 @RestController
-@RequestMapping("/v1/event-subscriptions")
+@RequestMapping("/event/v1/event-subscriptions")
 @RequiredArgsConstructor
 public class EventSubscriptionController {
 

@@ -52,7 +52,32 @@
               <el-menu-item index="alert-rules">告警规则</el-menu-item>
               <el-menu-item index="alert-records">告警历史</el-menu-item>
             </el-sub-menu>
+
+            <el-sub-menu index="event">
+              <template #title>
+                <el-icon><Notification /></el-icon>
+                <span>事件中心</span>
+              </template>
+              <el-menu-item index="event-definitions">事件定义</el-menu-item>
+              <el-menu-item index="event-subscriptions">事件订阅</el-menu-item>
+              <el-menu-item index="event-records">事件记录</el-menu-item>
+              <el-menu-item index="event-statistics">事件统计</el-menu-item>
+            </el-sub-menu>
           </template>
+
+          <div class="menu-divider"></div>
+          <div class="menu-label">AI服务</div>
+
+          <el-sub-menu index="aigc">
+            <template #title>
+              <el-icon><ChatDotRound /></el-icon>
+              <span>AIGC服务</span>
+            </template>
+            <el-menu-item index="aigc-chat">AI对话</el-menu-item>
+            <el-menu-item index="aigc-templates">Prompt模板</el-menu-item>
+            <el-menu-item index="aigc-dashboard">使用统计</el-menu-item>
+            <el-menu-item index="aigc-cost">成本分析</el-menu-item>
+          </el-sub-menu>
 
           <template v-if="hasAnyPermission(['tenant:list', 'user:list', 'system:config'])">
             <div class="menu-divider"></div>
@@ -118,6 +143,8 @@ import {
   TrendCharts,
   Tickets,
   Bell,
+  Notification,
+  ChatDotRound,
 } from '@element-plus/icons-vue'
 import DashboardPage from './DashboardPage.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -164,6 +191,14 @@ const handleMenuSelect = (index: string) => {
     'logs': '/console/logs',
     'alert-rules': '/console/alert/rules',
     'alert-records': '/console/alert/records',
+    'event-definitions': '/console/event/definitions',
+    'event-subscriptions': '/console/event/subscriptions',
+    'event-records': '/console/event/records',
+    'event-statistics': '/console/event/statistics',
+    'aigc-chat': '/console/aigc/chat',
+    'aigc-templates': '/console/aigc/templates',
+    'aigc-dashboard': '/console/aigc/dashboard',
+    'aigc-cost': '/console/aigc/cost',
     'settings': '/console/settings',
     'announcements': '/console/announcements',
   }

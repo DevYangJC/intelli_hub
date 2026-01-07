@@ -185,3 +185,14 @@ screenshot
 .eslintcache
 
 build
+
+# 本地配置文件（包含敏感信息）
+application-local.yml
+application-local.properties
+**/application-local.yml
+**/application-local.properties
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local

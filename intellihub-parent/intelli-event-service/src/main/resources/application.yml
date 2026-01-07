@@ -1,87 +1,163 @@
+# ===============================================
+# IntelliHub 事件中心服务配置
+# Event Center Service Configuration
+# ===============================================
+
 server:
+  # 服务端口（事件服务使用 8087）
   port: 8087
 
 spring:
   application:
+    # 服务名称（用于服务注册与发现）
     name: intelli-event-service
   profiles:
+    # 激活的环境配置：dev/test/prod
     active: dev
+
+  # -------------------- Nacos 服务注册与配置中心 --------------------
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_SERVER_ADDR:192.168.200.130:8848}
-        namespace: ${NACOS_NAMESPACE:}
+        server-addr: 127.0.0.1:8848
+        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
         group: DEFAULT_GROUP
+#      config:
+#        server-addr: 127.0.0.1:8848
+#        file-extension: yml
+#        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
+#        group: DEFAULT_GROUP
 
+  # -------------------- MySQL 数据库配置 --------------------
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST:192.168.200.130}:${DB_PORT:3306}/${DB_NAME:intelli_hub_event}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+    # 数据库连接地址（独立的事件库）
+    url: jdbc:mysql://${DB_HOST:192.168.200.130}:${DB_PORT:3306}/${DB_NAME:intelli_hub_event}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD:root}
 
+  # -------------------- Redis 缓存配置 --------------------
   redis:
     host: ${REDIS_HOST:192.168.200.130}
     port: ${REDIS_PORT:6379}
+    # 使用独立的数据库编号，避免与其他服务冲突
     database: ${REDIS_DATABASE:2}
-    password: ${REDIS_PASSWORD:}
+    password: ${REDIS_PASSWORD:root}
     timeout: 10s
     lettuce:
       pool:
+        # 连接池最大连接数
         max-active: 8
+        # 最大阻塞等待时间（-1 表示无限制）
         max-wait: -1ms
+        # 最大空闲连接数
         max-idle: 8
+        # 最小空闲连接数
         min-idle: 0
 
+  # -------------------- Kafka 消息队列配置 --------------------
   kafka:
+    # Kafka 集群地址
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:192.168.200.130:9092}
+    # 生产者配置（用于发布事件消息）
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # acks=1 表示 leader 确认即可，平衡性能与可靠性
       acks: 1
+      # 发送失败重试次数
       retries: 3
+      # 批量发送大小（提高吞吐量）
+      batch-size: 16384
+      # 发送缓冲区大小
+      buffer-memory: 33554432
+    # 消费者配置（用于消费事件消息并分发给订阅者）
     consumer:
+      # 消费者组ID（同组消费者共享消息）
       group-id: event-service-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # 无偏移量时从最早消息开始消费
       auto-offset-reset: earliest
+      # 自动提交偏移量
       enable-auto-commit: true
+      # 自动提交间隔
+      auto-commit-interval: 1000
 
+# -------------------- MyBatis-Plus 配置 --------------------
 mybatis-plus:
+  # Mapper XML 文件位置
   mapper-locations: classpath*:mapper/**/*.xml
-  type-aliases-package: com.vibe.intellihub.entity
+  # 实体类包路径
+  type-aliases-package: com.intellihub.event.entity
   configuration:
+    # 下划线转驼峰命名
     map-underscore-to-camel-case: true
+    # 关闭二级缓存
     cache-enabled: false
+    # 查询结果为 null 时也调用 setter
     call-setters-on-nulls: true
+    # null 值的 JDBC 类型
     jdbc-type-for-null: 'null'
   global-config:
     db-config:
-      id-type: AUTO
+      # 主键策略：雪花算法自动生成
+      id-type: ASSIGN_ID
+      # 逻辑删除字段
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
 
-# MyBatis-Plus 多租户配置
+# -------------------- IntelliHub 自定义配置 --------------------
 intellihub:
+  # MyBatis-Plus 多租户配置
   mybatis:
     tenant:
+      # 启用多租户
       enabled: true
+      # 租户ID字段名
       column: tenant_id
-      ignore-tables: []  # 事件服务所有表都需要租户隔离
+      # 不需要租户隔离的表（事件服务所有表都需要租户隔离）
+      ignore-tables: []
 
+# -------------------- 日志配置 --------------------
 logging:
   level:
-    com.vibe.intellihub: debug
+    # 事件服务日志级别
+    com.intellihub.event: debug
+    # 公共组件日志级别
     com.intellihub.common: debug
+    # Kafka 日志级别（生产环境建议设为 warn）
+    org.apache.kafka: warn
   pattern:
+    # 控制台日志格式
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    # 文件日志格式
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
 
+# -------------------- Actuator 监控端点配置 --------------------
 management:
   endpoints:
     web:
       exposure:
+        # 暴露所有端点（生产环境建议按需暴露）
         include: '*'
   endpoint:
     health:
+      # 显示健康检查详情
       show-details: always
+
+# -------------------- Dubbo RPC 配置（可选，用于调用其他服务） --------------------
+# 注意：如需启用 Dubbo，请在 pom.xml 中添加 dubbo-spring-boot-starter 依赖
+# dubbo:
+#   application:
+#     name: intelli-event-service
+#     qos-enable: false
+#   registry:
+#     address: nacos://${NACOS_SERVER_ADDR:127.0.0.1:8848}
+#     parameters:
+#       namespace: ${NACOS_NAMESPACE:dev}
+#   consumer:
+#     group: ${DUBBO_GROUP:intellihub}
+#     check: false
+#     timeout: 10000

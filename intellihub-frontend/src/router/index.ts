@@ -182,6 +182,56 @@ const router = createRouter({
               component: () => import('../views/console/settings/AnnouncementsPage.vue'),
               meta: { title: '公告管理', permission: 'system:announcement' }
             },
+            // 事件中心
+            {
+              path: 'event/definitions',
+              name: 'EventDefinitions',
+              component: () => import('../views/console/event/EventDefinitionsPage.vue'),
+              meta: { title: '事件定义', permission: 'event:definition' }
+            },
+            {
+              path: 'event/subscriptions',
+              name: 'EventSubscriptions',
+              component: () => import('../views/console/event/EventSubscriptionsPage.vue'),
+              meta: { title: '事件订阅', permission: 'event:subscription' }
+            },
+            {
+              path: 'event/records',
+              name: 'EventRecords',
+              component: () => import('../views/console/event/EventRecordsPage.vue'),
+              meta: { title: '事件记录', permission: 'event:record' }
+            },
+            {
+              path: 'event/statistics',
+              name: 'EventStatistics',
+              component: () => import('../views/console/event/EventStatisticsPage.vue'),
+              meta: { title: '事件统计', permission: 'event:statistics' }
+            },
+            // AIGC服务
+            {
+              path: 'aigc/chat',
+              name: 'AigcChat',
+              component: () => import('../views/ai/AiChatPage.vue'),
+              meta: { title: 'AI对话', permission: 'aigc:chat' }
+            },
+            {
+              path: 'aigc/templates',
+              name: 'AigcTemplates',
+              component: () => import('../views/ai/AiTemplatesPage.vue'),
+              meta: { title: 'Prompt模板', permission: 'aigc:template' }
+            },
+            {
+              path: 'aigc/dashboard',
+              name: 'AigcDashboard',
+              component: () => import('../views/ai/AiDashboardPage.vue'),
+              meta: { title: '使用统计', permission: 'aigc:stats' }
+            },
+            {
+              path: 'aigc/cost',
+              name: 'AigcCost',
+              component: () => import('../views/ai/AiCostPage.vue'),
+              meta: { title: '成本分析', permission: 'aigc:cost' }
+            },
           ]
         },
         // 监控中心

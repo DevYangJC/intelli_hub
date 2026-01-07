@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  * @author IntelliHub
  */
 @RestController
-@RequestMapping("/v1/event-definitions")
+@RequestMapping("/event/v1/event-definitions")
 @RequiredArgsConstructor
 public class EventDefinitionController {
 

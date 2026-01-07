@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
  * @author IntelliHub
  */
 @RestController
-@RequestMapping("/v1/events")
+@RequestMapping("/event/v1/events")
 @RequiredArgsConstructor
 public class EventPublishController {
 

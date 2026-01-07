@@ -25,7 +25,6 @@
         <module>intelli-app-center-service</module>
         <module>intelli-search-service</module>
         <module>intelli-event-service</module>
-        <module>intelli-log-audit-service</module>
     </modules>
 
     <properties>
