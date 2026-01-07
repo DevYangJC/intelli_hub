@@ -631,6 +631,7 @@ const handleNavCommand = async (command: string) => {
       break
   }
 }
+
 </script>
 
 <style scoped>

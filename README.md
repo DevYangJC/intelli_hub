@@ -148,30 +148,29 @@ graph TB
 |------|:----:|:----:|----------|
 | **intelli-gateway-service** | 8080 | ✅ | 🌐 统一网关：双认证机制、多维限流、动态路由、异步日志上报 |
 | **intelli-auth-iam-service** | 8081 | ✅ | 🔐 身份认证：多租户隔离、JWT本地验签、RBAC权限体系 |
-| **intelli-api-platform-service** | 8082 | ✅ | 📊 API平台：完整生命周期、版本管理、事件驱动下发 |
-| **intelli-app-center-service** | 8085 | ✅ | 🔑 应用中心：AppKey生成、订阅授权、配额管理 |
-| **intelli-governance-service** | 8083 | ✅ | 📈 治理中心：Kafka日志消费、实时统计、智能告警 |
+| **intelli-api-platform-service** | 8082 | ✅ | 📊 API平台：完整生命周期、版本管理、事件驱动下发、公告与配置管理 |
+| **intelli-app-center-service** | 8085 | ✅ | 🔑 应用中心：AppKey生成、订阅授权、配额管理、Dubbo服务 |
+| **intelli-governance-service** | 8083 | ✅ | 📈 治理中心：Kafka日志消费、实时统计、智能告警、多维度分析 |
 
 #### 扩展服务（✅ 已完成）
 
 | 模块 | 端口 | 状态 | 核心能力 |
 |------|:----:|:----:|----------|
-| **intelli-search-service** | 8086 | ✅ | 🔍 聚合搜索：Elasticsearch全文检索、多索引聚合、高亮显示 |
-| **intelli-event-service** | 8087 | ✅ | 📮 事件中心：Kafka事件消费、Webhook订阅、失败重试 |
+| **intelli-search-service** | 8086 | ✅ | 🔍 聚合搜索：Elasticsearch全文检索、多索引聚合、高亮显示、租户隔离 |
+| **intelli-event-service** | 8087 | ✅ | 📡 事件中心：Kafka事件消费、Webhook订阅、失败重试、事件溯源 |
 
 #### 扩展服务（⏳ 规划中）
 
 | 模块 | 端口 | 状态 | 规划能力 |
 |------|:----:|:----:|----------|
 | intelli-aigc-service | 8084 | ⏳ | 🤖 AI辅助API设计、智能文档生成、异常诊断 |
-| intelli-log-audit-service | 8088 | ⏳ | 📝 操作审计、合规报表、日志归档 |
 
 #### 客户端 SDK（✅ 已完成）
 
 | 模块 | 状态 | 说明 |
 |------|:----:|------|
-| **intelli-sdk** | ✅ | ☕ Java SDK：HMAC-SHA256签名、HTTP客户端封装、统一异常处理 |
-| **intellihub-frontend** | ✅ | 🖥️ 管理控制台：Vue3 + TypeScript + Element Plus，端口 5173 |
+| **intelli-sdk** | ✅ | ☕ Java SDK：HMAC-SHA256签名、HTTP客户端封装、统一异常处理、Builder模式配置 |
+| **intellihub-frontend** | ✅ | 🖥️ 管理控制台：Vue3 + TypeScript + Element Plus，完整的API管理、统计监控、告警配置、系统设置等功能 |
 
 ### 🔄 核心流程
 
@@ -266,7 +265,6 @@ graph LR
 #### 快速启动Kafka（Docker Compose）
 
 ```bash
-# 使用 bitnami 镜像
 cd docker
 docker-compose -f docker-compose-kafka.yml up -d
 
@@ -336,27 +334,34 @@ npm run dev
 
 ## 📚 文档中心
 
-### 📖 文档导航
+#### 📝 文档导航
 
 | 分类 | 文档 | 说明 |
 |------|------|------|
-| **📑 索引** | [文档索引](docs/00-文档索引.md) | 完整的文档导航与分类索引 |
-| **🏗️ 架构设计** | [项目架构文档](docs/10-架构设计-项目架构文档.md) | 总体架构、模块职责、关键链路、技术选型 |
-| | [实体关系说明](docs/11-架构设计-实体关系说明.md) | 核心实体关系与 ER 图 |
-| | [API 开放平台设计指南](docs/12-架构设计-API开放平台架构设计指南.md) | 架构设计原则与最佳实践 |
-| **⚙️ 技术流程** | [网关技术流程说明书](docs/20-技术流程-网关技术流程说明书.md) | Filter 链路、鉴权、路由、日志上报 |
-| | [告警系统流程说明书](docs/21-技术流程-告警系统流程说明书.md) | 告警规则、状态机、抑制策略 |
-| | [API 下发指南](docs/22-技术流程-API下发指南.md) | API 配置与下发流程 |
-| **📋 需求与规划** | [需求文档](docs/01-需求与规划-需求文档.md) | 功能需求与范围边界 |
+| **📄 索引** | [00-文档索引](docs/00-文档索引.md) | 完整的文档导航与分类索引 |
+| **📋 需求与规划** | [01-需求文档](docs/01-需求与规划-需求文档.md) | 功能需求与范围边界 |
 | | [功能开发计划](docs/功能开发计划.md) | 项目现状与开发进度 |
-| | [后续开发与优化计划](docs/03-需求与规划-后续开发与优化计划.md) | 详细的开发规划与优化路线 |
+| | [03-后续开发与优化计划](docs/03-需求与规划-后续开发与优化计划.md) | 详细的开发规划与优化路线 |
+| **🏗️ 架构设计** | [10-项目架构文档](docs/10-架构设计-项目架构文档.md) | 总体架构、模块职责、关键链路、技术选型 |
+| | [11-实体关系说明](docs/11-架构设计-实体关系说明.md) | 核心实体关系与 ER 图 |
+| **⚙️ 技术实现** | [网关服务实现文档](docs/IntelliHub%20API%20网关技术实现文档.md) | 双流量认证、动态路由、Filter链路 |
+| | [API平台服务实现文档](docs/IntelliHub%20API平台服务实现文档.md) | 生命周期管理、版本管理、事件驱动 |
+| | [应用中心服务实现文档](docs/IntelliHub%20应用中心服务实现文档.md) | AppKey管理、订阅授权、签名认证 |
+| | [统计服务实现文档](docs/IntelliHub%20统计服务实现文档.md) | 日志采集、多维度统计、趋势分析 |
+| | [告警中心实现文档](docs/IntelliHub%20告警中心实现文档.md) | 规则配置、状态机、通知渠道 |
+| | [聚合搜索服务实现文档](docs/IntelliHub%20聚合搜索服务实现文档.md) | Elasticsearch集成、全文检索、索引设计 |
+| | [事件中心实现文档](docs/IntelliHub%20事件中心实现文档.md) | 事件发布订阅、Webhook、失败重试 |
+| | [AIGC服务实现文档](docs/AIGC技术实现文档.md) | AI集成、智能分析、文档生成 |
+| | [22-API下发指南](docs/22-技术流程-API下发指南.md) | API 配置与下发流程 |
+| **🎯 技术专题** | [70-多租户实施方案](docs/70-多租户-MyBatis-Plus多租户拦截器实施方案.md) | MyBatis Plus多租户拦截器实现 |
+| **📝 其他** | [面试题-完整版](docs/面试题-IntelliHub-完整版.md) | 项目面试题库，覆盖架构设计与技术实现 |
+| | [项目经历](docs/项目经历-IntelliHub.md) | 项目经历总结，适用于简历与面试 |
+| | [90-开发问题记录](docs/90-其他-开发中遇到的问题.md) | 开发过程问题与解决方案 |
 
-### 🛠️ 开发指南
+#### 🛠️ 开发指南
 
 - **[Java SDK 使用文档](intellihub-parent/intelli-sdk/README.md)** - SDK 快速接入指南
 - **[系统架构图](系统架构图.drawio)** - Draw.io 可编辑架构图
-- **[事件中心设计](intellihub-parent/intelli-event-service/docs/事件中心设计文档.md)** - 事件驱动架构设计
-- **[多租户实现](intellihub-parent/intelli-auth-iam-service/docs/MultiTenant.md)** - 多租户技术方案
 
 ---
 
@@ -572,7 +577,7 @@ sequenceDiagram
 
 **多索引聚合搜索** - 一次搜索，同时查询多个索引：
 
-```mermaid
+```
 graph TB
     U[用户搜索] --> S[搜索服务]
     S --> API[API索引]
@@ -799,10 +804,11 @@ IP+Path 维度   ┘
 
 ## 📊 项目统计
 
-- **代码行数**：~15,000+ 行（后端）+ ~8,000+ 行（前端）
-- **服务模块**：11 个微服务模块
-- **文档数量**：10+ 篇技术文档
-- **技术栈**：Spring Boot + Vue3 + 多种中间件
+- **代码行数**: ~20,000+ 行（后端）+ ~10,000+ 行（前端）
+- **服务模块**: 9 个微服务模块 + 1 个 SDK 模块 + 1 个前端控制台
+- **文档数量**: 20+ 篇技术文档，包含架构设计、技术实现、面试题等
+- **技术栈**: Spring Boot 2.7+ + Spring Cloud + Vue3 + TypeScript + Elasticsearch + Kafka + Redis + MySQL
+- **核心特性**: 双流量认证、动态路由、多租户隔离、实时统计、智能告警、事件驱动
 
 ---
 

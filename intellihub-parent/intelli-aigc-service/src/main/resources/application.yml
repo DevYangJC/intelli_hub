@@ -6,34 +6,33 @@ spring:
     name: intelli-aigc-service
   profiles:
     active: dev
+  config:
+    import:
+      - optional:nacos:intelli-aigc-service.yml
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-        namespace: ${NACOS_NAMESPACE:}
+        server-addr: 127.0.0.1:8848
+        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
         group: DEFAULT_GROUP
       config:
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-        namespace: ${NACOS_NAMESPACE:}
+        server-addr: 127.0.0.1:8848
+        namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
         group: DEFAULT_GROUP
         file-extension: yml
-        shared-configs:
-          - data-id: common.yml
-            group: DEFAULT_GROUP
-            refresh: true
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:intelli_hub_aigc}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/intelli_hub_aigc?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD:root}
 
   redis:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
-    database: ${REDIS_DATABASE:2}
+    database: 3
+    timeout: 3000ms
     password: ${REDIS_PASSWORD:}
-    timeout: 10s
     lettuce:
       pool:
         max-active: 8
@@ -41,37 +40,118 @@ spring:
         max-idle: 8
         min-idle: 0
 
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
-    virtual-host: ${RABBITMQ_VHOST:/}
-    publisher-confirm-type: correlated
-    publisher-returns: true
-
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
-  type-aliases-package: com.vibe.intellihub.entity
+  type-aliases-package: com.intellihub.aigc.entity
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
     call-setters-on-nulls: true
     jdbc-type-for-null: 'null'
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
-      id-type: AUTO
+      id-type: ASSIGN_ID
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
 
+# MyBatis-Plus 多租户配置
+intellihub:
+  mybatis:
+    tenant:
+      enabled: false  # 临时禁用多租户，测试时使用
+      column: tenant_id
+      ignore-tables: []  # AIGC服务所有表都需要租户隔离
+
 logging:
   level:
-    com.vibe.intellihub: debug
-    com.intellihub.common: debug
+    com.intellihub: debug
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+# AIGC模型配置
+# 平台地址和API Key获取方式：
+# 1. 阿里通义千问：https://dashscope.console.aliyun.com/
+#    - 注册阿里云账号并开通DashScope服务
+#    - 在控制台创建API Key：https://dashscope.console.aliyun.com/apiKey
+#    - DashScope原生协议 Base URL：https://dashscope.aliyuncs.com/api/v1
+#    - OpenAI兼容协议 Base URL：https://dashscope.aliyuncs.com/compatible-mode/v1（推荐）
+#    - 文档地址：https://help.aliyun.com/zh/model-studio/qwen-api-reference
+#
+# 2. 百度文心一言：https://console.bce.baidu.com/qianfan/
+#    - 注册百度智能云账号并开通千帆大模型平台
+#    - 在控制台-安全认证-API Key 创建API Key
+#    - API Base URL：https://qianfan.baidubce.com/v2/chat/completions
+#    - 认证方式：Authorization: Bearer {API_KEY}（只需一个API Key）
+#    - 文档地址：https://cloud.baidu.com/doc/WENXINWORKSHOP/index.html
+#
+# 3. 腾讯混元：https://console.cloud.tencent.com/hunyuan
+#    - 注册腾讯云账号并开通混元大模型服务
+#    - **方式1（推荐）**：使用OpenAI兼容接口，在https://console.cloud.tencent.com/hunyuan 创建API密钥
+#    - **方式2**：使用腾讯云标准API，在https://console.cloud.tencent.com/cam/capi 获取SecretId和SecretKey
+#    - 文档地址：https://cloud.tencent.com/document/product/1729
+#
+aigc:
+  # 阿里通义千问
+  aliyun:
+    # 从环境变量读取API Key，避免泄露敏感信息
+    # 启动时设置环境变量：export ALIYUN_API_KEY=your-actual-api-key
+    # 或在IDEA中配置Environment variables：ALIYUN_API_KEY=your-actual-api-key
+    api-key: ${ALIYUN_API_KEY:your-aliyun-api-key}
+    # DashScope API Base URL（默认：https://dashscope.aliyuncs.com/api/v1）
+    # 如需使用自定义地址，可以在这里配置
+    base-url: https://dashscope.aliyuncs.com/api/v1
+  
+  # 百度文心一言
+  baidu:
+    # 从环境变量读取API Key，避免泄露敏感信息
+    # 启动时设置环境变量：export BAIDU_API_KEY=your-actual-api-key
+    api-key: ${BAIDU_API_KEY:your-baidu-api-key}
+  
+  # 腾讯混元
+  tencent:
+    # 推荐使用OpenAI兼容接口（use-openai-api: true），只需配置secret-key即可
+    # 如使用腾讯云标准API（use-openai-api: false），需同时配置secret-id和secret-key
+    use-openai-api: true
+    # 从环境变量读取，避免泄露敏感信息
+    secret-id: ${TENCENT_SECRET_ID:your-tencent-secret-id}
+    secret-key: ${TENCENT_SECRET_KEY:your-tencent-secret-key}
+
+# Dubbo配置
+dubbo:
+  application:
+    name: intelli-aigc-dubbo
+    qos-enable: false
+  registry:
+    address: nacos://127.0.0.1:8848
+    parameters:
+      namespace: dev
+  protocol:
+    name: dubbo
+    port: 20884
+  scan:
+    base-packages: com.intellihub.aigc.dubbo
+  provider:
+    group: ${DUBBO_GROUP:intellihub}
+  consumer:
+    group: ${DUBBO_GROUP:intellihub}
+    check: false
+    timeout: 30000  # AI调用超时时间较长
+
+# SpringDoc OpenAPI配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  info:
+    title: IntelliHub AIGC Service
+    description: AIGC服务接口文档
+    version: 1.0.0
 
 management:
   endpoints:

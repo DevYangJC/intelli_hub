@@ -1,0 +1,600 @@
+# ===============================================
+# IntelliHub 统一配置模板
+# Unified Configuration Template
+# ===============================================
+# 说明：本文件整合了所有微服务的配置项，包含详细注释
+# 用途：作为新服务的配置模板，或理解项目整体配置结构
+# 注意：实际使用时请根据具体服务选择需要的配置项
+# ===============================================
+
+# ==================== 服务器配置 ====================
+# 说明：定义服务监听端口
+# 来源：所有服务的 application.yml
+server:
+  port: 8080  # 服务端口（各服务使用不同端口）
+              # Gateway: 8080, IAM: 8081, API Platform: 8082
+              # Governance: 8083, AIGC: 8084, App Center: 8085
+              # Search: 8086, Event: 8087
+
+# ==================== Spring 基础配置 ====================
+# 说明：Spring Boot 应用基础配置
+# 来源：所有服务的 application.yml
+spring:
+  application:
+    name: intelli-service-name  # 服务名称（必须修改为实际服务名）
+                                 # 用于服务注册与发现、日志标识
+
+  profiles:
+    active: dev  # 激活的环境配置：dev/test/prod
+                 # 来源：大部分服务使用此配置，用于环境隔离
+
+  # -------------------- Nacos 配置中心导入 --------------------
+  # 说明：Spring Cloud 2020+ 需要显式导入 Nacos 配置
+  # 来源：Gateway、App Center、Search 服务
+  config:
+    import:
+      - optional:nacos:${spring.application.name}.yml
+        # optional 表示配置不存在时不报错
+        # 从 Nacos 配置中心读取同名配置文件
+
+  # -------------------- Nacos 服务注册与配置中心 --------------------
+  # 说明：使用 Nacos 实现服务注册、发现和配置管理
+  # 来源：所有服务都需要此配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}  # Nacos 服务器地址
+        namespace: ${NACOS_NAMESPACE:1744c84b-1d42-4adb-a68f-4beaa6d64a9a}  # 命名空间（用于环境隔离）
+        group: ${NACOS_GROUP:DEFAULT_GROUP}  # 分组（用于逻辑隔离）
+        # metadata:  # IAM 服务特有配置
+        #   preserved.register.source: SPRING_CLOUD  # 明确指定注册源，避免路由到 Dubbo 端口
+
+      config:  # Nacos 配置中心（可选，不是所有服务都启用）
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        file-extension: yml  # 配置文件扩展名
+        namespace: ${NACOS_NAMESPACE:1744c84b-1d42-4adb-a68f-4beaa6d64a9a}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+
+    # -------------------- Spring Cloud Gateway 配置 --------------------
+    # 说明：API 网关路由配置
+    # 来源：Gateway 服务专用
+    gateway:
+      discovery:
+        locator:
+          enabled: true  # 启用服务发现路由
+          lower-case-service-id: true  # 服务名小写
+
+      # 路由规则定义
+      routes:
+        # 认证服务路由
+        - id: auth-service
+          uri: lb://intelli-auth-iam-service  # lb:// 表示负载均衡
+          predicates:
+            - Path=/api/auth/**,/api/iam/**  # 匹配路径
+          filters:
+            - StripPrefix=1  # 去除第一层路径前缀
+
+        # API平台服务路由
+        - id: api-platform-service
+          uri: lb://intelli-api-platform-service
+          predicates:
+            - Path=/api/v1/apis/**,/api/v1/api-groups/**,/api/v1/public/apis/**,/api/platform/**,/api/v1/gateway/**,/api/open/**,/api/external/**
+          filters:
+            - StripPrefix=1
+
+        # 开放API动态路由（由 OpenApiRouteFilter 处理）
+        - id: open-api-dynamic
+          uri: forward:/open  # forward 表示内部转发
+          predicates:
+            - Path=/open/**,/external/**
+          order: 0  # 路由优先级（数字越小优先级越高）
+
+        # 治理服务路由
+        - id: governance-service
+          uri: lb://intelli-governance-service
+          predicates:
+            - Path=/api/governance/**,/api/monitor/**
+          filters:
+            - StripPrefix=1
+
+        # AIGC服务路由
+        - id: aigc-service
+          uri: lb://intelli-aigc-service
+          predicates:
+            - Path=/api/aigc/**,/api/ai/**
+          filters:
+            - StripPrefix=1
+
+        # 应用中心服务路由
+        - id: app-center-service
+          uri: lb://intelli-app-center-service
+          predicates:
+            - Path=/api/app-center/**
+          filters:
+            - StripPrefix=2  # 去除两层路径前缀
+
+        # 搜索服务路由
+        - id: search-service
+          uri: lb://intelli-search-service
+          predicates:
+            - Path=/api/v1/search/**,/api/search/**
+          filters:
+            - StripPrefix=1
+
+        # 事件服务路由
+        - id: event-service
+          uri: lb://intelli-event-service
+          predicates:
+            - Path=/api/event/**
+          filters:
+            - StripPrefix=1
+
+        # 日志审计服务路由
+        - id: log-audit-service
+          uri: lb://intelli-log-audit-service
+          predicates:
+            - Path=/api/log/**,/api/audit/**
+          filters:
+            - StripPrefix=1
+
+  # -------------------- MySQL 数据库配置 --------------------
+  # 说明：MySQL 数据源配置
+  # 来源：除 Gateway 外的所有服务
+  # 注意：使用环境变量避免硬编码敏感信息
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 数据库连接地址（各服务使用不同的数据库）
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:intellihub}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    # 数据库名称：
+    # - IAM: intellihub_iam
+    # - API Platform: intelli_hub_api_platform
+    # - App Center: intelli_hub_app_center
+    # - Governance: intelli_hub_governance
+    # - AIGC: intelli_hub_aigc
+    # - Event: intelli_hub_event
+    username: ${DB_USERNAME:root}  # 数据库用户名
+    password: ${DB_PASSWORD:root}  # 数据库密码
+
+  # -------------------- Redis 缓存配置 --------------------
+  # 说明：Redis 用于缓存、限流、统计等
+  # 来源：所有服务
+  # 注意：各服务使用不同的 database 编号避免数据冲突
+  redis:
+    host: ${REDIS_HOST:localhost}  # Redis 服务器地址
+    port: ${REDIS_PORT:6379}  # Redis 端口
+    # 数据库编号（0-15）：
+    # - Gateway/Governance: 0
+    # - IAM/API Platform: 1
+    # - App Center/Search/Event: 2
+    # - AIGC: 3
+    database: ${REDIS_DATABASE:0}
+    timeout: ${REDIS_TIMEOUT:3000ms}  # 连接超时时间
+    password: ${REDIS_PASSWORD:}  # Redis 密码（为空表示无密码）
+    lettuce:  # Lettuce 连接池配置（推荐，支持异步）
+      pool:
+        max-active: 8  # 连接池最大连接数
+        max-wait: -1ms  # 最大阻塞等待时间（-1 表示无限制）
+        max-idle: 8  # 最大空闲连接数
+        min-idle: 0  # 最小空闲连接数
+
+  # -------------------- Kafka 消息队列配置 --------------------
+  # 说明：Kafka 用于异步消息、事件驱动
+  # 来源：Gateway、IAM、Governance、Event 服务
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}  # Kafka 集群地址
+
+    # 生产者配置（用于发送消息）
+    # 来源：Gateway、Event 服务
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: 1  # 消息确认级别：0=不确认，1=leader确认，all=所有副本确认
+      retries: 3  # 发送失败重试次数
+      batch-size: 16384  # 批量发送大小（字节）
+      buffer-memory: 33554432  # 发送缓冲区大小（32MB）
+
+    # 消费者配置（用于接收消息）
+    # 来源：IAM、Governance、Event 服务
+    consumer:
+      # 消费者组ID（不同服务使用不同的组ID）
+      # - IAM: governance-call-log-group
+      # - Governance: governance-call-log-group
+      # - Event: event-service-group
+      group-id: ${KAFKA_CONSUMER_GROUP:default-group}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest  # 无偏移量时的消费策略：earliest=从头开始，latest=从最新消息开始
+      enable-auto-commit: true  # 自动提交偏移量
+      auto-commit-interval: 1000  # 自动提交间隔（毫秒）
+
+# ==================== MyBatis-Plus 配置 ====================
+# 说明：MyBatis-Plus ORM 框架配置
+# 来源：除 Gateway 外的所有服务
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml  # Mapper XML 文件位置
+  type-aliases-package: com.intellihub.*.entity  # 实体类包路径（* 替换为具体服务模块）
+
+  configuration:
+    map-underscore-to-camel-case: true  # 下划线转驼峰命名
+    cache-enabled: false  # 关闭二级缓存（避免数据一致性问题）
+    call-setters-on-nulls: true  # 查询结果为 null 时也调用 setter
+    jdbc-type-for-null: 'null'  # null 值的 JDBC 类型
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # SQL 日志实现（开发环境使用）
+
+  global-config:
+    db-config:
+      # 主键策略：
+      # - ASSIGN_ID: 雪花算法（大部分服务使用）
+      # - AUTO: 数据库自增（Governance 服务使用）
+      id-type: ASSIGN_ID
+
+      # 逻辑删除配置
+      # 字段名：deleted, deletedAt, isDeleted（不同服务可能不同）
+      logic-delete-field: deleted
+      # 删除值：1, "NOW()", 1（不同服务可能不同）
+      logic-delete-value: 1
+      # 未删除值：0, "NULL", 0
+      logic-not-delete-value: 0
+
+# ==================== IntelliHub 自定义配置 ====================
+# 说明：项目自定义配置项
+# 来源：多个服务
+intellihub:
+  # -------------------- MyBatis-Plus 多租户配置 --------------------
+  # 说明：实现数据级别的多租户隔离
+  # 来源：除 Gateway 外的所有服务
+  mybatis:
+    tenant:
+      enabled: true  # 是否启用多租户（IAM 服务为 true，AIGC 临时为 false）
+      column: tenant_id  # 租户ID字段名
+      # 不需要租户隔离的表（全局共享表）
+      # 不同服务有不同的忽略表：
+      # - IAM: iam_tenant, iam_permission, iam_menu, iam_login_log, iam_role_permission
+      # - API Platform: sys_config, sys_announcement
+      # - 其他服务: []（所有表都需要租户隔离）
+      ignore-tables: []
+
+  # -------------------- 网关自定义配置 --------------------
+  # 说明：网关特有的配置项
+  # 来源：Gateway 服务专用
+  gateway:
+    # 白名单配置（不需要认证的路径）
+    whitelist:
+      paths:
+        - /actuator/**  # 健康检查端点
+        - /health/**
+        - /api/auth/**  # 认证接口
+        - /api/iam/v1/auth/**
+        - /iam/v1/auth/**
+        - /swagger-ui/**  # Swagger 文档
+        - /v3/api-docs/**
+        - /
+        - /api/public/**  # 公开API
+        - /api/v1/search/**
+        - /api/search/**
+        - /open/**  # 开放API
+        - /external/**
+        - /api/open/**
+        - /api/external/**
+
+    # JWT 认证配置
+    auth:
+      enabled: true
+      secret: ${JWT_SECRET:intellihub-iam-jwt-secret-key-2024}  # JWT 密钥（至少32字节）
+      token-expiration: 24  # Token 有效期（小时）
+
+    # 限流配置
+    rate-limit:
+      enabled: true
+      key-prefix: "rate_limit:"  # Redis key 前缀
+      algorithm: SLIDING_WINDOW  # 限流算法：FIXED_WINDOW/SLIDING_WINDOW
+      error-message: "请求过于频繁，请稍后再试"
+
+      # 默认限流配置（每分钟100次请求）
+      default-limit:
+        requests: 100
+        window: 60  # 时间窗口（秒）
+
+      # 特定路径限流配置
+      limits:
+        "/api/auth/**":  # 登录接口更严格
+          requests: 5
+          window: 60
+        "/api/search/**":  # 搜索接口更宽松
+          requests: 200
+          window: 60
+        "/api/**/upload":  # 上传接口最严格
+          requests: 10
+          window: 60
+
+  # -------------------- 认证服务配置 --------------------
+  # 说明：IAM 服务特有配置
+  # 来源：IAM 服务专用
+  auth:
+    jwt:
+      secret: ${JWT_SECRET:intellihub-iam-jwt-secret-key-2024}  # JWT 密钥（至少32字节）
+      access-token-expiration: 7200  # 访问令牌过期时间（秒，2小时）
+      refresh-token-expiration: 604800  # 刷新令牌过期时间（秒，7天）
+
+    # 验证码配置
+    captcha:
+      enabled: true
+      # 图形验证码
+      image:
+        length: 4  # 验证码长度
+        expiration: 300  # 过期时间（秒，5分钟）
+        width: 120  # 图片宽度
+        height: 40  # 图片高度
+        interfere-count: 5  # 干扰线数量
+        font-size: 20  # 字体大小
+      # 短信验证码
+      sms:
+        length: 6
+        expiration: 300  # 5分钟
+        max-daily-count: 10  # 每天最多10次
+        send-interval: 60  # 发送间隔60秒
+        template-id: SMS_123456789
+        sign-name: IntelliHub
+      # 邮箱验证码
+      email:
+        length: 6
+        expiration: 600  # 10分钟
+        max-daily-count: 20  # 每天最多20次
+        send-interval: 60  # 发送间隔60秒
+        subject: IntelliHub验证码
+        from-name: IntelliHub
+
+    # 注册配置
+    register:
+      default-tenant-id: "2"  # 默认租户ID
+      default-role-id: "5"  # 默认角色ID（普通用户）
+
+  # -------------------- Elasticsearch 配置 --------------------
+  # 说明：搜索服务 Elasticsearch 配置
+  # 来源：Search 服务专用
+  elasticsearch:
+    enabled: true
+    hosts:
+      - ${ES_HOST:localhost}:${ES_PORT:9200}  # ES 集群地址
+    username: ${ES_USERNAME:}  # ES 用户名（为空表示不需要认证）
+    password: ${ES_PASSWORD:}  # ES 密码
+    connect-timeout: 5s  # 连接超时
+    socket-timeout: 30s  # Socket 超时
+    max-connections: 100  # 最大连接数
+    max-connections-per-route: 20  # 单路由最大连接数
+    index-prefix: intellihub  # 索引前缀
+    default-shards: 1  # 默认分片数
+    default-replicas: 0  # 默认副本数
+    refresh-policy: "false"  # 刷新策略
+
+  # -------------------- 搜索同步配置 --------------------
+  # 说明：定时同步任务配置
+  # 来源：Search 服务专用
+  search:
+    sync:
+      full-cron: "0 0 2 * * ?"  # API 全量同步（每天凌晨2点）
+      incremental-cron: "0 */5 * * * ?"  # API 增量同步（每5分钟）
+      app-full-cron: "0 0 2 * * ?"  # 应用全量同步
+      app-incremental-cron: "0 */5 * * * ?"  # 应用增量同步
+      user-full-cron: "0 0 2 * * ?"  # 用户全量同步
+      user-incremental-cron: "0 */5 * * * ?"  # 用户增量同步
+
+# ==================== AIGC 配置 ====================
+# 说明：AI 模型配置
+# 来源：AIGC 服务专用
+# 注意：敏感信息使用环境变量，不要硬编码
+aigc:
+  # 阿里通义千问
+  # 获取地址：https://dashscope.console.aliyun.com/apiKey
+  aliyun:
+    api-key: ${ALIYUN_API_KEY:your-aliyun-api-key}  # 阿里云 API Key
+    base-url: https://dashscope.aliyuncs.com/api/v1  # API Base URL
+
+  # 百度文心一言
+  # 获取地址：https://console.bce.baidu.com/qianfan/
+  baidu:
+    api-key: ${BAIDU_API_KEY:your-baidu-api-key}  # 百度 API Key
+
+  # 腾讯混元
+  # 获取地址：https://console.cloud.tencent.com/hunyuan
+  tencent:
+    use-openai-api: true  # 使用 OpenAI 兼容接口
+    secret-id: ${TENCENT_SECRET_ID:your-tencent-secret-id}  # 腾讯云 Secret ID
+    secret-key: ${TENCENT_SECRET_KEY:your-tencent-secret-key}  # 腾讯云 Secret Key
+
+# ==================== Gateway AppKey 认证配置 ====================
+# 说明：开放 API 的 AppKey 认证配置
+# 来源：Gateway 服务专用
+gateway:
+  appkey:
+    enabled: true  # 启用 AppKey 认证
+    timestamp-tolerance: 300  # 时间戳容差（秒）
+    nonce-expire-seconds: 600  # Nonce 过期时间（秒）
+    # 需要 AppKey 认证的路径
+    auth-paths:
+      - /open/**
+      - /external/**
+    # 跳过认证的路径
+    skip-paths:
+      - /open/health
+      - /open/docs/**
+
+# ==================== Feign 配置 ====================
+# 说明：Feign 客户端配置（服务间调用）
+# 来源：Gateway 服务
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000  # 连接超时（毫秒）
+        readTimeout: 5000  # 读取超时（毫秒）
+        loggerLevel: basic  # 日志级别：NONE/BASIC/HEADERS/FULL
+      # 针对特定服务的配置
+      intelli-auth-iam-service:
+        connectTimeout: 3000
+        readTimeout: 3000
+        loggerLevel: full
+
+# ==================== Dubbo RPC 配置 ====================
+# 说明：Dubbo 服务配置（用于服务间 RPC 调用）
+# 来源：除 Search、Event 外的所有服务
+dubbo:
+  application:
+    # 服务名称（与 Spring 应用名不同，避免冲突）
+    # 格式：${spring.application.name}-dubbo
+    name: ${spring.application.name}-dubbo
+    qos-enable: false  # 关闭 QoS（远程管理）
+
+  registry:
+    # 注册中心地址（使用 Nacos）
+    address: nacos://${NACOS_SERVER_ADDR:127.0.0.1:8848}
+    parameters:
+      namespace: ${DUBBO_NAMESPACE:dev}  # 命名空间
+
+  protocol:
+    name: dubbo  # 协议名称
+    # Dubbo 端口（各服务使用不同端口）
+    # Gateway: 不需要, IAM: 20881, API Platform: 20882
+    # App Center: 20883, AIGC: 20884, Governance: 20885
+    port: 20880
+
+  scan:
+    # Dubbo 服务扫描包路径
+    base-packages: com.intellihub.*.dubbo  # * 替换为具体服务模块
+
+  # 服务提供者配置
+  provider:
+    group: ${DUBBO_GROUP:intellihub}  # 服务分组
+    timeout: 5000  # 超时时间（毫秒）
+
+  # 服务消费者配置
+  consumer:
+    group: ${DUBBO_GROUP:intellihub}  # 服务分组
+    check: false  # 启动时不检查服务提供者是否存在
+    # 超时时间（不同服务有不同配置）
+    # - 默认: 5000ms
+    # - Governance: 10000ms（治理服务需要更长时间）
+    # - AIGC: 30000ms（AI 调用耗时较长）
+    # - Search: 30000ms（搜索可能耗时较长）
+    timeout: 5000
+
+# ==================== 日志配置 ====================
+# 说明：日志级别和格式配置
+# 来源：所有服务
+logging:
+  level:
+    # 项目包日志级别（开发环境使用 debug，生产环境建议 info）
+    com.intellihub: ${LOG_LEVEL:debug}
+    # Spring 框架日志
+    org.springframework: ${SPRING_LOG_LEVEL:warn}
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:debug}  # 网关日志
+    org.springframework.security: ${SECURITY_LOG_LEVEL:debug}  # 安全日志
+    # Kafka 日志（生产环境建议 warn）
+    org.apache.kafka: ${KAFKA_LOG_LEVEL:warn}
+
+  pattern:
+    # 控制台日志格式
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    # 文件日志格式
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+# ==================== Actuator 监控端点配置 ====================
+# 说明：Spring Boot Actuator 健康检查和监控
+# 来源：所有服务
+management:
+  endpoints:
+    web:
+      exposure:
+        # 暴露的端点（生产环境建议按需暴露）
+        # - Gateway: health,info,gateway,metrics,prometheus
+        # - 其他服务: * (所有端点)
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics}
+
+  endpoint:
+    health:
+      # 显示健康检查详情
+      show-details: always
+    gateway:  # Gateway 服务专用
+      enabled: true  # 启用网关端点
+
+# ==================== SpringDoc OpenAPI 配置 ====================
+# 说明：Swagger API 文档配置
+# 来源：除 Gateway、Event 外的所有服务
+springdoc:
+  api-docs:
+    enabled: true  # 启用 API 文档
+    path: /v3/api-docs  # API 文档路径
+
+  swagger-ui:
+    enabled: true  # 启用 Swagger UI
+    path: /swagger-ui.html  # Swagger UI 路径
+
+  info:
+    # API 文档信息（各服务不同）
+    title: IntelliHub Service API
+    description: 服务接口文档
+    version: 1.0.0
+
+# ==================== 环境变量说明 ====================
+# 以下是本配置文件中使用的环境变量列表：
+#
+# 通用配置：
+#   NACOS_SERVER_ADDR: Nacos 服务器地址（默认: 127.0.0.1:8848）
+#   NACOS_NAMESPACE: Nacos 命名空间（默认: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a）
+#   NACOS_GROUP: Nacos 分组（默认: DEFAULT_GROUP）
+#
+# 数据库配置：
+#   DB_HOST: MySQL 主机地址（默认: localhost）
+#   DB_PORT: MySQL 端口（默认: 3306）
+#   DB_NAME: 数据库名称（各服务不同）
+#   DB_USERNAME: 数据库用户名（默认: root）
+#   DB_PASSWORD: 数据库密码（默认: root）
+#
+# Redis 配置：
+#   REDIS_HOST: Redis 主机地址（默认: localhost）
+#   REDIS_PORT: Redis 端口（默认: 6379）
+#   REDIS_DATABASE: Redis 数据库编号（默认: 0）
+#   REDIS_PASSWORD: Redis 密码（默认: 空）
+#   REDIS_TIMEOUT: Redis 连接超时（默认: 3000ms）
+#
+# Kafka 配置：
+#   KAFKA_BOOTSTRAP_SERVERS: Kafka 集群地址（默认: localhost:9092）
+#   KAFKA_CONSUMER_GROUP: 消费者组ID（默认: default-group）
+#
+# Elasticsearch 配置（Search 服务）：
+#   ES_HOST: ES 主机地址（默认: localhost）
+#   ES_PORT: ES 端口（默认: 9200）
+#   ES_USERNAME: ES 用户名（默认: 空）
+#   ES_PASSWORD: ES 密码（默认: 空）
+#
+# AIGC 配置（AIGC 服务）：
+#   ALIYUN_API_KEY: 阿里云 API Key
+#   BAIDU_API_KEY: 百度 API Key
+#   TENCENT_SECRET_ID: 腾讯云 Secret ID
+#   TENCENT_SECRET_KEY: 腾讯云 Secret Key
+#
+# 安全配置：
+#   JWT_SECRET: JWT 密钥（至少32字节）
+#
+# Dubbo 配置：
+#   DUBBO_NAMESPACE: Dubbo 命名空间（默认: dev）
+#   DUBBO_GROUP: Dubbo 分组（默认: intellihub）
+#
+# 日志配置：
+#   LOG_LEVEL: 项目日志级别（默认: debug）
+#   SPRING_LOG_LEVEL: Spring 日志级别（默认: warn）
+#   GATEWAY_LOG_LEVEL: 网关日志级别（默认: debug）
+#   SECURITY_LOG_LEVEL: 安全日志级别（默认: debug）
+#   KAFKA_LOG_LEVEL: Kafka 日志级别（默认: warn）
+#
+# Actuator 配置：
+#   ACTUATOR_ENDPOINTS: 暴露的端点（默认: health,info,metrics）
+
+# ===============================================
+# 使用说明：
+# 1. 新建服务时，复制本文件并删除不需要的配置项
+# 2. 修改 server.port 和 spring.application.name
+# 3. 根据服务需求调整数据库、Redis database 等配置
+# 4. 生产环境使用环境变量替换敏感配置
+# 5. 根据实际情况调整日志级别和暴露的端点
+# ===============================================

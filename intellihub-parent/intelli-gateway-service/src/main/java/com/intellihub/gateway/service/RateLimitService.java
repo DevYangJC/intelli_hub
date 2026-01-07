@@ -27,6 +27,11 @@ public class RateLimitService {
 
     /**
      * 检查是否允许请求（基于Redis的简单限流）
+     * <p>
+     * 使用固定窗口算法：在时间窗口内限制请求次数。
+     * 修复：每次 increment 后检查 TTL，如果没有过期时间则重新设置，
+     * 避免 Redis 重启或 key 意外丢失 TTL 导致计数无限累加。
+     * </p>
      *
      * @param key        限流Key
      * @param requests   允许的请求数
@@ -40,16 +45,23 @@ public class RateLimitService {
 
         return ops.increment(countKey)
                 .flatMap(count -> {
-                    if (count == 1) {
-                        // 第一次访问，设置过期时间
-                        return redisTemplate.expire(countKey, Duration.ofSeconds(window))
-                                .thenReturn(count);
-                    }
-                    return Mono.just(count);
+                    // 检查 key 是否有过期时间
+                    return redisTemplate.getExpire(countKey)
+                            .flatMap(ttl -> {
+                                // ttl < 0 表示没有设置过期时间（-1 表示永不过期，-2 表示 key 不存在）
+                                if (ttl == null || ttl.getSeconds() < 0) {
+                                    // 重新设置过期时间
+                                    log.debug("限流Key无过期时间，重新设置 - Key: {}, Window: {}s", countKey, window);
+                                    return redisTemplate.expire(countKey, Duration.ofSeconds(window))
+                                            .thenReturn(count);
+                                }
+                                return Mono.just(count);
+                            })
+                            .defaultIfEmpty(count);
                 })
                 .map(count -> {
                     boolean allowed = count <= requests;
-                    log.debug("限流检查 - Key: {}, 当前计数: {}, 限制: {}, 允许: {}", key, count, requests, allowed);
+                    log.debug("限流检查 - Key: {}, 当前计数: {}, 限制: {}, 允许: {}", countKey, count, requests, allowed);
                     return allowed;
                 })
                 .defaultIfEmpty(true);

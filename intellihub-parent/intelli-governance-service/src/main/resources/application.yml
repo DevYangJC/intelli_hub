@@ -88,7 +88,7 @@ management:
     health:
       show-details: always
 
-# Dubbo 配置（作为消费者调用其他服务）
+# Dubbo 配置
 dubbo:
   application:
     name: intelli-governance-service
@@ -97,6 +97,13 @@ dubbo:
     address: nacos://127.0.0.1:8848
     parameters:
       namespace: dev
+  protocol:
+    name: dubbo
+    port: 20885
+  scan:
+    base-packages: com.intellihub.governance.dubbo
+  provider:
+    group: ${DUBBO_GROUP:intellihub}
   consumer:
     group: ${DUBBO_GROUP:intellihub}
     check: false

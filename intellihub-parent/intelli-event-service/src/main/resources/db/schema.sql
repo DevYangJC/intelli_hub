@@ -1,6 +1,18 @@
--- 事件中心数据库表结构
+-- ===============================================
+-- IntelliHub 事件中心数据库表结构
+-- Event Center Database Schema
+-- ===============================================
 
--- 事件定义表
+-- -------------------- 创建数据库 --------------------
+CREATE DATABASE IF NOT EXISTS `intelli_hub_event` 
+    DEFAULT CHARACTER SET utf8mb4 
+    DEFAULT COLLATE utf8mb4_unicode_ci;
+
+-- 使用数据库
+USE `intelli_hub_event`;
+
+-- -------------------- 事件定义表 --------------------
+-- 用于定义系统中所有可发布的事件类型
 CREATE TABLE IF NOT EXISTS `event_definition` (
     `id` VARCHAR(32) NOT NULL COMMENT '事件ID',
     `tenant_id` VARCHAR(32) NOT NULL COMMENT '租户ID',
@@ -20,7 +32,8 @@ CREATE TABLE IF NOT EXISTS `event_definition` (
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件定义表';
 
--- 事件订阅表
+-- -------------------- 事件订阅表 --------------------
+-- 记录哪些订阅者关注哪些事件，以及如何通知他们
 CREATE TABLE IF NOT EXISTS `event_subscription` (
     `id` VARCHAR(32) NOT NULL COMMENT '订阅ID',
     `tenant_id` VARCHAR(32) NOT NULL COMMENT '租户ID',
@@ -47,7 +60,8 @@ CREATE TABLE IF NOT EXISTS `event_subscription` (
     KEY `idx_subscriber_type` (`subscriber_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件订阅表';
 
--- 事件发布记录表
+-- -------------------- 事件发布记录表 --------------------
+-- 记录每次事件发布的详情，用于追溯和审计
 CREATE TABLE IF NOT EXISTS `event_publish_record` (
     `id` VARCHAR(32) NOT NULL COMMENT '记录ID',
     `tenant_id` VARCHAR(32) NOT NULL COMMENT '租户ID',
@@ -66,7 +80,8 @@ CREATE TABLE IF NOT EXISTS `event_publish_record` (
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件发布记录表';
 
--- 事件消费记录表
+-- -------------------- 事件消费记录表 --------------------
+-- 记录每个订阅者的消费情况，支持重试机制
 CREATE TABLE IF NOT EXISTS `event_consume_record` (
     `id` VARCHAR(32) NOT NULL COMMENT '记录ID',
     `tenant_id` VARCHAR(32) NOT NULL COMMENT '租户ID',
@@ -92,7 +107,8 @@ CREATE TABLE IF NOT EXISTS `event_consume_record` (
     KEY `idx_tenant_event` (`tenant_id`, `event_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件消费记录表';
 
--- 事件统计表
+-- -------------------- 事件统计表 --------------------
+-- 按日统计事件的发布和消费情况，用于监控和报表
 CREATE TABLE IF NOT EXISTS `event_statistics` (
     `id` VARCHAR(32) NOT NULL COMMENT '统计ID',
     `tenant_id` VARCHAR(32) NOT NULL COMMENT '租户ID',

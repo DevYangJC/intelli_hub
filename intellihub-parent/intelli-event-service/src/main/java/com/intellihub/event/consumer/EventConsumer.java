@@ -2,20 +2,22 @@ package com.intellihub.event.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellihub.event.constant.ConsumeStatus;
-import com.intellihub.event.constant.SubscriberType;
 import com.intellihub.event.entity.EventConsumeRecord;
 import com.intellihub.event.entity.EventSubscription;
+import com.intellihub.event.filter.EventFilterService;
+import com.intellihub.event.handler.HandleResult;
+import com.intellihub.event.handler.SubscriptionHandler;
+import com.intellihub.event.handler.SubscriptionHandlerFactory;
 import com.intellihub.event.mapper.EventConsumeRecordMapper;
 import com.intellihub.event.model.EventMessage;
 import com.intellihub.event.service.EventSubscriptionService;
+import org.springframework.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.intellihub.kafka.constant.KafkaTopics;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.http.*;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import com.intellihub.context.UserContextHolder;
 import java.time.LocalDateTime;
@@ -41,7 +43,8 @@ public class EventConsumer {
 
     private final EventSubscriptionService subscriptionService;
     private final EventConsumeRecordMapper consumeRecordMapper;
-    private final RestTemplate restTemplate;
+    private final SubscriptionHandlerFactory handlerFactory;
+    private final EventFilterService filterService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -73,6 +76,13 @@ public class EventConsumer {
             }
 
             for (EventSubscription subscription : subscriptions) {
+                // 过滤表达式检查
+                if (!shouldProcess(eventMessage, subscription)) {
+                    log.debug("事件被过滤: eventCode={}, subscriberName={}, filterExpression={}",
+                            eventMessage.getEventCode(), subscription.getSubscriberName(), 
+                            subscription.getFilterExpression());
+                    continue;
+                }
                 processSubscription(eventMessage, subscription);
             }
         } catch (Exception e) {
@@ -81,8 +91,31 @@ public class EventConsumer {
     }
 
     /**
+     * 检查事件是否应该被处理
+     * <p>
+     * 使用订阅配置中的过滤表达式（SpEL）评估事件是否满足条件。
+     * 如果表达式为空或评估结果为 true，则事件应该被处理。
+     * </p>
+     *
+     * @param eventMessage 事件消息
+     * @param subscription 订阅配置
+     * @return true-应该处理，false-跳过
+     */
+    private boolean shouldProcess(EventMessage eventMessage, EventSubscription subscription) {
+        String filterExpression = subscription.getFilterExpression();
+        
+        // 无过滤表达式，直接处理
+        if (!StringUtils.hasText(filterExpression)) {
+            return true;
+        }
+        
+        // 使用过滤服务评估表达式
+        return filterService.evaluate(eventMessage, filterExpression);
+    }
+
+    /**
      * 处理单个订阅
-     * 根据订阅类型调用不同的处理方法
+     * 使用策略模式根据订阅类型调用对应的处理器
      * 所有处理结果都会记录到消费记录表
      *
      * @param eventMessage 事件消息
@@ -98,16 +131,19 @@ public class EventConsumer {
         record.setRetryTimes(0);
 
         try {
-            record.setEventData(objectMapper.writeValueAsString(eventMessage.getData()));
+            // 存储完整的 EventMessage 对象，便于重试时反序列化
+            record.setEventData(objectMapper.writeValueAsString(eventMessage));
 
-            if (SubscriberType.WEBHOOK.getCode().equals(subscription.getSubscriberType())) {
-                handleWebhook(eventMessage, subscription, record);
-            } else if (SubscriberType.MQ.getCode().equals(subscription.getSubscriberType())) {
-                handleMQ(eventMessage, subscription, record);
-            } else {
+            // 使用策略模式获取处理器
+            SubscriptionHandler handler = handlerFactory.getHandler(subscription.getSubscriberType());
+            if (handler == null) {
                 log.warn("不支持的订阅者类型: {}", subscription.getSubscriberType());
                 record.setStatus(ConsumeStatus.FAILED.getCode());
-                record.setErrorMessage("不支持的订阅者类型");
+                record.setErrorMessage("不支持的订阅者类型: " + subscription.getSubscriberType());
+            } else {
+                // 执行处理
+                HandleResult result = handler.handle(eventMessage, subscription);
+                applyResult(record, result, subscription);
             }
         } catch (Exception e) {
             log.error("处理订阅失败: subscriptionId={}", subscription.getId(), e);
@@ -121,81 +157,24 @@ public class EventConsumer {
     }
 
     /**
-     * 处理 Webhook 订阅
-     * 发送 HTTP 请求到订阅者的回调地址
-     * 支持 POST 和 PUT 方法
-     * 记录响应状态码、响应内容、耗时等信息
-     * 失败时根据重试策略设置下次重试时间
-     *
-     * @param eventMessage 事件消息
-     * @param subscription 订阅配置
-     * @param record       消费记录
+     * 应用处理结果到消费记录
      */
-    private void handleWebhook(EventMessage eventMessage, EventSubscription subscription, EventConsumeRecord record) {
-        long startTime = System.currentTimeMillis();
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+    private void applyResult(EventConsumeRecord record, HandleResult result, EventSubscription subscription) {
+        record.setCostTime(result.getCostTime());
+        record.setResponseCode(result.getResponseCode());
+        record.setResponseBody(result.getResponseBody());
 
-            if (subscription.getCallbackHeaders() != null) {
-                // 解析自定义请求头
-            }
-
-            HttpEntity<EventMessage> request = new HttpEntity<>(eventMessage, headers);
-            
-            String method = subscription.getCallbackMethod() != null ? 
-                    subscription.getCallbackMethod() : "POST";
-            
-            ResponseEntity<String> response;
-            if ("PUT".equalsIgnoreCase(method)) {
-                response = restTemplate.exchange(subscription.getCallbackUrl(), 
-                        HttpMethod.PUT, request, String.class);
-            } else {
-                response = restTemplate.postForEntity(subscription.getCallbackUrl(), 
-                        request, String.class);
-            }
-
-            long costTime = System.currentTimeMillis() - startTime;
-            record.setCostTime((int) costTime);
-            record.setResponseCode(response.getStatusCodeValue());
-            record.setResponseBody(response.getBody());
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                record.setStatus(ConsumeStatus.SUCCESS.getCode());
-                log.info("Webhook调用成功: url={}, costTime={}ms", 
-                        subscription.getCallbackUrl(), costTime);
-            } else {
-                record.setStatus(ConsumeStatus.FAILED.getCode());
-                record.setErrorMessage("HTTP状态码: " + response.getStatusCodeValue());
-                log.warn("Webhook调用失败: url={}, status={}", 
-                        subscription.getCallbackUrl(), response.getStatusCodeValue());
-            }
-        } catch (Exception e) {
-            long costTime = System.currentTimeMillis() - startTime;
-            record.setCostTime((int) costTime);
-            record.setStatus(ConsumeStatus.FAILED.getCode());
-            record.setErrorMessage(e.getMessage());
-            log.error("Webhook调用异常: url={}", subscription.getCallbackUrl(), e);
-
-            if (record.getRetryTimes() < subscription.getMaxRetryTimes()) {
+        if (result.isSuccess()) {
+            record.setStatus(ConsumeStatus.SUCCESS.getCode());
+        } else {
+            record.setErrorMessage(result.getErrorMessage());
+            if (result.isNeedRetry() && record.getRetryTimes() < subscription.getMaxRetryTimes()) {
                 record.setStatus(ConsumeStatus.RETRYING.getCode());
                 record.setNextRetryTime(calculateNextRetryTime(subscription, record.getRetryTimes()));
+            } else {
+                record.setStatus(ConsumeStatus.FAILED.getCode());
             }
         }
-    }
-
-    /**
-     * 处理 MQ 订阅
-     * 将事件转发到其他消息队列
-     * 根据订阅配置的 topic 和 tag 进行路由
-     *
-     * @param eventMessage 事件消息
-     * @param subscription 订阅配置
-     * @param record       消费记录
-     */
-    private void handleMQ(EventMessage eventMessage, EventSubscription subscription, EventConsumeRecord record) {
-        log.info("转发到MQ: topic={}, tag={}", subscription.getMqTopic(), subscription.getMqTag());
-        record.setStatus(ConsumeStatus.SUCCESS.getCode());
     }
 
     /**
@@ -203,10 +182,6 @@ public class EventConsumer {
      * 根据重试策略计算：
      * - FIXED: 固定间隔 60 秒
      * - EXPONENTIAL: 指数退避，2^n * 60 秒
-     *
-     * @param subscription 订阅配置
-     * @param retryTimes   当前重试次数
-     * @return 下次重试时间
      */
     private LocalDateTime calculateNextRetryTime(EventSubscription subscription, int retryTimes) {
         int delaySeconds = 60;

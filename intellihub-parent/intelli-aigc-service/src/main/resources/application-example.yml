@@ -1,0 +1,45 @@
+# AIGC服务配置示例文件
+# 使用说明：
+# 1. 复制本文件并重命名为 application-local.yml（已在.gitignore中排除）
+# 2. 将下面的占位符替换为你的真实配置
+# 3. 启动时指定profile：--spring.profiles.active=local
+
+server:
+  port: 8084
+
+spring:
+  application:
+    name: intelli-aigc-service
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/intelli_hub_aigc?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: your-db-password
+
+  redis:
+    host: localhost
+    port: 6379
+    database: 3
+    timeout: 3000ms
+    password: your-redis-password  # 如果Redis没有密码，留空即可
+
+# AIGC模型配置
+aigc:
+  # 阿里通义千问
+  aliyun:
+    # 从 https://dashscope.console.aliyun.com/apiKey 获取
+    api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    base-url: https://dashscope.aliyuncs.com/api/v1
+  
+  # 百度文心一言
+  baidu:
+    # 从 https://console.bce.baidu.com/qianfan/ 获取
+    api-key: your-baidu-api-key
+  
+  # 腾讯混元
+  tencent:
+    use-openai-api: true
+    # 从 https://console.cloud.tencent.com/hunyuan 获取
+    secret-id: your-tencent-secret-id
+    secret-key: your-tencent-secret-key
