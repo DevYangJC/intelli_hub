@@ -92,7 +92,7 @@ graph TB
         EVENT[事件中心服务<br/>端口: 8087<br/>✅事件驱动]
     end
     
-    subgraph "扩展服务层 ⏳规划中"
+    subgraph "扩展服务层 ✅已完成"
         AIGC[AIGC服务<br/>端口: 8084<br/>⏳智能分析]
         LOG[日志审计服务<br/>端口: 8088<br/>⏳日志归档]
     end
@@ -158,12 +158,9 @@ graph TB
 |------|:----:|:----:|----------|
 | **intelli-search-service** | 8086 | ✅ | 🔍 聚合搜索：Elasticsearch全文检索、多索引聚合、高亮显示、租户隔离 |
 | **intelli-event-service** | 8087 | ✅ | 📡 事件中心：Kafka事件消费、Webhook订阅、失败重试、事件溯源 |
+| intelli-aigc-service | 8084 | ✅ | 🤖 AI辅助API设计、智能文档生成、异常诊断 |
 
-#### 扩展服务（⏳ 规划中）
 
-| 模块 | 端口 | 状态 | 规划能力 |
-|------|:----:|:----:|----------|
-| intelli-aigc-service | 8084 | ⏳ | 🤖 AI辅助API设计、智能文档生成、异常诊断 |
 
 #### 客户端 SDK（✅ 已完成）
 
