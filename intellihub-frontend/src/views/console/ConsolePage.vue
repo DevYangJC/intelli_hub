@@ -65,20 +65,6 @@
             </el-sub-menu>
           </template>
 
-          <div class="menu-divider"></div>
-          <div class="menu-label">AI服务</div>
-
-          <el-sub-menu index="aigc">
-            <template #title>
-              <el-icon><ChatDotRound /></el-icon>
-              <span>AIGC服务</span>
-            </template>
-            <el-menu-item index="aigc-chat">AI对话</el-menu-item>
-            <el-menu-item index="aigc-templates">Prompt模板</el-menu-item>
-            <el-menu-item index="aigc-dashboard">使用统计</el-menu-item>
-            <el-menu-item index="aigc-cost">成本分析</el-menu-item>
-          </el-sub-menu>
-
           <template v-if="hasAnyPermission(['tenant:list', 'user:list', 'system:config'])">
             <div class="menu-divider"></div>
             <div class="menu-label">系统设置</div>
@@ -195,10 +181,6 @@ const handleMenuSelect = (index: string) => {
     'event-subscriptions': '/console/event/subscriptions',
     'event-records': '/console/event/records',
     'event-statistics': '/console/event/statistics',
-    'aigc-chat': '/console/aigc/chat',
-    'aigc-templates': '/console/aigc/templates',
-    'aigc-dashboard': '/console/aigc/dashboard',
-    'aigc-cost': '/console/aigc/cost',
     'settings': '/console/settings',
     'announcements': '/console/announcements',
   }

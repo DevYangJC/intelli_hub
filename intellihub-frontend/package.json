@@ -20,6 +20,7 @@
     "axios": "^1.13.2",
     "echarts": "^6.0.0",
     "element-plus": "^2.12.0",
+    "marked": "^17.0.1",
     "pinia": "^3.0.4",
     "vite-svg-loader": "^5.1.0",
     "vue": "^3.5.25",

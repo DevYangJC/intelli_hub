@@ -142,6 +142,11 @@
                 <artifactId>elasticsearch-spring-boot-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.intellihub</groupId>
+                <artifactId>aigc-client-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- MySQL -->
             <dependency>

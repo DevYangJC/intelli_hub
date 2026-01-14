@@ -18,6 +18,7 @@
         <module>aop-spring-boot-starter</module>
         <module>kafka-spring-boot-starter</module>
         <module>elasticsearch-spring-boot-starter</module>
+        <module>aigc-client-spring-boot-starter</module>
     </modules>
     <packaging>pom</packaging>
 </project>
