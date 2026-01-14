@@ -72,52 +72,35 @@ logging:
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
 
 # AIGC模型配置
-# 平台地址和API Key获取方式：
-# 1. 阿里通义千问：https://dashscope.console.aliyun.com/
-#    - 注册阿里云账号并开通DashScope服务
-#    - 在控制台创建API Key：https://dashscope.console.aliyun.com/apiKey
-#    - DashScope原生协议 Base URL：https://dashscope.aliyuncs.com/api/v1
-#    - OpenAI兼容协议 Base URL：https://dashscope.aliyuncs.com/compatible-mode/v1（推荐）
-#    - 文档地址：https://help.aliyun.com/zh/model-studio/qwen-api-reference
+# 使用百度千帆平台统一调用多种大模型
+# 平台地址：https://console.bce.baidu.com/qianfan/
+# API文档：https://cloud.baidu.com/doc/WENXINWORKSHOP/index.html
 #
-# 2. 百度文心一言：https://console.bce.baidu.com/qianfan/
-#    - 注册百度智能云账号并开通千帆大模型平台
-#    - 在控制台-安全认证-API Key 创建API Key
-#    - API Base URL：https://qianfan.baidubce.com/v2/chat/completions
-#    - 认证方式：Authorization: Bearer {API_KEY}（只需一个API Key）
-#    - 文档地址：https://cloud.baidu.com/doc/WENXINWORKSHOP/index.html
+# API Key获取方式：
+# 1. 注册百度智能云账号并开通千帆大模型平台
+# 2. 在控制台-安全认证-API Key 创建API Key
+# 3. 设置环境变量：export QIANFAN_API_KEY=your-actual-api-key
 #
-# 3. 腾讯混元：https://console.cloud.tencent.com/hunyuan
-#    - 注册腾讯云账号并开通混元大模型服务
-#    - **方式1（推荐）**：使用OpenAI兼容接口，在https://console.cloud.tencent.com/hunyuan 创建API密钥
-#    - **方式2**：使用腾讯云标准API，在https://console.cloud.tencent.com/cam/capi 获取SecretId和SecretKey
-#    - 文档地址：https://cloud.tencent.com/document/product/1729
+# 支持的模型：
+# - ernie-4.0-8k, ernie-3.5-8k（文心一言）
+# - deepseek-v3, deepseek-v3.1-250821（DeepSeek）
+# - qwen-turbo, qwen-plus（通义千问）
+# - 更多模型请参考：https://cloud.baidu.com/doc/qianfan/s/rmh4stp0j
 #
 aigc:
-  # 阿里通义千问
-  aliyun:
+  qianfan:
     # 从环境变量读取API Key，避免泄露敏感信息
-    # 启动时设置环境变量：export ALIYUN_API_KEY=your-actual-api-key
-    # 或在IDEA中配置Environment variables：ALIYUN_API_KEY=your-actual-api-key
-    api-key: ${ALIYUN_API_KEY:your-aliyun-api-key}
-    # DashScope API Base URL（默认：https://dashscope.aliyuncs.com/api/v1）
-    # 如需使用自定义地址，可以在这里配置
-    base-url: https://dashscope.aliyuncs.com/api/v1
-  
-  # 百度文心一言
-  baidu:
-    # 从环境变量读取API Key，避免泄露敏感信息
-    # 启动时设置环境变量：export BAIDU_API_KEY=your-actual-api-key
-    api-key: ${BAIDU_API_KEY:your-baidu-api-key}
-  
-  # 腾讯混元
-  tencent:
-    # 推荐使用OpenAI兼容接口（use-openai-api: true），只需配置secret-key即可
-    # 如使用腾讯云标准API（use-openai-api: false），需同时配置secret-id和secret-key
-    use-openai-api: true
-    # 从环境变量读取，避免泄露敏感信息
-    secret-id: ${TENCENT_SECRET_ID:your-tencent-secret-id}
-    secret-key: ${TENCENT_SECRET_KEY:your-tencent-secret-key}
+    api-key: bce-v3/ALTAK-XwxIDe6sAFbZBhYojEIES/2251130425beddf0a0b3784a4715e049bb3b5ee3
+    # API Base URL
+    base-url: https://qianfan.baidubce.com
+    # 默认模型
+    default-model: ernie-5.0-thinking-latest
+    # 请求超时时间（秒）
+    timeout: 60
+    # 最大重试次数
+    max-retries: 3
+    # 是否启用
+    enabled: true
 
 # Dubbo配置
 dubbo:

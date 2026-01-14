@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.intellihub.aigc.config.AigcAutoConfiguration

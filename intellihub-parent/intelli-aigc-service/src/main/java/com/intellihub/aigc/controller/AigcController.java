@@ -1,111 +1,132 @@
 package com.intellihub.aigc.controller;
 
+import com.intellihub.aigc.client.QianfanClient;
+import com.intellihub.aigc.model.ChatRequest;
+import com.intellihub.aigc.model.ChatResponse;
+import com.intellihub.aigc.model.Message;
 import com.intellihub.ApiResponse;
-import com.intellihub.aigc.dto.request.ChatRequest;
-import com.intellihub.aigc.dto.request.TextGenerationRequest;
-import com.intellihub.aigc.dto.response.ChatResponse;
-import com.intellihub.aigc.dto.response.TextGenerationResponse;
-import com.intellihub.aigc.entity.AigcConversation;
-import com.intellihub.aigc.service.AigcService;
-import com.intellihub.aigc.service.ConversationService;
-import com.intellihub.aigc.service.QuotaService;
-import com.intellihub.context.UserContextHolder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * AIGC服务控制器
+ * AIGC对话接口
  *
- * @author intellihub
- * @since 1.0.0
+ * @author IntelliHub
  */
 @Slf4j
 @RestController
-@RequestMapping("/v1/aigc")
+@RequestMapping("/api/v1/aigc")
 @RequiredArgsConstructor
-@Tag(name = "AIGC服务", description = "AI文本生成和对话接口")
+@Validated
+@Tag(name = "AIGC对话", description = "AI对话生成接口")
 public class AigcController {
 
-    private final AigcService aigcService;
-    private final QuotaService quotaService;
-    private final ConversationService conversationService;
+    private final QianfanClient qianfanClient;
 
     /**
-     * 文本生成
+     * 对话接口
      */
-    @PostMapping("/text/generate")
-    @Operation(summary = "文本生成", description = "根据提示词生成文本内容")
-    public ApiResponse<TextGenerationResponse> generateText(@Valid @RequestBody TextGenerationRequest request) {
-        TextGenerationResponse response = aigcService.generateText(request);
-        return ApiResponse.success(response);
-    }
-
-    /**
-     * 对话聊天
-     */
-    @PostMapping("/chat/completions")
-    @Operation(summary = "对话聊天", description = "支持多轮对话的智能聊天接口")
+    @PostMapping("/chat")
+    @Operation(summary = "对话", description = "发起AI对话请求")
     public ApiResponse<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
-        ChatResponse response = aigcService.chat(request);
-        return ApiResponse.success(response);
+        log.info("收到对话请求: model={}, messageCount={}", 
+                request.getModel(), request.getMessages().size());
+        
+        ChatResponse response = qianfanClient.chat(request);
+        
+        if (response.isSuccess()) {
+            log.info("对话成功: id={}, tokens={}", 
+                    response.getId(), 
+                    response.getUsage() != null ? response.getUsage().getTotalTokens() : 0);
+            return ApiResponse.success(response);
+        } else {
+            log.warn("对话失败: code={}, message={}", response.getCode(), response.getMessage());
+            return ApiResponse.error(500, response.getMessage());
+        }
     }
 
     /**
-     * 获取支持的模型列表（简单版）
+     * 简单对话接口
      */
-    @GetMapping("/models")
-    @Operation(summary = "获取支持的模型列表", description = "返回所有可用的AI模型ID")
-    public ApiResponse<List<String>> getSupportedModels() {
-        List<String> models = aigcService.getSupportedModels();
-        return ApiResponse.success(models);
+    @PostMapping("/chat/simple")
+    @Operation(summary = "简单对话", description = "快速发起单轮对话")
+    public ApiResponse<String> simpleChat(
+            @RequestParam(defaultValue = "ernie-4.0-8k") String model,
+            @RequestParam @NotBlank(message = "消息不能为空") String message) {
+        log.info("收到简单对话请求: model={}, message={}", model, message);
+        
+        ChatRequest request = ChatRequest.builder()
+                .model(model)
+                .messages(Collections.singletonList(Message.user(message)))
+                .build();
+        
+        ChatResponse response = qianfanClient.chat(request);
+        
+        if (response.isSuccess()) {
+            return ApiResponse.success(response.getContent());
+        } else {
+            return ApiResponse.error(500, response.getMessage());
+        }
     }
 
     /**
-     * 获取模型详细信息列表
+     * 带系统提示的对话接口
      */
-    @GetMapping("/models/info")
-    @Operation(summary = "获取模型详细信息", description = "返回所有可用AI模型的详细信息，包括名称、厂商、价格等")
-    public ApiResponse<List<com.intellihub.aigc.dto.response.ModelInfo>> getModelInfoList() {
-        List<com.intellihub.aigc.dto.response.ModelInfo> models = aigcService.getModelInfoList();
-        return ApiResponse.success(models);
+    @PostMapping("/chat/with-system")
+    @Operation(summary = "带系统提示的对话", description = "使用系统提示发起对话")
+    public ApiResponse<String> chatWithSystem(
+            @RequestParam(defaultValue = "ernie-4.0-8k") String model,
+            @RequestParam @NotBlank(message = "系统提示不能为空") String systemPrompt,
+            @RequestParam @NotBlank(message = "消息不能为空") String message) {
+        log.info("收到系统提示对话请求: model={}", model);
+        
+        ChatRequest request = ChatRequest.builder()
+                .model(model)
+                .messages(Arrays.asList(
+                        Message.system(systemPrompt),
+                        Message.user(message)
+                ))
+                .build();
+        
+        ChatResponse response = qianfanClient.chat(request);
+        
+        if (response.isSuccess()) {
+            return ApiResponse.success(response.getContent());
+        } else {
+            return ApiResponse.error(500, response.getMessage());
+        }
     }
 
     /**
-     * 获取配额使用情况
+     * 流式对话接口
      */
-    @GetMapping("/quota/usage")
-    @Operation(summary = "获取配额使用情况", description = "查询当前租户的配额使用统计")
-    public ApiResponse<java.util.Map<String, Object>> getQuotaUsage() {
-        String tenantId = UserContextHolder.getCurrentTenantId();
-        java.util.Map<String, Object> usage = quotaService.getQuotaUsage(tenantId);
-        return ApiResponse.success(usage);
+    @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "流式对话", description = "发起流式AI对话请求")
+    public Flux<ChatResponse> chatStream(@Valid @RequestBody ChatRequest request) {
+        log.info("收到流式对话请求: model={}, messageCount={}", 
+                request.getModel(), request.getMessages().size());
+        
+        return qianfanClient.chatStreamFlux(request);
     }
 
     /**
-     * 获取对话历史
+     * 健康检查
      */
-    @GetMapping("/conversation/{conversationId}/history")
-    @Operation(summary = "获取对话历史", description = "查询指定会话的历史消息")
-    public ApiResponse<List<AigcConversation>> getConversationHistory(
-            @PathVariable String conversationId,
-            @RequestParam(defaultValue = "20") int limit) {
-        List<AigcConversation> history = conversationService.getHistory(conversationId, limit);
-        return ApiResponse.success(history);
-    }
-
-    /**
-     * 清空对话历史
-     */
-    @DeleteMapping("/conversation/{conversationId}/history")
-    @Operation(summary = "清空对话历史", description = "删除指定会话的所有历史消息")
-    public ApiResponse<Void> clearConversationHistory(@PathVariable String conversationId) {
-        conversationService.clearHistory(conversationId);
-        return ApiResponse.success(null);
+    @GetMapping("/health")
+    @Operation(summary = "健康检查", description = "检查AIGC服务状态")
+    public ApiResponse<String> health() {
+        return ApiResponse.success("AIGC服务运行正常");
     }
 }

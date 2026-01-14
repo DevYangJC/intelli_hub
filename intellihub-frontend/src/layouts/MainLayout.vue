@@ -256,11 +256,14 @@
       </div>
     </el-dialog>
 
+    <!-- AI 助手组件 -->
+    <AiAssistant v-if="isAuthenticated" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
+import AiAssistant from '@/components/AiAssistant.vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
