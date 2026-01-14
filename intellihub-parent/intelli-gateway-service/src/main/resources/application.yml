@@ -179,17 +179,19 @@ intellihub:
     rate-limit:
       enabled: true
       key-prefix: "rate_limit:"
+      # 限流算法：SLIDING_WINDOW（滑动窗口，推荐）、FIXED_WINDOW（固定窗口）、TOKEN_BUCKET（令牌桶）
       algorithm: SLIDING_WINDOW
       error-message: "请求过于频繁，请稍后再试"
 
       # 默认限流配置（每分钟100次请求）
+      # 说明：限流维度为 IP+Path 组合，即同一IP访问同一路径的限制
       default-limit:
         requests: 100
         window: 60
 
       # 特定路径限流配置
       limits:
-        # 登录接口更严格（每分钟5次）
+        # 登录接口更严格（每分钟5次，防止暴力破解）
         "/api/auth/**":
           requests: 5
           window: 60
@@ -197,7 +199,7 @@ intellihub:
         "/api/search/**":
           requests: 200
           window: 60
-        # 上传接口最严格（每分钟10次）
+        # 上传接口最严格（每分钟10次，防止资源滥用）
         "/api/**/upload":
           requests: 10
           window: 60
