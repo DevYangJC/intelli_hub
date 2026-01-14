@@ -49,4 +49,24 @@ public class AppKeyInfo implements Serializable {
      * 过期时间（毫秒时间戳）
      */
     private Long expireTime;
+
+    /**
+     * IP白名单，多个用逗号分隔
+     */
+    private String ipWhitelist;
+
+    /**
+     * 每日调用配额限制
+     */
+    private Long quotaLimit;
+
+    /**
+     * 已使用配额
+     */
+    private Long quotaUsed;
+
+    /**
+     * 配额重置时间（毫秒时间戳）
+     */
+    private Long quotaResetTime;
 }

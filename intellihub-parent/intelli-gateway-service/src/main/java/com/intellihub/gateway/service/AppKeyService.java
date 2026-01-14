@@ -89,6 +89,13 @@ public class AppKeyService {
         info.setAppSecret(dto.getAppSecret());
         info.setStatus(dto.getStatus());
         info.setExpireTime(dto.getExpireTime());
+        
+        // 设置新增字段
+        info.setIpWhitelist(dto.getIpWhitelist());
+        info.setQuotaLimit(dto.getQuotaLimit());
+        info.setQuotaUsed(dto.getQuotaUsed());
+        info.setQuotaResetTime(dto.getQuotaResetTime());
+        
         return info;
     }
 

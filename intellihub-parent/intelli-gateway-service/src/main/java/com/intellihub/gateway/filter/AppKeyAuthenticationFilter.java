@@ -158,46 +158,71 @@ public class AppKeyAuthenticationFilter implements GlobalFilter, Ordered {
                                     return handleUnauthorized(response, "应用凭证已过期。请在控制台续期或重新创建应用");
                                 }
                                 
-                                // 验证签名
-                                boolean signatureValid = SignatureUtil.verifySignature(
-                                        signature, method, path, timestamp, nonce, appKeyInfo.getAppSecret());
-                                
-                                if (!signatureValid) {
-                                    log.warn("签名验证失败 - AppKey: {}, Path: {}", appKey, path);
-                                    return handleUnauthorized(response, "签名验证失败。请检查AppSecret是否正确，并确保签名算法符合规范");
+                                // 检查IP白名单
+                                if (!checkIpWhitelist(request, appKeyInfo)) {
+                                    String clientIp = getClientIp(request);
+                                    log.warn("IP不在白名单中 - AppKey: {}, IP: {}, Whitelist: {}", 
+                                            appKey, clientIp, appKeyInfo.getIpWhitelist());
+                                    return handleForbidden(response, "您的IP不在白名单中，无权访问此应用");
                                 }
                                 
-                                // 检查订阅关系 - 优先使用API ID（由OpenApiRouteMatchFilter提供）
-                                String apiId = (String) exchange.getAttributes().get(OpenApiRouteMatchFilter.ATTR_API_ID);
-                                Mono<Boolean> subscriptionCheck;
-                                
-                                if (apiId != null) {
-                                    // 使用API ID检查订阅（更精确）
-                                    subscriptionCheck = appKeyService.checkSubscriptionByApiId(appKeyInfo.getAppId(), apiId);
-                                } else {
-                                    // 降级使用路径检查
-                                    subscriptionCheck = appKeyService.checkSubscription(appKeyInfo.getAppId(), path);
-                                }
-                                
-                                return subscriptionCheck
-                                        .flatMap(hasSubscription -> {
-                                            if (!hasSubscription) {
-                                                log.warn("应用未订阅该API - AppKey: {}, ApiId: {}, Path: {}", appKey, apiId, path);
-                                                return handleForbidden(response, "应用未订阅该API，请先在应用中心订阅");
-                                            }
-                                            
-                                            // 将应用信息添加到请求头，传递给下游服务
-                                            ServerHttpRequest modifiedRequest = request.mutate()
-                                                    .header("X-App-Id", appKeyInfo.getAppId())
-                                                    .header("X-App-Key", appKey)
-                                                    .header("X-Tenant-Id", safeString(appKeyInfo.getTenantId()))
-                                                    .build();
-                                            
-                                            log.info("AppKey认证成功 - AppKey: {}, AppId: {}, ApiId: {}, Path: {}", 
-                                                    appKey, appKeyInfo.getAppId(), apiId, path);
-                                            
-                                            return chain.filter(exchange.mutate().request(modifiedRequest).build());
-                                        });
+                                // 检查配额
+                                return checkQuota(appKeyInfo)
+                                    .flatMap(quotaAllowed -> {
+                                        if (!quotaAllowed) {
+                                            log.warn("配额已耗尽 - AppId: {}, Used: {}, Limit: {}", 
+                                                    appKeyInfo.getAppId(), 
+                                                    appKeyInfo.getQuotaUsed(), 
+                                                    appKeyInfo.getQuotaLimit());
+                                            return handleForbidden(response, 
+                                                    "今日调用配额已用完，请明天再试或联系管理员提升配额");
+                                        }
+                                        
+                                        // 获取API ID
+                                        String apiId = (String) exchange.getAttributes().get(OpenApiRouteMatchFilter.ATTR_API_ID);
+                                        
+                                        // 验证签名
+                                        boolean signatureValid = SignatureUtil.verifySignature(
+                                                signature, method, path, timestamp, nonce, appKeyInfo.getAppSecret());
+                                        
+                                        if (!signatureValid) {
+                                            log.warn("签名验证失败 - AppKey: {}, Path: {}", appKey, path);
+                                            return handleUnauthorized(response, "签名验证失败。请检查AppSecret是否正确，并确保签名算法符合规范");
+                                        }
+                                        
+                                        // 检查订阅关系 - 优先使用API ID（由OpenApiRouteMatchFilter提供）
+                                        Mono<Boolean> subscriptionCheck;
+                                        
+                                        if (apiId != null) {
+                                            // 使用API ID检查订阅（更精确）
+                                            subscriptionCheck = appKeyService.checkSubscriptionByApiId(appKeyInfo.getAppId(), apiId);
+                                        } else {
+                                            // 降级使用路径检查
+                                            subscriptionCheck = appKeyService.checkSubscription(appKeyInfo.getAppId(), path);
+                                        }
+                                        
+                                        return subscriptionCheck
+                                                .flatMap(hasSubscription -> {
+                                                    if (!hasSubscription) {
+                                                        log.warn("应用未订阅该API - AppKey: {}, ApiId: {}, Path: {}", appKey, apiId, path);
+                                                        return handleForbidden(response, "应用未订阅该API，请先在应用中心订阅");
+                                                    }
+                                                    
+                                                    // 将应用信息添加到请求头，传递给下游服务
+                                                    ServerHttpRequest modifiedRequest = request.mutate()
+                                                            .header("X-App-Id", appKeyInfo.getAppId())
+                                                            .header("X-App-Key", appKey)
+                                                            .header("X-Tenant-Id", safeString(appKeyInfo.getTenantId()))
+                                                            .build();
+                                                    
+                                                    log.info("AppKey认证成功 - AppKey: {}, AppId: {}, ApiId: {}, Path: {}", 
+                                                            appKey, appKeyInfo.getAppId(), apiId, path);
+                                                    
+                                                    // 请求成功后，异步增加配额计数
+                                                    return chain.filter(exchange.mutate().request(modifiedRequest).build())
+                                                            .then(Mono.fromRunnable(() -> incrementQuotaAsync(appKeyInfo.getAppId())));
+                                                });
+                                    });
                             })
                             .switchIfEmpty(handleUnauthorized(response, "无效的AppKey"));
                 });
@@ -251,5 +276,148 @@ public class AppKeyAuthenticationFilter implements GlobalFilter, Ordered {
      */
     private String safeString(String value) {
         return value != null ? value : "";
+    }
+    
+    /**
+     * 检查IP白名单
+     */
+    private boolean checkIpWhitelist(ServerHttpRequest request, AppKeyInfo appKeyInfo) {
+        String ipWhitelist = appKeyInfo.getIpWhitelist();
+        
+        // 如果没有配置白名单，则不限制
+        if (ipWhitelist == null || ipWhitelist.trim().isEmpty()) {
+            return true;
+        }
+        
+        String clientIp = getClientIp(request);
+        if (clientIp == null) {
+            return false;
+        }
+        
+        // 解析白名单（逗号分隔）
+        String[] allowedIps = ipWhitelist.split(",");
+        for (String allowedIp : allowedIps) {
+            allowedIp = allowedIp.trim();
+            
+            // 精确匹配
+            if (clientIp.equals(allowedIp)) {
+                return true;
+            }
+            
+            // 支持CIDR格式（如：192.168.1.0/24）
+            if (allowedIp.contains("/") && matchCIDR(clientIp, allowedIp)) {
+                return true;
+            }
+            
+            // 支持通配符（如：192.168.1.*）
+            if (allowedIp.contains("*") && matchWildcard(clientIp, allowedIp)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 获取客户端真实IP
+     */
+    private String getClientIp(ServerHttpRequest request) {
+        String ip = null;
+        String[] headerNames = {
+            "X-Forwarded-For", "X-Real-IP", 
+            "Proxy-Client-IP", "WL-Proxy-Client-IP"
+        };
+        
+        for (String headerName : headerNames) {
+            String headerValue = request.getHeaders().getFirst(headerName);
+            if (headerValue != null && !headerValue.isEmpty()) {
+                // X-Forwarded-For可能有多个IP，取第一个
+                ip = headerValue.split(",")[0].trim();
+                break;
+            }
+        }
+        
+        if (ip == null) {
+            java.net.InetSocketAddress remoteAddress = request.getRemoteAddress();
+            if (remoteAddress != null) {
+                ip = remoteAddress.getAddress().getHostAddress();
+            }
+        }
+        
+        return ip;
+    }
+    
+    /**
+     * 通配符匹配（如：192.168.1.* 匹配 192.168.1.100）
+     */
+    private boolean matchWildcard(String ip, String pattern) {
+        String regex = pattern.replace(".", "\\.").replace("*", ".*");
+        return ip.matches(regex);
+    }
+    
+    /**
+     * CIDR匹配（如：192.168.1.0/24）
+     */
+    private boolean matchCIDR(String ip, String cidr) {
+        try {
+            String[] parts = cidr.split("/");
+            String networkIp = parts[0];
+            int prefixLength = Integer.parseInt(parts[1]);
+            
+            long ipLong = ipToLong(ip);
+            long networkLong = ipToLong(networkIp);
+            long mask = -1L << (32 - prefixLength);
+            
+            return (ipLong & mask) == (networkLong & mask);
+        } catch (Exception e) {
+            log.error("CIDR格式错误: {}", cidr, e);
+            return false;
+        }
+    }
+    
+    /**
+     * IP转换为长整型
+     */
+    private long ipToLong(String ip) {
+        String[] octets = ip.split("\\.");
+        return (Long.parseLong(octets[0]) << 24)
+             + (Long.parseLong(octets[1]) << 16)
+             + (Long.parseLong(octets[2]) << 8)
+             + Long.parseLong(octets[3]);
+    }
+    
+    /**
+     * 检查配额
+     */
+    private Mono<Boolean> checkQuota(AppKeyInfo appKeyInfo) {
+        Long quotaLimit = appKeyInfo.getQuotaLimit();
+        
+        // 如果没有配置配额限制，则不限制
+        if (quotaLimit == null || quotaLimit <= 0) {
+            return Mono.just(true);
+        }
+        
+        // 从Redis获取当前使用量
+        String quotaKey = "app:quota:" + appKeyInfo.getAppId();
+        
+        return redisUtil.get(quotaKey)
+            .map(used -> {
+                long usedCount = Long.parseLong(used);
+                return usedCount < quotaLimit;
+            })
+            .defaultIfEmpty(true); // Redis中没有数据，说明还未使用
+    }
+    
+    /**
+     * 异步增加配额计数
+     */
+    private void incrementQuotaAsync(String appId) {
+        String quotaKey = "app:quota:" + appId;
+        
+        redisUtil.increment(quotaKey)
+            .subscribe(
+                count -> log.debug("配额计数增加成功 - AppId: {}, Count: {}", appId, count),
+                error -> log.error("配额计数增加失败 - AppId: {}", appId, error)
+            );
     }
 }

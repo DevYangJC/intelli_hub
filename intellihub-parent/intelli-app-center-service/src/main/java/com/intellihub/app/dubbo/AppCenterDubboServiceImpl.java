@@ -143,8 +143,22 @@ public class AppCenterDubboServiceImpl implements AppCenterDubboService {
         dto.setAppSecret(appInfo.getAppSecret());
         dto.setStatus(appInfo.getStatus());
         
+        // 设置过期时间
         if (appInfo.getExpireTime() != null) {
             dto.setExpireTime(appInfo.getExpireTime()
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli());
+        }
+        
+        // 设置IP白名单
+        dto.setIpWhitelist(appInfo.getIpWhitelist());
+        
+        // 设置配额信息
+        dto.setQuotaLimit(appInfo.getQuotaLimit());
+        dto.setQuotaUsed(appInfo.getQuotaUsed());
+        if (appInfo.getQuotaResetTime() != null) {
+            dto.setQuotaResetTime(appInfo.getQuotaResetTime()
                     .atZone(ZoneId.systemDefault())
                     .toInstant()
                     .toEpochMilli());
