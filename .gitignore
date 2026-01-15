@@ -196,3 +196,23 @@ application-local.properties
 .env
 .env.local
 .env.*.local
+
+# 临时文档和总结文件
+**/UI_MODERNIZATION_SUMMARY.md
+**/IMPLEMENTATION_SUMMARY.md
+**/RATE_LIMIT_FIX_SUMMARY.md
+**/RATE_LIMIT_SIMPLIFICATION.md
+**/APP_CENTER_FEATURE_ENHANCEMENT.md
+**/*_SUMMARY.md
+**/*_ENHANCEMENT.md
+
+# AI 生成的临时文件
+**/.cursor/
+**/.continue/
+
+# 临时调试文件
+*.tmp
+*.temp
+*.swp
+*.swo
+*~

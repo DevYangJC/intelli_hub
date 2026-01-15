@@ -11,8 +11,8 @@ const router = useRouter()
 const handleUnauthorized = () => {
   authStore.clearAuth()
   router.push({ path: '/', query: { login: 'required' } })
-  // 避免重复提示，这里可以根据需要决定是否显示
-  // ElMessage.warning('登录已过期，请重新登录')
+  // 显示友好的提示信息
+  ElMessage.warning('登录已过期或后端服务不可用，请重新登录')
 }
 
 onMounted(() => {

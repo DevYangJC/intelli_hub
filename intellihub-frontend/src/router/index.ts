@@ -264,6 +264,23 @@ router.beforeEach(async (to, from, next) => {
       })
       return
     }
+    
+    // 如果已登录，但后端服务可能不可用，尝试验证token有效性
+    // 只在首次进入需要认证的页面时验证，避免频繁请求
+    if (authStore.isAuthenticated && !authStore.user) {
+      try {
+        await authStore.fetchCurrentUser()
+      } catch (error: any) {
+        // 如果获取用户信息失败（网络错误或401），清除认证状态
+        console.error('验证登录状态失败:', error)
+        authStore.clearAuth()
+        next({
+          path: '/',
+          query: { login: 'required', redirect: to.fullPath }
+        })
+        return
+      }
+    }
   }
 
   // 检查权限码
