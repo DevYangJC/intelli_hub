@@ -82,7 +82,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 
                                 log.debug("限流检查通过 - IP: {}, Path: {}, 剩余: {}", 
                                         ip, path, result.getRemaining() - 1);
-                                return chain.filter(exchange);
+                    return chain.filter(exchange);
                             }));
                 });
     }
@@ -159,7 +159,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
             // 如果都是内网IP，取第一个
             if (ip.contains(",")) {
                 ip = ips[0].trim();
-            }
+        }
         }
         
         // 4. 最终校验

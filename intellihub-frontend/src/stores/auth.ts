@@ -184,6 +184,7 @@ export const useAuthStore = defineStore('auth', () => {
         await fetchCurrentUser()
       } catch (error) {
         console.error('Failed to restore auth state:', error)
+        // 初始化失败时清除认证状态，避免显示错误的登录状态
         clearAuth()
       }
     }

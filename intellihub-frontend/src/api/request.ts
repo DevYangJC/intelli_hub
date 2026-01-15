@@ -1,7 +1,5 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
-import router from '@/router'
-import { el } from 'element-plus/es/locales.mjs'
 
 // 创建axios实例
 const service: AxiosInstance = axios.create({
@@ -92,9 +90,9 @@ service.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // 认证失败时只显示错误信息，不清除token
-          // 可能是后端服务暂时不可用导致的401，不应该清除用户登录状态
-          ElMessage.error('认证失败，请稍后重试')
+          // 401认证失败 - 清除认证状态并跳转
+          ElMessage.error('认证失败，请重新登录')
+          clearAuthAndRedirect()
           break
         case 403:
           ElMessage.error('拒绝访问')
@@ -108,10 +106,20 @@ service.interceptors.response.use(
         default:
           ElMessage.error(error.response.data?.message || '请求失败')
       }
-    } else if (error.message.includes('timeout')) {
-      ElMessage.error('请求超时，请稍后重试')
-    } else if (error.message.includes('Network Error')) {
-      ElMessage.error('网络错误，请检查网络连接')
+    } else if (error.message.includes('timeout') || error.code === 'ECONNABORTED') {
+      // 请求超时 - 可能是后端服务不可用
+      ElMessage.error('请求超时，后端服务可能未启动，请检查服务状态')
+      // 如果当前有认证信息，清除并跳转
+      if (localStorage.getItem('token')) {
+        clearAuthAndRedirect()
+      }
+    } else if (error.message.includes('Network Error') || error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED') {
+      // 网络错误 - 后端服务不可用，清除认证状态
+      ElMessage.error('网络错误，后端服务可能未启动，请检查服务状态')
+      // 清除认证状态并跳转
+      if (localStorage.getItem('token')) {
+        clearAuthAndRedirect()
+      }
     } else {
       ElMessage.error('请求失败')
     }

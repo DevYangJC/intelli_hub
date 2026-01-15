@@ -88,7 +88,7 @@ public class RateLimitService {
      */
     private Mono<RateLimitResult> checkFixedWindow(String key, int requests, int window) {
         String countKey = key + ":count";
-        
+
         return getCurrentCount(key)
                 .map(count -> {
                     boolean allowed = count < requests;
@@ -113,7 +113,7 @@ public class RateLimitService {
                 .flatMap(count -> {
                     if (count == 1) {
                         // 第一次请求，设置过期时间
-                        return redisTemplate.expire(countKey, Duration.ofSeconds(window))
+                                    return redisTemplate.expire(countKey, Duration.ofSeconds(window))
                                 .then();
                     }
                     return Mono.empty();
@@ -248,7 +248,7 @@ public class RateLimitService {
                     if (resultList.isEmpty()) {
                         return Mono.just(new RateLimitResult(true, capacity, capacity, 
                                 System.currentTimeMillis() / 1000 + window));
-                    }
+    }
                     
                     List<?> results = (List<?>) resultList.get(0);
                     long allowed = results.size() > 0 ? ((Number) results.get(0)).longValue() : 0L;
