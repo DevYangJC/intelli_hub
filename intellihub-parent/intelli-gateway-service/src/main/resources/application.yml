@@ -93,14 +93,6 @@ spring:
           filters:
             - StripPrefix=1
 
-        # 日志审计服务路由
-        - id: log-audit-service
-          uri: lb://intelli-log-audit-service
-          predicates:
-            - Path=/api/log/**,/api/audit/**
-          filters:
-            - StripPrefix=1
-
   # Redis配置
   redis:
     host: 192.168.200.130

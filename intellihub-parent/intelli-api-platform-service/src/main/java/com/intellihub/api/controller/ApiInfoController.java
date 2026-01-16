@@ -9,8 +9,11 @@ import com.intellihub.api.dto.request.UpdateApiRequest;
 import com.intellihub.api.dto.response.ApiInfoResponse;
 import com.intellihub.api.service.ApiInfoService;
 import com.intellihub.ApiResponse;
+import com.intellihub.dubbo.ApiStatsDTO;
+import com.intellihub.dubbo.GovernanceStatsDubboService;
 import com.intellihub.page.PageData;
 import lombok.RequiredArgsConstructor;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -29,6 +32,9 @@ import javax.validation.Valid;
 public class ApiInfoController {
 
     private final ApiInfoService apiInfoService;
+
+    @DubboReference(check = false, timeout = 5000)
+    private GovernanceStatsDubboService governanceStatsDubboService;
 
     /**
      * 分页查询API列表
@@ -55,6 +61,29 @@ public class ApiInfoController {
     public ApiResponse<ApiInfoResponse> getApiById(@PathVariable String id) {
         ApiInfoResponse api = apiInfoService.getApiById(id);
         return ApiResponse.success(api);
+    }
+
+    /**
+     * 获取API实时统计数据
+     * 返回API的调用统计信息，包括今日调用、总调用、成功率、平均响应时间
+     *
+     * @param id API的唯一标识ID
+     * @return API统计数据
+     */
+    @GetMapping("/{id}/stats")
+    public ApiResponse<ApiStatsDTO> getApiStats(@PathVariable String id) {
+        try {
+            ApiStatsDTO stats = governanceStatsDubboService.getApiStats(id);
+            if (stats == null) {
+                // 返回空统计数据
+                stats = new ApiStatsDTO(id, 0L, 0L, 0L, 0.0, 0.0);
+            }
+            return ApiResponse.success(stats);
+        } catch (Exception e) {
+            // 如果治理服务不可用，返回空统计数据
+            ApiStatsDTO emptyStats = new ApiStatsDTO(id, 0L, 0L, 0L, 0.0, 0.0);
+            return ApiResponse.success(emptyStats);
+        }
     }
 
     /**

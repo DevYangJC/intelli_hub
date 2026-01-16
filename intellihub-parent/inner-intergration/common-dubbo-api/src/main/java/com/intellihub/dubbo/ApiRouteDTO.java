@@ -26,6 +26,10 @@ public class ApiRouteDTO implements Serializable {
     private String mockResponse;
     private Boolean rateLimitEnabled;
     private Integer rateLimitQps;
+    
+    // 缓存配置
+    private Boolean cacheEnabled;
+    private Integer cacheTtl;
 
     // 后端配置
     private String backendType;

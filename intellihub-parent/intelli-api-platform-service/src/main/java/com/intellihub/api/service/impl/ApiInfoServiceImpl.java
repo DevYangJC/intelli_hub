@@ -16,23 +16,31 @@ import com.intellihub.api.mapper.ApiBackendMapper;
 import com.intellihub.api.mapper.ApiGroupMapper;
 import com.intellihub.api.mapper.ApiInfoMapper;
 import com.intellihub.api.mapper.ApiRequestParamMapper;
+import com.intellihub.api.mapper.ApiResponseParamMapper;
 import com.intellihub.api.mapper.ApiTagMapper;
 import com.intellihub.api.service.ApiEventPublisher;
 import com.intellihub.api.service.ApiInfoService;
 import com.intellihub.api.service.ApiRouteEventPublisher;
+import com.intellihub.api.vo.ApiStatsVO;
 import com.intellihub.constants.ResponseStatus;
+import com.intellihub.dubbo.ApiStatsDTO;
+import com.intellihub.dubbo.GovernanceDubboService;
 import com.intellihub.exception.BusinessException;
 import com.intellihub.page.PageData;
 import com.intellihub.context.UserContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -49,10 +57,15 @@ public class ApiInfoServiceImpl implements ApiInfoService {
     private final ApiInfoMapper apiInfoMapper;
     private final ApiGroupMapper apiGroupMapper;
     private final ApiRequestParamMapper apiRequestParamMapper;
+    private final ApiResponseParamMapper apiResponseParamMapper;
     private final ApiBackendMapper apiBackendMapper;
     private final ApiTagMapper apiTagMapper;
     private final ApiRouteEventPublisher routeEventPublisher;
     private final ApiEventPublisher apiEventPublisher;
+    private final StringRedisTemplate redisTemplate;
+    
+    @DubboReference(check = false, timeout = 3000)
+    private GovernanceDubboService governanceDubboService;
 
     @Override
     public PageData<ApiInfoResponse> listApis(ApiQueryRequest request) {
@@ -98,6 +111,28 @@ public class ApiInfoServiceImpl implements ApiInfoService {
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
 
+        // 批量查询统计数据
+        if (!records.isEmpty()) {
+            List<String> apiIds = records.stream()
+                    .map(ApiInfoResponse::getId)
+                    .collect(Collectors.toList());
+            
+            try {
+                Map<String, ApiStatsDTO> statsMap = governanceDubboService.batchGetApiStats(apiIds);
+                if (statsMap != null && !statsMap.isEmpty()) {
+                    records.forEach(record -> {
+                        ApiStatsDTO statsDTO = statsMap.get(record.getId());
+                        if (statsDTO != null) {
+                            record.setStats(convertToStatsVO(statsDTO));
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                log.warn("批量获取API统计数据失败, error: {}", e.getMessage());
+                // 统计数据获取失败不影响主流程
+            }
+        }
+
         PageData<ApiInfoResponse> pageData = new PageData<>(page.getCurrent(), page.getSize());
         pageData.setTotal(page.getTotal());
         pageData.setRecords(records);
@@ -123,6 +158,16 @@ public class ApiInfoServiceImpl implements ApiInfoService {
                 .map(this::convertParamToResponse)
                 .collect(Collectors.toList()));
 
+        // 获取响应参数
+        List<ApiResponseParam> responseParams = apiResponseParamMapper.selectList(
+                new LambdaQueryWrapper<ApiResponseParam>()
+                        .eq(ApiResponseParam::getApiId, id)
+                        .orderByAsc(ApiResponseParam::getSort)
+        );
+        response.setResponseParams(responseParams.stream()
+                .map(this::convertResponseParamToResponse)
+                .collect(Collectors.toList()));
+
         // 获取后端配置
         ApiBackend backend = apiBackendMapper.selectOne(
                 new LambdaQueryWrapper<ApiBackend>().eq(ApiBackend::getApiId, id)
@@ -138,6 +183,17 @@ public class ApiInfoServiceImpl implements ApiInfoService {
         response.setTags(tags.stream()
                 .map(ApiTag::getTagName)
                 .collect(Collectors.toList()));
+
+        // 获取API统计数据
+        try {
+            ApiStatsDTO statsDTO = governanceDubboService.getApiStats(id);
+            if (statsDTO != null) {
+                response.setStats(convertToStatsVO(statsDTO));
+            }
+        } catch (Exception e) {
+            log.warn("获取API统计数据失败 - apiId: {}, error: {}", id, e.getMessage());
+            // 统计数据获取失败不影响主流程
+        }
 
         return response;
     }
@@ -232,6 +288,16 @@ public class ApiInfoServiceImpl implements ApiInfoService {
             }
         }
 
+        // 更新响应参数
+        if (request.getResponseParams() != null) {
+            // 删除旧参数
+            apiResponseParamMapper.delete(new LambdaQueryWrapper<ApiResponseParam>().eq(ApiResponseParam::getApiId, id));
+            // 保存新参数
+            if (!request.getResponseParams().isEmpty()) {
+                saveResponseParams(id, request.getResponseParams());
+            }
+        }
+
         // 更新后端配置
         if (request.getBackend() != null) {
             // 删除旧配置
@@ -250,6 +316,9 @@ public class ApiInfoServiceImpl implements ApiInfoService {
             }
         }
 
+        // 清除API响应缓存
+        clearApiCache(id);
+
         return getApiById(id);
     }
 
@@ -267,6 +336,7 @@ public class ApiInfoServiceImpl implements ApiInfoService {
 
         // 删除关联数据
         apiRequestParamMapper.delete(new LambdaQueryWrapper<ApiRequestParam>().eq(ApiRequestParam::getApiId, id));
+        apiResponseParamMapper.delete(new LambdaQueryWrapper<ApiResponseParam>().eq(ApiResponseParam::getApiId, id));
         apiBackendMapper.delete(new LambdaQueryWrapper<ApiBackend>().eq(ApiBackend::getApiId, id));
         apiTagMapper.delete(new LambdaQueryWrapper<ApiTag>().eq(ApiTag::getApiId, id));
 
@@ -297,6 +367,9 @@ public class ApiInfoServiceImpl implements ApiInfoService {
         
         // 发布API发布事件到事件中心（Kafka）
         apiEventPublisher.publishApiPublished(id, apiInfo.getName(), apiInfo.getPath(), apiInfo.getMethod(), apiInfo.getTenantId());
+        
+        // 清除API响应缓存
+        clearApiCache(id);
     }
 
     @Override
@@ -377,6 +450,21 @@ public class ApiInfoServiceImpl implements ApiInfoService {
         }
     }
 
+    private void saveResponseParams(String apiId, List<ApiParamRequest> params) {
+        int sort = 0;
+        for (ApiParamRequest param : params) {
+            ApiResponseParam entity = ApiResponseParam.builder()
+                    .apiId(apiId)
+                    .name(param.getName())
+                    .type(param.getType())
+                    .description(param.getDescription())
+                    .example(param.getExample())
+                    .sort(param.getSort() != null ? param.getSort() : sort++)
+                    .build();
+            apiResponseParamMapper.insert(entity);
+        }
+    }
+
     private void saveBackend(String apiId, com.intellihub.api.dto.request.ApiBackendRequest backendRequest) {
         ApiBackend backend = ApiBackend.builder()
                 .apiId(apiId)
@@ -429,6 +517,18 @@ public class ApiInfoServiceImpl implements ApiInfoService {
         return response;
     }
 
+    private ApiParamResponse convertResponseParamToResponse(ApiResponseParam param) {
+        ApiParamResponse response = new ApiParamResponse();
+        response.setId(param.getId());
+        response.setApiId(param.getApiId());
+        response.setName(param.getName());
+        response.setType(param.getType());
+        response.setDescription(param.getDescription());
+        response.setExample(param.getExample());
+        response.setSort(param.getSort());
+        return response;
+    }
+
     private ApiBackendResponse convertBackendToResponse(ApiBackend backend) {
         ApiBackendResponse response = new ApiBackendResponse();
         BeanUtils.copyProperties(backend, response);
@@ -451,6 +551,7 @@ public class ApiInfoServiceImpl implements ApiInfoService {
         }
         // 排除不需要复制的字段
         emptyNames.add("requestParams");
+        emptyNames.add("responseParams");
         emptyNames.add("backend");
         emptyNames.add("tags");
         return emptyNames.toArray(new String[0]);
@@ -536,5 +637,41 @@ public class ApiInfoServiceImpl implements ApiInfoService {
         pageData.setTotal(page.getTotal());
         pageData.setRecords(records);
         return pageData;
+    }
+
+    /**
+     * 转换统计DTO为VO
+     */
+    private ApiStatsVO convertToStatsVO(ApiStatsDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        return ApiStatsVO.builder()
+                .todayCalls(dto.getTodayCalls())
+                .totalCalls(dto.getTotalCalls())
+                .successCalls(dto.getSuccessCalls())
+                .successRate(dto.getSuccessRate())
+                .avgResponseTime(dto.getAvgResponseTime())
+                .build();
+    }
+
+    /**
+     * 清除API的所有响应缓存
+     * 
+     * @param apiId API ID
+     */
+    private void clearApiCache(String apiId) {
+        try {
+            // 删除所有匹配的缓存Key（pattern: api:response:cache:{apiId}:*）
+            String pattern = "api:response:cache:" + apiId + ":*";
+            Set<String> keys = redisTemplate.keys(pattern);
+            if (keys != null && !keys.isEmpty()) {
+                redisTemplate.delete(keys);
+                log.info("API响应缓存已清除 - apiId: {}, count: {}", apiId, keys.size());
+            }
+        } catch (Exception e) {
+            log.error("清除API响应缓存失败 - apiId: {}", apiId, e);
+            // 不抛出异常，避免影响主流程
+        }
     }
 }

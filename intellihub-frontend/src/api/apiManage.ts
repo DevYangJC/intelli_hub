@@ -33,6 +33,16 @@ export interface ApiInfoResponse {
   updatedAt: string
   requestParams?: ApiParamResponse[]
   backend?: ApiBackendResponse
+  stats?: ApiStatsVO
+}
+
+// API统计数据VO
+export interface ApiStatsVO {
+  todayCalls: number
+  totalCalls: number
+  successCalls: number
+  successRate: number
+  avgResponseTime: number
 }
 
 // API参数响应

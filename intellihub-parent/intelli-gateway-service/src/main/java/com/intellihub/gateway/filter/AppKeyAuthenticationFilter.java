@@ -215,8 +215,9 @@ public class AppKeyAuthenticationFilter implements GlobalFilter, Ordered {
                                                             .header("X-Tenant-Id", safeString(appKeyInfo.getTenantId()))
                                                             .build();
                                                     
-                                                    log.info("AppKey认证成功 - AppKey: {}, AppId: {}, ApiId: {}, Path: {}", 
-                                                            appKey, appKeyInfo.getAppId(), apiId, path);
+                                                    // ✅ 日志追踪：记录传递给下游的租户ID
+                                                    log.info("AppKey认证成功 - AppKey: {}, AppId: {}, TenantId: {}, ApiId: {}, Path: {}", 
+                                                            appKey, appKeyInfo.getAppId(), appKeyInfo.getTenantId(), apiId, path);
                                                     
                                                     // 请求成功后，异步增加配额计数
                                                     return chain.filter(exchange.mutate().request(modifiedRequest).build())

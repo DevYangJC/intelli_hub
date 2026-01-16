@@ -90,6 +90,9 @@ public class AppKeyService {
         info.setStatus(dto.getStatus());
         info.setExpireTime(dto.getExpireTime());
         
+        // ✅ 日志追踪：记录从DTO转换后的租户ID
+        log.info("[AppKey认证] DTO转AppKeyInfo - AppKey: {}, TenantId: {}", dto.getAppKey(), dto.getTenantId());
+        
         // 设置新增字段
         info.setIpWhitelist(dto.getIpWhitelist());
         info.setQuotaLimit(dto.getQuotaLimit());

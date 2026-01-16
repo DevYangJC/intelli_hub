@@ -82,7 +82,7 @@ public class AppExpireScheduler {
             
             // 查询所有状态为active且已过期的订阅
             LambdaQueryWrapper<AppApiSubscription> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE)
+            queryWrapper.eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE.getCode())
                     .isNotNull(AppApiSubscription::getExpireTime)
                     .lt(AppApiSubscription::getExpireTime, now);
             
@@ -90,7 +90,7 @@ public class AppExpireScheduler {
             
             int expiredCount = 0;
             for (AppApiSubscription subscription : expiredSubscriptions) {
-                subscription.setStatus(SubscriptionStatus.EXPIRED);
+                subscription.setStatus(SubscriptionStatus.EXPIRED.getCode());
                 subscription.setUpdatedAt(now);
                 subscriptionMapper.updateById(subscription);
                 expiredCount++;
@@ -119,7 +119,7 @@ public class AppExpireScheduler {
             
             // 查询所有状态为disabled且已到生效时间的订阅
             LambdaQueryWrapper<AppApiSubscription> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(AppApiSubscription::getStatus, "disabled")
+            queryWrapper.eq(AppApiSubscription::getStatus, 0)
                     .isNotNull(AppApiSubscription::getEffectiveTime)
                     .le(AppApiSubscription::getEffectiveTime, now);
             
@@ -130,9 +130,9 @@ public class AppExpireScheduler {
                 // 检查是否已过期
                 if (subscription.getExpireTime() != null && 
                     subscription.getExpireTime().isBefore(now)) {
-                    subscription.setStatus(SubscriptionStatus.EXPIRED);
+                    subscription.setStatus(SubscriptionStatus.EXPIRED.getCode());
                 } else {
-                    subscription.setStatus(SubscriptionStatus.ACTIVE);
+                    subscription.setStatus(SubscriptionStatus.ACTIVE.getCode());
                 }
                 subscription.setUpdatedAt(now);
                 subscriptionMapper.updateById(subscription);

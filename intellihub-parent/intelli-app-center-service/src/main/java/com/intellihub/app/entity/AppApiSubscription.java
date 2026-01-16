@@ -47,9 +47,9 @@ public class AppApiSubscription {
     private String apiPath;
 
     /**
-     * 订阅状态：active-生效，disabled-禁用，expired-过期
+     *SubscriptionStatus
      */
-    private SubscriptionStatus status;
+    private int status;
 
     /**
      * 单独的调用限额（覆盖应用级配额），null表示使用应用配额
