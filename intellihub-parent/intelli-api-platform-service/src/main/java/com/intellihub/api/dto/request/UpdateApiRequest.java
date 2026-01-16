@@ -129,6 +129,11 @@ public class UpdateApiRequest {
     private List<ApiParamRequest> requestParams;
 
     /**
+     * 响应参数列表
+     */
+    private List<ApiParamRequest> responseParams;
+
+    /**
      * 后端配置
      */
     private ApiBackendRequest backend;

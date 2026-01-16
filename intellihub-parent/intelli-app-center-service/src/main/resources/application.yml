@@ -71,7 +71,8 @@ intellihub:
     tenant:
       enabled: true
       column: tenant_id
-      ignore-tables: []  # 应用中心所有表都需要租户隔离
+      ignore-tables:   # 应用中心所有表都需要租户隔离
+       - app_info
 
 logging:
   level:

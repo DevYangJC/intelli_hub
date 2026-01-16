@@ -14,6 +14,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -22,11 +23,13 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 /**
  * 开放API动态路由过滤器
@@ -49,6 +52,7 @@ public class OpenApiRouteFilter implements GlobalFilter, Ordered {
     private final DubboGenericService dubboGenericService;
     private final DubboInvocationContextBuilder contextBuilder;
     private final LoadBalancerClient loadBalancerClient;
+    private final ReactiveStringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final WebClient webClient = WebClient.create();
 
@@ -97,6 +101,15 @@ public class OpenApiRouteFilter implements GlobalFilter, Ordered {
     private Mono<Void> forwardToHttpBackend(ServerWebExchange exchange, GatewayFilterChain chain, ApiRouteDTO route) {
         ServerHttpRequest request = exchange.getRequest();
         ServerHttpResponse response = exchange.getResponse();
+
+        // === 新增：缓存检查 ===
+        if (Boolean.TRUE.equals(route.getCacheEnabled()) && route.getCacheTtl() != null && route.getCacheTtl() > 0) {
+            // 只对GET请求启用缓存
+            if (HttpMethod.GET.equals(request.getMethod())) {
+                log.debug("API启用缓存 - apiId: {}, ttl: {}s", route.getApiId(), route.getCacheTtl());
+                return checkCacheAndForward(exchange, route);
+            }
+        }
 
         try {
             // 解析后端地址
@@ -265,6 +278,111 @@ public class OpenApiRouteFilter implements GlobalFilter, Ordered {
             log.error("写入响应失败:", e);
             return Mono.error(e);
         }
+    }
+
+    /**
+     * 构建缓存Key
+     */
+    private String buildCacheKey(ServerHttpRequest request, ApiRouteDTO route) {
+        String queryParams = request.getURI().getQuery();
+        
+        // 计算参数哈希
+        String paramsHash = "";
+        if (queryParams != null && !queryParams.isEmpty()) {
+            paramsHash = DigestUtils.md5DigestAsHex(queryParams.getBytes(StandardCharsets.UTF_8));
+        }
+        
+        return String.format("api:response:cache:%s:%s", route.getApiId(), paramsHash);
+    }
+
+    /**
+     * 检查缓存并转发
+     */
+    private Mono<Void> checkCacheAndForward(ServerWebExchange exchange, ApiRouteDTO route) {
+        String cacheKey = buildCacheKey(exchange.getRequest(), route);
+        
+        // 1. 尝试从Redis获取缓存
+        return redisTemplate.opsForValue().get(cacheKey)
+                .flatMap(cachedResponse -> {
+                    // 缓存命中
+                    log.debug("API响应缓存命中 - apiId: {}, cacheKey: {}", route.getApiId(), cacheKey);
+                    return writeCachedResponse(exchange.getResponse(), cachedResponse);
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    // 缓存未命中，转发请求并缓存响应
+                    log.debug("API响应缓存未命中 - apiId: {}, cacheKey: {}", route.getApiId(), cacheKey);
+                    return forwardAndCache(exchange, route, cacheKey);
+                }));
+    }
+
+    /**
+     * 转发请求并缓存响应
+     */
+    private Mono<Void> forwardAndCache(ServerWebExchange exchange, ApiRouteDTO route, String cacheKey) {
+        ServerHttpRequest request = exchange.getRequest();
+        ServerHttpResponse response = exchange.getResponse();
+        
+        try {
+            String actualUri = resolveBackendUri(route);
+            String method = route.getBackendMethod() != null ? route.getBackendMethod() : request.getMethod().name();
+            
+            WebClient.RequestBodySpec requestSpec = webClient
+                    .method(HttpMethod.valueOf(method))
+                    .uri(actualUri)
+                    .headers(headers -> {
+                        request.getHeaders().forEach((name, values) -> {
+                            if (!"Host".equalsIgnoreCase(name)) {
+                                headers.addAll(name, values);
+                            }
+                        });
+                    });
+
+            // 获取缓存的请求体
+            String cachedBody = (String) exchange.getAttributes().get(CacheBodyFilter.ATTR_CACHED_BODY);
+            
+            Mono<String> responseMono;
+            if (cachedBody != null && !cachedBody.isEmpty()) {
+                responseMono = requestSpec.bodyValue(cachedBody)
+                        .retrieve()
+                        .bodyToMono(String.class);
+            } else {
+                responseMono = requestSpec.retrieve().bodyToMono(String.class);
+            }
+            
+            return responseMono
+                    .flatMap(body -> {
+                        // 保存到缓存
+                        Duration ttl = Duration.ofSeconds(route.getCacheTtl());
+                        redisTemplate.opsForValue().set(cacheKey, body, ttl)
+                                .doOnSuccess(v -> log.debug("API响应已缓存 - apiId: {}, ttl: {}s", route.getApiId(), route.getCacheTtl()))
+                                .subscribe();
+                        
+                        // 返回响应
+                        response.setStatusCode(HttpStatus.OK);
+                        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                        response.getHeaders().set("X-Cache-Status", "MISS"); // 标记缓存未命中
+                        DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
+                        return response.writeWith(Mono.just(buffer));
+                    })
+                    .onErrorResume(e -> {
+                        log.error("转发请求失败 - uri: {}", actualUri, e);
+                        return handleError(response, 502, "后端服务调用失败: " + e.getMessage());
+                    });
+        } catch (Exception e) {
+            log.error("构建后端URI失败 - route: {}", route, e);
+            return handleError(response, 500, "路由配置错误: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 写入缓存的响应
+     */
+    private Mono<Void> writeCachedResponse(ServerHttpResponse response, String cachedBody) {
+        response.setStatusCode(HttpStatus.OK);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        response.getHeaders().set("X-Cache-Status", "HIT"); // 标记缓存命中
+        DataBuffer buffer = response.bufferFactory().wrap(cachedBody.getBytes(StandardCharsets.UTF_8));
+        return response.writeWith(Mono.just(buffer));
     }
 
     @Override

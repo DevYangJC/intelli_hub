@@ -167,9 +167,17 @@ export function getRealtimeCount() {
 }
 
 /**
- * 获取单个API的统计详情
+ * 获取单个API的统计详情（从治理服务）
  * @param apiId API ID
  */
 export function getApiStatsDetail(apiId: string) {
   return request.get<ApiStatsDetail>(`/governance/v1/stats/api-detail/${apiId}`)
+}
+
+/**
+ * 获取API实时统计数据（从API平台服务）
+ * @param apiId API ID
+ */
+export function getApiStats(apiId: string) {
+  return request.get(`/platform/v1/apis/${apiId}/stats`)
 }

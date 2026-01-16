@@ -104,7 +104,7 @@ public class AlertDetectionJob {
         String hour = LocalDateTime.now().format(HOUR_FORMATTER);
 
         // 获取统计数据
-        Map<String, Object> stats = statsService.getRealtimeStats(tenantId, null);
+        Map<String, Object> stats = statsService.getRealtimeStats(null);
         
         // QPS 使用独立的分钟级 Key，不依赖小时级 stats 数据
         // 其他类型（error_rate/latency）需要 stats 数据
@@ -129,7 +129,7 @@ public class AlertDetectionJob {
 
         if (triggered) {
             // 获取请求详情列表
-            List<String> requestJsonList = statsService.getAlertRequests(tenantId, hour);
+            List<String> requestJsonList = statsService.getAlertRequests(hour);
             log.info("[告警检测] 规则[{}] 获取到原始请求数: {}", rule.getName(), requestJsonList.size());
             
             List<Map<String, Object>> relatedRequests = filterRequestsByAlertType(ruleType, requestJsonList);
@@ -160,8 +160,8 @@ public class AlertDetectionJob {
             // QPS 告警不删除 Redis 数据（因为 QPS 使用独立的分钟级 Key，且请求详情对其他告警类型仍有用）
             // 只有 error_rate 和 latency 告警才删除数据
             if (!"qps".equals(ruleType)) {
-                statsService.deleteAlertData(tenantId, hour);
-                log.info("[告警检测] 已删除 Redis 告警数据: tenantId={}, hour={}", tenantId, hour);
+                statsService.deleteAlertData(hour);
+                log.info("[告警检测] 已删除 Redis 告警数据: hour={}", hour);
             } else {
                 log.info("[告警检测] QPS 告警不删除 Redis 数据，保留给其他告警类型使用");
             }
@@ -187,8 +187,8 @@ public class AlertDetectionJob {
                 return BigDecimal.valueOf(avgLatency);
             case "qps":
                 // 固定窗口：使用上一分钟的请求数 / 60 计算 QPS
-                double qps = statsService.getQps(tenantId);
-                log.info("[告警检测] QPS 计算（固定窗口）: tenantId={}, QPS={}/s", tenantId, qps);
+                double qps = statsService.getQps();
+                log.info("[告警检测] QPS 计算（固定窗口）: QPS={}/s", qps);
                 return BigDecimal.valueOf(qps);
             default:
                 return null;
@@ -280,7 +280,7 @@ public class AlertDetectionJob {
         try {
             log.info("[告警检测] 计算错误率 - tenantId={}", tenantId);
             
-            Map<String, Object> stats = statsService.getRealtimeStats(tenantId, null);
+            Map<String, Object> stats = statsService.getRealtimeStats(null);
             if (stats == null) {
                 log.info("[告警检测] 获取实时统计数据为空 - tenantId={}", tenantId);
                 return null;
@@ -318,7 +318,7 @@ public class AlertDetectionJob {
         try {
             log.info("[告警检测] 计算平均延迟 - tenantId={}", tenantId);
             
-            Map<String, Object> stats = statsService.getRealtimeStats(tenantId, null);
+            Map<String, Object> stats = statsService.getRealtimeStats(null);
             if (stats == null) {
                 log.info("[告警检测] 获取实时统计数据为空");
                 return null;
@@ -359,9 +359,9 @@ public class AlertDetectionJob {
      */
     private BigDecimal calculateQps(String tenantId, LocalDateTime startTime, LocalDateTime endTime, int duration) {
         try {
-            Map<String, Object> stats = statsService.getRealtimeStats(tenantId, null);
+            Map<String, Object> stats = statsService.getRealtimeStats(null);
             if (stats == null) {
-                log.info("[告警检测] 计算QPS - 获取实时统计数据为空, tenantId={}", tenantId);
+                log.info("[告警检测] 计算QPS - 获取实时统计数据为空");
                 return null;
             }
             
@@ -375,8 +375,8 @@ public class AlertDetectionJob {
             }
             
             BigDecimal qps = BigDecimal.valueOf(total * 1.0 / elapsedSeconds);
-            log.info("[告警检测] 计算QPS - tenantId={}, totalCount={}, elapsedSeconds={}s, QPS={}/s", 
-                    tenantId, total, elapsedSeconds, qps);
+            log.info("[告警检测] 计算QPS - totalCount={}, elapsedSeconds={}s, QPS={}/s", 
+                    total, elapsedSeconds, qps);
             return qps;
         } catch (Exception e) {
             log.error("[告警检测] 计算QPS失败 - tenantId={}", tenantId, e);

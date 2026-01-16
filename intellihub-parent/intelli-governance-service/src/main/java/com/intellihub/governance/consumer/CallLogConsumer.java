@@ -2,6 +2,7 @@ package com.intellihub.governance.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellihub.governance.dto.CallLogDTO;
+import com.intellihub.governance.service.ApiStatsService;
 import com.intellihub.governance.service.CallLogService;
 import com.intellihub.kafka.constant.KafkaTopics;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ import java.util.Map;
 public class CallLogConsumer {
 
     private final CallLogService callLogService;
+    private final ApiStatsService apiStatsService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -49,7 +51,14 @@ public class CallLogConsumer {
             // 保存调用日志
             callLogService.saveCallLog(dto);
 
-            log.debug("调用日志保存成功 - path: {}", dto.getApiPath());
+            // 更新API统计（Redis）
+            if (dto.getApiId() != null && !dto.getApiId().isEmpty()) {
+                boolean success = dto.getSuccess() != null && dto.getSuccess();
+                long responseTime = dto.getLatency() != null ? dto.getLatency() : 0;
+                apiStatsService.recordApiCall(dto.getApiId(), success, responseTime);
+            }
+
+            log.debug("调用日志保存成功 - path: {}, apiId: {}", dto.getApiPath(), dto.getApiId());
         } catch (Exception e) {
             log.error("消费调用日志失败: {}", record.value(), e);
         }

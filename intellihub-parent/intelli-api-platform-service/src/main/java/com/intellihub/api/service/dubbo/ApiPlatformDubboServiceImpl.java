@@ -5,6 +5,7 @@ import com.intellihub.api.entity.ApiBackend;
 import com.intellihub.api.entity.ApiInfo;
 import com.intellihub.api.mapper.ApiBackendMapper;
 import com.intellihub.api.mapper.ApiInfoMapper;
+import com.intellihub.context.UserContextHolder;
 import com.intellihub.dubbo.ApiCallCountDTO;
 import com.intellihub.dubbo.ApiInfoDTO;
 import com.intellihub.dubbo.ApiPlatformDubboService;
@@ -44,42 +45,56 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
     public ApiRouteDTO getRouteByPath(String path, String method) {
         log.debug("查询API路由配置 - path: {}, method: {}", path, method);
 
-        // 查询已发布的API
-        LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ApiInfo::getPath, path)
-                .eq(ApiInfo::getMethod, method.toUpperCase())
-                .eq(ApiInfo::getStatus, STATUS_PUBLISHED)
-                .isNull(ApiInfo::getDeletedAt);
+        // ⚠️ 临时豁免租户隔离（Dubbo调用时没有HTTP上下文）
+        com.intellihub.context.UserContextHolder.setIgnoreTenant(true);
+        
+        try {
+            // 查询已发布的API
+            LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(ApiInfo::getPath, path)
+                    .eq(ApiInfo::getMethod, method.toUpperCase())
+                    .eq(ApiInfo::getStatus, STATUS_PUBLISHED)
+                    .isNull(ApiInfo::getDeletedAt);
 
-        ApiInfo apiInfo = apiInfoMapper.selectOne(queryWrapper);
-        if (apiInfo == null) {
-            log.debug("未找到API路由配置 - path: {}, method: {}", path, method);
-            return null;
+            ApiInfo apiInfo = apiInfoMapper.selectOne(queryWrapper);
+            if (apiInfo == null) {
+                log.debug("未找到API路由配置 - path: {}, method: {}", path, method);
+                return null;
+            }
+
+            return buildRouteDTO(apiInfo);
+        } finally {
+            com.intellihub.context.UserContextHolder.setIgnoreTenant(false);
         }
-
-        return buildRouteDTO(apiInfo);
     }
 
     @Override
     public List<ApiRouteDTO> getAllPublishedRoutes() {
         log.debug("获取所有已发布的API路由配置");
 
-        LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ApiInfo::getStatus, STATUS_PUBLISHED)
-                .isNull(ApiInfo::getDeletedAt);
+        // ⚠️ 临时豁免租户隔离（Dubbo调用时没有HTTP上下文）
+        com.intellihub.context.UserContextHolder.setIgnoreTenant(true);
+        
+        try {
+            LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(ApiInfo::getStatus, STATUS_PUBLISHED)
+                    .isNull(ApiInfo::getDeletedAt);
 
-        List<ApiInfo> apiInfoList = apiInfoMapper.selectList(queryWrapper);
-        List<ApiRouteDTO> routes = new ArrayList<>();
+            List<ApiInfo> apiInfoList = apiInfoMapper.selectList(queryWrapper);
+            List<ApiRouteDTO> routes = new ArrayList<>();
 
-        for (ApiInfo apiInfo : apiInfoList) {
-            ApiRouteDTO route = buildRouteDTO(apiInfo);
-            if (route != null) {
-                routes.add(route);
+            for (ApiInfo apiInfo : apiInfoList) {
+                ApiRouteDTO route = buildRouteDTO(apiInfo);
+                if (route != null) {
+                    routes.add(route);
+                }
             }
-        }
 
-        log.info("加载已发布API路由配置，共 {} 条", routes.size());
-        return routes;
+            log.info("加载已发布API路由配置，共 {} 条", routes.size());
+            return routes;
+        } finally {
+            com.intellihub.context.UserContextHolder.setIgnoreTenant(false);
+        }
     }
 
     @Override
@@ -107,35 +122,54 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
 
     @Override
     public ApiRouteDTO matchRouteByPath(String requestPath, String method) {
-        log.debug("匹配API路由配置 - requestPath: {}, method: {}", requestPath, method);
+        log.info("[路由匹配] 开始匹配 - requestPath: {}, method: {}", requestPath, method);
 
         // 1. 先尝试精确匹配
         ApiRouteDTO exactMatch = getRouteByPath(requestPath, method);
         if (exactMatch != null) {
+            log.info("[路由匹配] 精确匹配成功 - requestPath: {}", requestPath);
             return exactMatch;
         }
 
         // 2. 获取所有已发布的API，进行通配符匹配
-        LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ApiInfo::getStatus, STATUS_PUBLISHED)
-                .isNull(ApiInfo::getDeletedAt);
+        // ⚠️ 关键修复：临时豁免租户隔离
+        // 原因：Dubbo调用时没有HTTP上下文，租户ID为null会被改写为"UNKNOWN"，导致查询不到数据
+        // 已发布的API应该对所有租户可见（通过订阅关系控制权限）
+        UserContextHolder.setIgnoreTenant(true);
+        
+        try {
+            LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(ApiInfo::getStatus, STATUS_PUBLISHED)
+                    .isNull(ApiInfo::getDeletedAt);
 
-        // 方法匹配
-        queryWrapper.and(w -> w.eq(ApiInfo::getMethod, method.toUpperCase())
-                .or().eq(ApiInfo::getMethod, "ALL"));
+            // 方法匹配
+            queryWrapper.and(w -> w.eq(ApiInfo::getMethod, method.toUpperCase())
+                    .or().eq(ApiInfo::getMethod, "ALL"));
 
-        List<ApiInfo> apiInfoList = apiInfoMapper.selectList(queryWrapper);
+            List<ApiInfo> apiInfoList = apiInfoMapper.selectList(queryWrapper);
+            log.info("[路由匹配] 查询到 {} 个已发布的API", apiInfoList.size());
 
-        for (ApiInfo apiInfo : apiInfoList) {
-            // 使用AntPathMatcher匹配路径（支持 {id}、* 等通配符）
-            if (pathMatcher.match(apiInfo.getPath(), requestPath)) {
-                log.debug("通配符匹配成功 - requestPath: {}, pattern: {}", requestPath, apiInfo.getPath());
-                return buildRouteDTO(apiInfo);
+            for (ApiInfo apiInfo : apiInfoList) {
+                log.debug("[路由匹配] 尝试匹配 - requestPath: {}, apiPath: {}, apiId: {}, apiName: {}", 
+                        requestPath, apiInfo.getPath(), apiInfo.getId(), apiInfo.getName());
+                
+                // 使用AntPathMatcher匹配路径（支持 {id}、* 等通配符）
+                if (pathMatcher.match(apiInfo.getPath(), requestPath)) {
+                    log.info("[路由匹配] ✅ 通配符匹配成功! requestPath: {}, pattern: {}, apiId: {}, apiName: {}", 
+                            requestPath, apiInfo.getPath(), apiInfo.getId(), apiInfo.getName());
+                    return buildRouteDTO(apiInfo);
+                } else {
+                    log.debug("[路由匹配] 匹配失败 - requestPath: {}, pattern: {}", requestPath, apiInfo.getPath());
+                }
             }
-        }
 
-        log.debug("未找到匹配的API路由 - requestPath: {}, method: {}", requestPath, method);
-        return null;
+            log.warn("[路由匹配] ❌ 未找到匹配的API路由 - requestPath: {}, method: {}, 候选API数量: {}", 
+                    requestPath, method, apiInfoList.size());
+            return null;
+        } finally {
+            // 恢复租户隔离状态
+            UserContextHolder.setIgnoreTenant(false);
+        }
     }
 
     /**

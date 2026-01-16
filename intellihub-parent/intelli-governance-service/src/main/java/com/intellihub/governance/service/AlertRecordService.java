@@ -116,6 +116,33 @@ public class AlertRecordService {
     }
 
     /**
+     * 创建告警记录（直接接受AlertRecord对象）
+     * <p>
+     * 用于外部服务通过Dubbo调用时直接构建告警记录
+     * </p>
+     */
+    @Transactional
+    public AlertRecord createRecord(AlertRecord record) {
+        if (record.getStatus() == null) {
+            record.setStatus(AlertStatus.FIRING.getCode());
+        }
+        if (record.getFiredAt() == null) {
+            record.setFiredAt(LocalDateTime.now());
+        }
+        if (record.getNotified() == null) {
+            record.setNotified(false);
+        }
+        if (record.getCreatedAt() == null) {
+            record.setCreatedAt(LocalDateTime.now());
+        }
+        
+        alertRecordMapper.insert(record);
+        log.warn("告警触发 - name: {}, apiPath: {}, currentValue: {}, threshold: {}", 
+                record.getRuleName(), record.getApiPath(), record.getCurrentValue(), record.getThresholdValue());
+        return record;
+    }
+
+    /**
      * 标记告警已恢复
      */
     @Transactional

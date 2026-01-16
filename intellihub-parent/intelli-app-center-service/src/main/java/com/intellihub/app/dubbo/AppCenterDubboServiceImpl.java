@@ -50,6 +50,8 @@ public class AppCenterDubboServiceImpl implements AppCenterDubboService {
 
     @Override
     public boolean checkSubscriptionByPath(String appId, String path) {
+        log.info("[订阅检查] 开始检查 - appId: {}, path: {}", appId, path);
+        
         // 查询应用的所有订阅
         LambdaQueryWrapper<AppApiSubscription> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(AppApiSubscription::getAppId, appId)
@@ -57,17 +59,24 @@ public class AppCenterDubboServiceImpl implements AppCenterDubboService {
         
         List<AppApiSubscription> subscriptions = subscriptionMapper.selectList(queryWrapper);
         
+        log.info("[订阅检查] 找到 {} 条订阅记录", subscriptions.size());
+        
         if (subscriptions.isEmpty()) {
+            log.warn("[订阅检查] 应用没有任何订阅 - appId: {}", appId);
             return false;
         }
         
         // 检查是否有匹配的API路径
         for (AppApiSubscription sub : subscriptions) {
+            log.debug("[订阅检查] 匹配路径 - 请求: {}, 订阅: {}", path, sub.getApiPath());
             if (matchPath(path, sub.getApiPath())) {
+                log.info("[订阅检查] 路径匹配成功 - appId: {}, path: {}, apiPath: {}", 
+                        appId, path, sub.getApiPath());
                 return true;
             }
         }
         
+        log.warn("[订阅检查] 没有匹配的API路径 - appId: {}, path: {}", appId, path);
         return false;
     }
 
@@ -97,17 +106,22 @@ public class AppCenterDubboServiceImpl implements AppCenterDubboService {
 
     @Override
     public boolean checkSubscriptionByApiId(String appId, String apiId) {
-        log.debug("检查应用订阅关系 - appId: {}, apiId: {}", appId, apiId);
+        log.info("[订阅检查-API ID] 开始检查 - appId: {}, apiId: {}", appId, apiId);
         
         LambdaQueryWrapper<AppApiSubscription> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(AppApiSubscription::getAppId, appId)
                 .eq(AppApiSubscription::getApiId, apiId)
-                .eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE);
+                .eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE.getCode());
         
         Long count = subscriptionMapper.selectCount(queryWrapper);
         boolean hasSubscription = count != null && count > 0;
         
-        log.debug("订阅检查结果 - appId: {}, apiId: {}, hasSubscription: {}", appId, apiId, hasSubscription);
+        if (hasSubscription) {
+            log.info("[订阅检查-API ID] ✅ 订阅存在 - appId: {}, apiId: {}", appId, apiId);
+        } else {
+            log.warn("[订阅检查-API ID] ❌ 订阅不存在 - appId: {}, apiId: {}, count: {}", appId, apiId, count);
+        }
+        
         return hasSubscription;
     }
 
@@ -142,6 +156,9 @@ public class AppCenterDubboServiceImpl implements AppCenterDubboService {
         dto.setAppKey(appInfo.getAppKey());
         dto.setAppSecret(appInfo.getAppSecret());
         dto.setStatus(appInfo.getStatus());
+        
+        // ✅ 日志追踪：记录租户ID
+        log.info("[AppKey认证] AppInfo转DTO - AppKey: {}, TenantId: {}", appInfo.getAppKey(), appInfo.getTenantId());
         
         // 设置过期时间
         if (appInfo.getExpireTime() != null) {

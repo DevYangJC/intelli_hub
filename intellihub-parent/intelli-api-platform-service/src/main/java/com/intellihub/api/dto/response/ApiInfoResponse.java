@@ -1,5 +1,6 @@
 package com.intellihub.api.dto.response;
 
+import com.intellihub.api.vo.ApiStatsVO;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -54,6 +55,11 @@ public class ApiInfoResponse {
     private List<ApiParamResponse> requestParams;
 
     /**
+     * 响应参数列表
+     */
+    private List<ApiParamResponse> responseParams;
+
+    /**
      * 后端配置
      */
     private ApiBackendResponse backend;
@@ -62,4 +68,9 @@ public class ApiInfoResponse {
      * 标签列表
      */
     private List<String> tags;
+
+    /**
+     * API统计数据（实时统计）
+     */
+    private ApiStatsVO stats;
 }

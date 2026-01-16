@@ -643,6 +643,33 @@ const fetchApiDetail = async () => {
     const res = await apiManageApi.getById(apiId)
     if (res.code === 200 && res.data) {
       Object.assign(apiDetail, res.data)
+      
+      // 更新统计卡片数据（从API详情直接获取）
+      if (res.data.stats) {
+        const stats = res.data.stats
+        statsCards.value = [
+          { 
+            title: '今日调用', 
+            value: formatNumber(stats.todayCalls || 0), 
+            color: '#1890ff'
+          },
+          { 
+            title: '总调用量', 
+            value: formatNumber(stats.totalCalls || 0), 
+            color: '#52c41a'
+          },
+          { 
+            title: '平均响应', 
+            value: (stats.avgResponseTime || 0).toFixed(2) + 'ms', 
+            color: '#722ed1'
+          },
+          { 
+            title: '成功率', 
+            value: (stats.successRate || 0).toFixed(2) + '%', 
+            color: '#13c2c2'
+          }
+        ]
+      }
     }
   } catch (error) {
     console.error('获取API详情失败:', error)

@@ -3,7 +3,10 @@ package com.intellihub.governance.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,6 +18,9 @@ import java.time.LocalDateTime;
  * @since 1.0.0
  */
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @TableName("alert_record")
 public class AlertRecord {
 

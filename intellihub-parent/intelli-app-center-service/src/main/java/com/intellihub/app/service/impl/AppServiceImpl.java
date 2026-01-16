@@ -304,7 +304,7 @@ public class AppServiceImpl implements AppService {
             subscription.setApiPath(apiRoute.getPath());
         }
         
-        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setStatus(SubscriptionStatus.ACTIVE.getCode());
         subscription.setQuotaLimit(request.getQuotaLimit());
         subscription.setEffectiveTime(LocalDateTime.now());
         subscription.setExpireTime(request.getExpireTime());
@@ -363,7 +363,7 @@ public class AppServiceImpl implements AppService {
         LambdaQueryWrapper<AppApiSubscription> subQuery = new LambdaQueryWrapper<>();
         subQuery.eq(AppApiSubscription::getAppId, appInfo.getId())
                 .eq(AppApiSubscription::getApiId, apiId)
-                .eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE);
+                .eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE.getCode());
 
         return subscriptionMapper.selectCount(subQuery) > 0;
     }
@@ -405,7 +405,7 @@ public class AppServiceImpl implements AppService {
         // 查询应用的所有订阅
         LambdaQueryWrapper<AppApiSubscription> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(AppApiSubscription::getAppId, appId)
-                .eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE);
+                .eq(AppApiSubscription::getStatus, SubscriptionStatus.ACTIVE.getCode());
         
         List<AppApiSubscription> subscriptions = subscriptionMapper.selectList(queryWrapper);
         

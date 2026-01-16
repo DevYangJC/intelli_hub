@@ -105,18 +105,26 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="调用统计" width="140">
+        <el-table-column label="今日调用" width="100" align="center">
           <template #default="{ row }">
-            <div class="call-stats">
-              <div class="stat-item">
-                <span class="stat-label">今日:</span>
-                <span class="stat-value">{{ row.todayCalls }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">总计:</span>
-                <span class="stat-value">{{ row.totalCalls }}</span>
-              </div>
-            </div>
+            <span class="stat-value">{{ row.stats?.todayCalls || 0 }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="总调用量" width="100" align="center">
+          <template #default="{ row }">
+            <span class="stat-value">{{ row.stats?.totalCalls || 0 }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="成功率" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getSuccessRateType(row.stats?.successRate || 0)" size="small">
+              {{ (row.stats?.successRate || 0).toFixed(2) }}%
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="平均响应" width="110" align="center">
+          <template #default="{ row }">
+            <span class="stat-value">{{ (row.stats?.avgResponseTime || 0).toFixed(2) }}ms</span>
           </template>
         </el-table-column>
         <el-table-column label="创建者" width="100" prop="creatorName" />
@@ -330,6 +338,13 @@ const getStatusTagType = (status: string) => {
     deprecated: 'danger',
   }
   return typeMap[status] || 'info'
+}
+
+// 获取成功率标签类型
+const getSuccessRateType = (rate: number) => {
+  if (rate >= 99) return 'success'
+  if (rate >= 95) return 'warning'
+  return 'danger'
 }
 
 // 获取状态文本
