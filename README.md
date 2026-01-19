@@ -946,8 +946,8 @@ graph LR
 
 ## 📞 联系与支持
 
-- 💬 **问题反馈**：[GitHub Issues](https://github.com/yourusername/intelli_hub/issues)
-- 🗨️ **功能建议**：[GitHub Discussions](https://github.com/yourusername/intelli_hub/discussions)
+- 💬 **问题反馈**：[GitHub Issues](https://github.com/DevYangJC/intelli_hub/issues)
+- 🗨️ **功能建议**：[GitHub Discussions](https://github.com/DevYangJC/intelli_hub/discussions)
 - 📧 **商务合作**：[Email](mailto:your-email@example.com)
 
 
