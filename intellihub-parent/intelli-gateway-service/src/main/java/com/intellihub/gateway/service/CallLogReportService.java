@@ -92,10 +92,10 @@ public class CallLogReportService {
         String tenant = tenantId != null ? tenantId : "default";
         Duration ttl = Duration.ofSeconds(RedisKeyConstants.TTL_ALERT_DATA);
         
-        log.info("[Gateway Redis] tenantId={}, hour={}, apiPath={}, success={}, latency={}", 
+        log.debug("[Gateway Redis] tenantId={}, hour={}, apiPath={}, success={}, latency={}", 
                 tenant, hour, apiPath, success, latency);
 
-        // 1. 存储请求详情到 List
+        // 1. 构建请求详情
         String requestsKey = RedisKeyConstants.buildAlertRequestsKey(tenant, hour);
         Map<String, Object> requestDetail = new HashMap<>();
         requestDetail.put("requestId", UUID.randomUUID().toString());
@@ -104,60 +104,42 @@ public class CallLogReportService {
         requestDetail.put("success", success);
         requestDetail.put("latency", latency);
         requestDetail.put("timestamp", LocalDateTime.now().toString());
-        
-        try {
-            String requestJson = objectMapper.writeValueAsString(requestDetail);
-            log.info("[Gateway Redis] RPUSH key={}, value={}", requestsKey, requestJson);
-            redisTemplate.opsForList().rightPush(requestsKey, requestJson)
-                    .doOnNext(v -> log.info("[Gateway Redis] RPUSH {} => listSize={}", requestsKey, v))
-                    .flatMap(v -> redisTemplate.expire(requestsKey, ttl))
-                    .doOnError(e -> log.error("[Gateway Redis] RPUSH 失败: {}", e.getMessage()))
-                    .subscribe();
-        } catch (JsonProcessingException e) {
-            log.error("[Gateway Redis] JSON序列化失败", e);
-        }
 
-        // 2. 更新统计汇总 Hash
+        // 2. 统计 Key
         String statsKey = RedisKeyConstants.buildAlertStatsKey(tenant, hour);
-        log.info("[Gateway Redis] HINCRBY key={}", statsKey);
-        
-        // totalCount
-        redisTemplate.opsForHash().increment(statsKey, "totalCount", 1)
-                .doOnNext(v -> log.info("[Gateway Redis] HINCRBY {}.totalCount => {}", statsKey, v))
-                .flatMap(v -> redisTemplate.expire(statsKey, ttl))
-                .doOnError(e -> log.error("[Gateway Redis] HINCRBY totalCount 失败: {}", e.getMessage()))
-                .subscribe();
-        
-        // successCount / failCount
-        if (Boolean.TRUE.equals(success)) {
-            redisTemplate.opsForHash().increment(statsKey, "successCount", 1)
-                    .doOnNext(v -> log.info("[Gateway Redis] HINCRBY {}.successCount => {}", statsKey, v))
-                    .doOnError(e -> log.error("[Gateway Redis] HINCRBY successCount 失败: {}", e.getMessage()))
-                    .subscribe();
-        } else {
-            redisTemplate.opsForHash().increment(statsKey, "failCount", 1)
-                    .doOnNext(v -> log.info("[Gateway Redis] HINCRBY {}.failCount => {}", statsKey, v))
-                    .doOnError(e -> log.error("[Gateway Redis] HINCRBY failCount 失败: {}", e.getMessage()))
-                    .subscribe();
-        }
-        
-        // latencySum
-        if (latency != null) {
-            redisTemplate.opsForHash().increment(statsKey, "latencySum", latency)
-                    .doOnNext(v -> log.info("[Gateway Redis] HINCRBY {}.latencySum => {}", statsKey, v))
-                    .doOnError(e -> log.error("[Gateway Redis] HINCRBY latencySum 失败: {}", e.getMessage()))
-                    .subscribe();
-        }
-        
-        // 3. QPS 独立统计（每分钟独立 Key，用于精确 QPS 计算）
         String minute = LocalDateTime.now().format(MINUTE_FORMATTER);
         String qpsKey = RedisKeyConstants.buildQpsKey(tenant, minute);
         Duration qpsTtl = Duration.ofSeconds(RedisKeyConstants.TTL_QPS_DATA);
-        
-        redisTemplate.opsForValue().increment(qpsKey)
-                .doOnNext(v -> log.info("[Gateway Redis] QPS INCR {} => {}", qpsKey, v))
-                .flatMap(v -> redisTemplate.expire(qpsKey, qpsTtl))
-                .doOnError(e -> log.error("[Gateway Redis] QPS INCR 失败: {}", e.getMessage()))
-                .subscribe();
+
+        try {
+            String requestJson = objectMapper.writeValueAsString(requestDetail);
+
+            // 3. 构建所有 Redis 操作（原子化执行）
+            Mono<Long> pushMono = redisTemplate.opsForList().rightPush(requestsKey, requestJson)
+                    .flatMap(v -> redisTemplate.expire(requestsKey, ttl).thenReturn(v));
+
+            Mono<Long> totalCountMono = redisTemplate.opsForHash().increment(statsKey, "totalCount", 1)
+                    .flatMap(v -> redisTemplate.expire(statsKey, ttl).thenReturn(v));
+
+            Mono<Long> successOrFailMono = Boolean.TRUE.equals(success)
+                    ? redisTemplate.opsForHash().increment(statsKey, "successCount", 1)
+                    : redisTemplate.opsForHash().increment(statsKey, "failCount", 1);
+
+            Mono<Long> latencyMono = latency != null
+                    ? redisTemplate.opsForHash().increment(statsKey, "latencySum", latency)
+                    : Mono.just(0L);
+
+            Mono<Long> qpsMono = redisTemplate.opsForValue().increment(qpsKey)
+                    .flatMap(v -> redisTemplate.expire(qpsKey, qpsTtl).thenReturn(v));
+
+            // 4. 原子化执行所有操作
+            Mono.when(pushMono, totalCountMono, successOrFailMono, latencyMono, qpsMono)
+                    .doOnSuccess(v -> log.debug("[Gateway Redis] 统计更新成功 - tenant={}, apiPath={}", tenant, apiPath))
+                    .doOnError(e -> log.error("[Gateway Redis] 统计更新失败 - tenant={}, apiPath={}", tenant, apiPath, e))
+                    .subscribe();
+
+        } catch (JsonProcessingException e) {
+            log.error("[Gateway Redis] JSON序列化失败", e);
+        }
     }
 }

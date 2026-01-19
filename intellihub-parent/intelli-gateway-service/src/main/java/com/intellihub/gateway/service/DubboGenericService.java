@@ -12,9 +12,11 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.PostConstruct;
+import java.time.Duration;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 /**
  * Dubbo泛化调用服务
@@ -49,8 +51,14 @@ public class DubboGenericService {
 
     /**
      * GenericService缓存（接口名:version:group -> GenericService）
+     * 使用Caffeine缓存，支持自动过期和容量限制
      */
-    private final Map<String, GenericService> genericServiceCache = new ConcurrentHashMap<>();
+    private final Cache<String, GenericService> genericServiceCache = Caffeine.newBuilder()
+            .expireAfterAccess(Duration.ofMinutes(30))
+            .maximumSize(100)
+            .removalListener((key, value, cause) -> 
+                    log.info("移除GenericService缓存: key={}, cause={}", key, cause))
+            .build();
 
     public DubboGenericService(List<InvocationStrategy> strategies) {
         this.strategies = strategies;
@@ -84,7 +92,7 @@ public class DubboGenericService {
 
                 // 获取或创建GenericService
                 String cacheKey = buildCacheKey(context.getInterfaceName(), context.getVersion(), context.getGroup());
-                GenericService genericService = genericServiceCache.computeIfAbsent(cacheKey,
+                GenericService genericService = genericServiceCache.get(cacheKey, 
                         k -> createGenericService(context.getInterfaceName(), context.getVersion(), 
                                 context.getGroup(), context.getTimeout()));
 
@@ -205,7 +213,7 @@ public class DubboGenericService {
     /**
      * 获取缓存大小
      */
-    public int getCacheSize() {
-        return genericServiceCache.size();
+    public long getCacheSize() {
+        return genericServiceCache.estimatedSize();
     }
 }

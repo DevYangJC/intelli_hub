@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * AppKey服务
@@ -67,7 +68,9 @@ public class AppKeyService {
                 log.error("Dubbo调用app-center服务失败 - AppKey: {}", appKey, e);
                 return null;
             }
-        }).flatMap(appKeyInfo -> {
+        })
+        .subscribeOn(Schedulers.boundedElastic())
+        .flatMap(appKeyInfo -> {
             if (appKeyInfo == null) {
                 return Mono.empty();
             }
@@ -155,7 +158,9 @@ public class AppKeyService {
                             log.error("Dubbo检查订阅关系失败 - AppId: {}, Path: {}", appId, path, e);
                             return false;
                         }
-                    }).flatMap(hasSubscription -> {
+                    })
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .flatMap(hasSubscription -> {
                         String value = hasSubscription ? "1" : "0";
                         return redisUtil.set(cacheKey, value, RedisKeyConstants.TTL_SUBSCRIPTION)
                                 .thenReturn(hasSubscription);
@@ -183,7 +188,9 @@ public class AppKeyService {
                             log.error("Dubbo检查订阅关系失败 - AppId: {}, ApiId: {}", appId, apiId, e);
                             return false;
                         }
-                    }).flatMap(hasSubscription -> {
+                    })
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .flatMap(hasSubscription -> {
                         String value = hasSubscription ? "1" : "0";
                         return redisUtil.set(cacheKey, value, RedisKeyConstants.TTL_SUBSCRIPTION)
                                 .thenReturn(hasSubscription);

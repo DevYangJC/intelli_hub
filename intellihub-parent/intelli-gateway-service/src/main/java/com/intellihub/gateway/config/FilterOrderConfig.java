@@ -11,8 +11,8 @@ package com.intellihub.gateway.config;
  * 2. AccessLogFilter          (-100) - 访问日志记录（请求开始）
  * 3. OpenApiRouteMatchFilter  (-50)  - 开放API路由匹配，设置API上下文
  * 4. RateLimitFilter          (100)  - 限流控制（在认证之前，防止资源浪费）
- * 5. GlobalTenantFilter       (500)  - 租户上下文处理
- * 6. JwtAuthenticationFilter  (1000) - JWT Token认证（管理后台请求）
+ * 5. JwtAuthenticationFilter  (1000) - JWT Token认证（管理后台请求）
+ * 6. GlobalTenantFilter       (1050) - 租户上下文处理（在JWT认证之后）
  * 7. AppKeyAuthenticationFilter (1100) - AppKey签名认证（开放API请求）
  * 8. OpenApiRouteFilter       (1200) - 开放API动态路由转发
  * </pre>
@@ -55,16 +55,19 @@ public final class FilterOrderConfig {
     public static final int RATE_LIMIT_FILTER = 100;
 
     /**
-     * GlobalTenantFilter - 租户上下文处理
-     * <p>从请求头提取租户信息，设置租户上下文</p>
-     */
-    public static final int GLOBAL_TENANT_FILTER = 500;
-
-    /**
      * JwtAuthenticationFilter - JWT认证
      * <p>验证管理后台请求的JWT Token</p>
      */
     public static final int JWT_AUTHENTICATION_FILTER = 1000;
+
+    /**
+     * GlobalTenantFilter - 租户上下文处理
+     * <p>
+     * 在JWT认证之后执行，可以使用JWT解析后的租户信息
+     * 从请求头提取租户信息，设置租户上下文
+     * </p>
+     */
+    public static final int GLOBAL_TENANT_FILTER = 1050;
 
     /**
      * AppKeyAuthenticationFilter - AppKey签名认证

@@ -17,6 +17,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * 全局租户过滤器
@@ -105,7 +106,9 @@ public class GlobalTenantFilter implements GlobalFilter, Ordered {
                                 log.error("Dubbo验证租户失败 - tenantId: {}", tenantId, e);
                                 return true;
                             }
-                        }).flatMap(isValid -> {
+                        })
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .flatMap(isValid -> {
                             String value = isValid ? "1" : "0";
                             return redisUtil.set(cacheKey, value, RedisKeyConstants.TTL_TENANT_VALID)
                                     .thenReturn(isValid);
