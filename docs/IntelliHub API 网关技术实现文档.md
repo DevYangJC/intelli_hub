@@ -199,8 +199,8 @@ flowchart LR
     B --> C[AccessLogFilter<br/>-100]
     C --> D[OpenApiRouteMatchFilter<br/>-50]
     D --> E[RateLimitFilter<br/>100]
-    E --> F[GlobalTenantFilter<br/>500]
-    F --> G[JwtAuthenticationFilter<br/>1000]
+    E --> F[JwtAuthenticationFilter<br/>1000]
+    F --> G[GlobalTenantFilter<br/>1050]
     G --> H[AppKeyAuthenticationFilter<br/>1100]
     H --> I[OpenApiRouteFilter<br/>1200]
     I --> J[后端服务]
@@ -240,17 +240,19 @@ exchange.getAttributes().put(ATTR_IS_OPEN_API, true);
 - 路径级别限流
 - IP+路径组合限流（严格）
 
-#### 5. GlobalTenantFilter (order: 500)
-
-**职责**：从请求头提取租户信息，设置租户上下文
-
-#### 6. JwtAuthenticationFilter (order: 1000)
+#### 5. JwtAuthenticationFilter (order: 1000)
 
 **职责**：验证 JWT Token（管理后台请求）
 
 - 白名单检查
 - Token 本地验证（无需调用 Auth 服务）
 - 用户信息传递（X-User-Id, X-Username, X-Tenant-Id, X-User-Roles）
+
+#### 6. GlobalTenantFilter (order: 1050)
+
+**职责**：从请求头提取租户信息，设置租户上下文
+
+> **注意**：该过滤器在 JWT 认证之后执行，可以使用 JWT 解析后的租户信息。Dubbo 调用使用 `subscribeOn(Schedulers.boundedElastic())` 避免阻塞 Netty 事件循环。
 
 #### 7. AppKeyAuthenticationFilter (order: 1100)
 

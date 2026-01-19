@@ -2,170 +2,190 @@
   <div class="monitor-page">
     <div class="page-container">
       <!-- 页面头部 -->
-      <div class="page-header">
-        <h1 class="page-title">监控中心</h1>
-        <div class="header-actions">
-          <el-radio-group v-model="timeRange" size="small">
-            <el-radio-button label="1h">1小时</el-radio-button>
-            <el-radio-button label="6h">6小时</el-radio-button>
-            <el-radio-button label="24h">24小时</el-radio-button>
-            <el-radio-button label="7d">7天</el-radio-button>
-          </el-radio-group>
-          <el-button type="primary" :icon="Refresh" @click="refreshData">刷新</el-button>
+      <div class="page-header glass-effect">
+        <div class="header-content">
+          <div class="title-section">
+            <h1 class="page-title">系统监控中心</h1>
+            <p class="page-subtitle">实时监控系统运行状态与性能指标</p>
+          </div>
+          <div class="header-actions">
+            <el-radio-group v-model="timeRange" size="default" class="custom-radio-group">
+              <el-radio-button label="1h">1小时</el-radio-button>
+              <el-radio-button label="6h">6小时</el-radio-button>
+              <el-radio-button label="24h">24小时</el-radio-button>
+              <el-radio-button label="7d">7天</el-radio-button>
+            </el-radio-group>
+            <el-button class="refresh-btn" circle :icon="Refresh" @click="refreshData" />
+          </div>
         </div>
       </div>
 
       <!-- 实时指标 -->
-      <el-row :gutter="20" class="metrics-row">
-        <el-col :xs="24" :sm="12" :md="6" v-for="metric in realTimeMetrics" :key="metric.title">
-          <el-card class="metric-card" shadow="hover">
-            <div class="metric-content">
+      <el-row :gutter="24" class="metrics-row">
+        <el-col :xs="24" :sm="12" :md="6" v-for="(metric, index) in realTimeMetrics" :key="metric.title">
+          <div class="metric-card" :class="`metric-card-${index}`">
+            <div class="metric-icon-wrapper">
+              <el-icon class="metric-icon">
+                <component :is="getMetricIcon(index)" />
+              </el-icon>
+            </div>
+            <div class="metric-info">
               <div class="metric-header">
                 <span class="metric-title">{{ metric.title }}</span>
-                <el-tag :type="metric.status" size="small">{{ metric.statusText }}</el-tag>
+                <span class="metric-status" :class="metric.status">{{ metric.statusText }}</span>
               </div>
               <div class="metric-value">{{ metric.value }}</div>
-              <div class="metric-trend" :class="metric.trend > 0 ? 'up' : 'down'">
-                <el-icon>
-                  <CaretTop v-if="metric.trend > 0" />
-                  <CaretBottom v-else />
-                </el-icon>
-                {{ Math.abs(metric.trend) }}% 较上周期
+              <div class="metric-footer">
+                <span class="trend-label">较上周期</span>
+                <span class="metric-trend" :class="metric.trend > 0 ? 'up' : metric.trend < 0 ? 'down' : 'flat'">
+                  <el-icon>
+                    <CaretTop v-if="metric.trend > 0" />
+                    <CaretBottom v-else-if="metric.trend < 0" />
+                    <Minus v-else />
+                  </el-icon>
+                  {{ Math.abs(metric.trend) }}%
+                </span>
               </div>
             </div>
-          </el-card>
+          </div>
         </el-col>
       </el-row>
 
       <!-- 图表区域 -->
-      <el-row :gutter="20">
+      <el-row :gutter="24" class="charts-row">
         <el-col :xs="24" :lg="16">
-          <el-card class="chart-card">
-            <template #header>
-              <div class="card-header">
-                <span>API调用趋势</span>
-                <el-select v-model="selectedApi" placeholder="选择API" size="small" style="width: 200px" @change="loadTrendData">
+          <div class="content-card chart-card">
+            <div class="card-header">
+              <div class="header-left">
+                <span class="card-title">API 调用趋势</span>
+                <span class="card-subtitle">REQUEST TRENDS</span>
+              </div>
+              <div class="header-right">
+                <el-select v-model="selectedApi" placeholder="选择API" size="default" class="custom-select" @change="loadTrendData" :teleported="false">
                   <el-option v-for="api in apiList" :key="api.value" :label="api.label" :value="api.value" />
                 </el-select>
               </div>
-            </template>
+            </div>
             <div ref="trendChartRef" class="chart-container"></div>
-          </el-card>
+          </div>
         </el-col>
         <el-col :xs="24" :lg="8">
-          <el-card class="chart-card">
-            <template #header>
-              <span>响应状态分布</span>
-            </template>
+          <div class="content-card chart-card">
+            <div class="card-header">
+              <div class="header-left">
+                <span class="card-title">响应状态分布</span>
+                <span class="card-subtitle">STATUS DISTRIBUTION</span>
+              </div>
+            </div>
             <div ref="statusChartRef" class="chart-container"></div>
-          </el-card>
+          </div>
         </el-col>
       </el-row>
 
-      <!-- Top API 和最近调用 -->
-      <el-row :gutter="20" style="margin-top: 20px">
+      <!-- Bottom Layout used to be: Top 10 API (Left) | Recent logs (Right) -->
+      <!-- Adjusted to be cleaner -->
+      <el-row :gutter="24" class="tables-row">
         <el-col :xs="24" :lg="12">
-          <el-card class="table-card">
-            <template #header>
-              <div class="card-header">
-                <span>Top 10 API</span>
+          <div class="content-card table-card">
+            <div class="card-header">
+              <div class="header-left">
+                <span class="card-title">热门 API Top 10</span>
+                <span class="card-subtitle">POPULAR APIS</span>
               </div>
-            </template>
-            <el-table :data="topApis" stripe size="small" max-height="280">
-              <el-table-column prop="apiPath" label="API路径" min-width="180" show-overflow-tooltip />
-              <el-table-column prop="totalCount" label="调用量" width="90" align="right">
-                <template #default="{ row }">
-                  {{ formatNumber(row.totalCount || 0) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="成功率" width="80" align="right">
-                <template #default="{ row }">
-                  <span :class="getSuccessRateClass(row)">
-                    {{ row.totalCount > 0 ? ((row.successCount / row.totalCount) * 100).toFixed(1) : '100.0' }}%
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="avgLatency" label="延迟" width="70" align="right">
-                <template #default="{ row }">
-                  {{ row.avgLatency }}ms
-                </template>
-              </el-table-column>
-            </el-table>
-          </el-card>
+            </div>
+            <div class="table-container">
+              <el-table :data="topApis" :show-header="true" header-row-class-name="custom-header" row-class-name="custom-row" style="width: 100%">
+                <el-table-column type="index" label="排名" width="60" align="center">
+                  <template #default="{ $index }">
+                    <span class="rank-badge" :class="`rank-${$index + 1}`">{{ $index + 1 }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="apiPath" label="API 路径" min-width="150" show-overflow-tooltip>
+                   <template #default="{ row }">
+                      <span class="api-path-text">{{ row.apiPath }}</span>
+                   </template>
+                </el-table-column>
+                <el-table-column prop="totalCount" label="调用量" width="100" align="right">
+                  <template #default="{ row }">
+                    <span class="count-text">{{ formatNumber(row.totalCount) }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="成功率" width="100" align="right">
+                  <template #default="{ row }">
+                     <el-progress 
+                      :percentage="row.totalCount > 0 ? Number(((row.successCount / row.totalCount) * 100).toFixed(1)) : 100" 
+                      :color="getSuccessRateColor"
+                      :stroke-width="6"
+                      :show-text="false"
+                    />
+                    <span class="rate-text">{{ row.totalCount > 0 ? ((row.successCount / row.totalCount) * 100).toFixed(1) : '100.0' }}%</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </el-col>
-        <el-col :xs="24" :lg="12">
-          <el-card class="table-card">
-            <template #header>
-              <div class="card-header">
-                <span>最近调用</span>
-                <el-button type="primary" link size="small" @click="$router.push('/console/logs')">查看全部</el-button>
-              </div>
-            </template>
-            <el-table :data="recentLogs" stripe size="small" max-height="280">
-              <el-table-column prop="apiPath" label="API路径" min-width="150" show-overflow-tooltip />
-              <el-table-column prop="apiMethod" label="方法" width="70" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getMethodTagType(row.apiMethod)" size="small">{{ row.apiMethod }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="状态" width="65" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.statusCode }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="latency" label="延迟" width="70" align="right">
-                <template #default="{ row }">{{ row.latency }}ms</template>
-              </el-table-column>
-            </el-table>
-          </el-card>
-        </el-col>
-      </el-row>
 
-      <!-- 告警和日志 -->
-      <el-row :gutter="20" style="margin-top: 20px">
+        <!-- New: Alert & Log combined or separated? Keeping original logic but merged layout style -->
         <el-col :xs="24" :lg="12">
-          <el-card class="alert-card">
-            <template #header>
-              <div class="card-header">
-                <span>最新告警</span>
-                <el-button type="primary" link size="small" @click="$router.push('/console/alert/records')">查看全部</el-button>
+          <div class="content-card log-card">
+            <div class="card-header">
+              <div class="header-left">
+                <span class="card-title">系统动态</span>
+                <span class="card-subtitle">SYSTEM LOGS</span>
               </div>
-            </template>
-            <div class="alert-list">
-              <div v-for="alert in alerts" :key="alert.id" class="alert-item" :class="alert.level">
-                <el-icon class="alert-icon">
-                  <WarningFilled v-if="alert.level === 'critical'" />
-                  <Warning v-else-if="alert.level === 'warning'" />
-                  <InfoFilled v-else />
-                </el-icon>
-                <div class="alert-content">
-                  <div class="alert-title">{{ alert.title }}</div>
-                  <div class="alert-desc">{{ alert.description }}</div>
-                  <div class="alert-time">{{ alert.time }}</div>
+              <div class="header-right">
+                 <el-radio-group v-model="logViewType" size="small">
+                    <el-radio-button label="calls">调用日志</el-radio-button>
+                    <el-radio-button label="alerts">系统告警</el-radio-button>
+                 </el-radio-group>
+              </div>
+            </div>
+            
+            <!-- Real-time Logs -->
+            <div v-if="logViewType === 'calls'" class="log-list-container">
+               <div class="list-header-action">
+                   <el-switch v-model="autoRefresh" active-text="实时刷新" size="small"/>
+                   <el-button link type="primary" size="small" @click="$router.push('/console/logs')">全部日志 <el-icon><ArrowRight /></el-icon></el-button>
+               </div>
+               <transition-group name="list" tag="div" class="log-list">
+                 <div v-for="log in logs" :key="log.id" class="log-item">
+                    <div class="log-status-bar" :class="log.level"></div>
+                    <div class="log-content">
+                       <span class="log-time">{{ log.time }}</span>
+                       <div class="log-detail">
+                          <span class="log-msg">{{ log.message }}</span>
+                       </div>
+                    </div>
                 </div>
-              </div>
-              <el-empty v-if="alerts.length === 0" description="暂无告警" :image-size="60" />
+               </transition-group>
             </div>
-          </el-card>
-        </el-col>
-        <el-col :xs="24" :lg="12">
-          <el-card class="log-card">
-            <template #header>
-              <div class="card-header">
-                <span>实时日志</span>
-                <el-switch v-model="autoRefresh" active-text="自动刷新" />
-              </div>
-            </template>
-            <div class="log-list">
-              <div v-for="log in logs" :key="log.id" class="log-item">
-                <span class="log-time">{{ log.time }}</span>
-                <el-tag :type="log.level === 'error' ? 'danger' : log.level === 'warn' ? 'warning' : 'info'" size="small">
-                  {{ log.level.toUpperCase() }}
-                </el-tag>
-                <span class="log-message">{{ log.message }}</span>
-              </div>
+
+            <!-- Alerts -->
+            <div v-else class="log-list-container">
+               <div class="list-header-action" style="justify-content: flex-end;">
+                   <el-button link type="primary" size="small" @click="$router.push('/console/alert/records')">告警记录 <el-icon><ArrowRight /></el-icon></el-button>
+               </div>
+               <div v-if="alerts.length === 0" class="empty-state">
+                  <el-icon class="empty-icon"><CircleCheckFilled /></el-icon>
+                  <p>当前系统运行正常，无活跃告警</p>
+               </div>
+               <div v-else class="alert-list">
+                  <div v-for="alert in alerts" :key="alert.id" class="alert-item" :class="alert.level">
+                    <div class="alert-icon-box">
+                      <el-icon><WarningFilled /></el-icon>
+                    </div>
+                    <div class="alert-info-box">
+                      <div class="alert-top">
+                        <span class="alert-title">{{ alert.title }}</span>
+                        <span class="alert-time">{{ alert.time }}</span>
+                      </div>
+                      <p class="alert-desc">{{ alert.description }}</p>
+                    </div>
+                  </div>
+               </div>
             </div>
-          </el-card>
+          </div>
         </el-col>
       </el-row>
     </div>
@@ -178,14 +198,24 @@ import {
   Refresh,
   CaretTop,
   CaretBottom,
-  TrendCharts,
+  Minus,
   WarningFilled,
   Warning,
   InfoFilled,
+  Odometer,
+  Timer,
+  PieChart,
+  DataLine,
+  ArrowRight,
+  CircleCheckFilled,
+  Monitor
 } from '@element-plus/icons-vue'
 import { getStatsOverview, getCallLogs, getHourlyTrend, getTopApis, type StatsOverview, type CallLog, type StatsTrend, type TopApiStats } from '@/api/stats'
 import { getAlertRecords, type AlertRecord } from '@/api/alert'
 import * as echarts from 'echarts'
+
+// 视图控制
+const logViewType = ref('calls')
 
 // 时间范围
 const timeRange = ref('24h')
@@ -216,17 +246,27 @@ const overview = ref<StatsOverview>({
 
 // 实时指标
 const realTimeMetrics = reactive([
-  { title: 'QPS', value: '0', trend: 0, status: 'success' as const, statusText: '正常' },
+  { title: '实时 QPS', value: '0', trend: 0, status: 'success' as const, statusText: '正常' },
   { title: '平均响应时间', value: '0ms', trend: 0, status: 'success' as const, statusText: '正常' },
   { title: '错误率', value: '0%', trend: 0, status: 'success' as const, statusText: '正常' },
-  { title: '今日调用', value: '0', trend: 0, status: 'success' as const, statusText: '正常' },
+  { title: '今日总调用', value: '0', trend: 0, status: 'success' as const, statusText: '正常' },
 ])
+
+const getMetricIcon = (index: number) => {
+  switch (index) {
+    case 0: return Odometer
+    case 1: return Timer
+    case 2: return Warning
+    case 3: return PieChart
+    default: return DataLine
+  }
+}
 
 // 状态分布数据
 const statusData = ref([
-  { name: '成功 (2xx)', value: 0, itemStyle: { color: '#52c41a' } },
-  { name: '客户端错误 (4xx)', value: 0, itemStyle: { color: '#faad14' } },
-  { name: '服务端错误 (5xx)', value: 0, itemStyle: { color: '#ff4d4f' } }
+  { name: '成功 (2xx)', value: 0, itemStyle: { color: '#10B981' } },
+  { name: '客户端错误 (4xx)', value: 0, itemStyle: { color: '#F59E0B' } },
+  { name: '服务端错误 (5xx)', value: 0, itemStyle: { color: '#EF4444' } }
 ])
 
 // 告警列表
@@ -243,9 +283,17 @@ const recentLogs = ref<CallLog[]>([])
 
 // 格式化数字
 const formatNumber = (num: number) => {
+  if (!num) return '0'
   if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
   if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
   return num.toLocaleString()
+}
+
+// 成功率颜色回调
+const getSuccessRateColor = (percentage: number) => {
+  if (percentage >= 99) return '#10B981' // Green
+  if (percentage >= 95) return '#F59E0B' // Yellow
+  return '#EF4444' // Red
 }
 
 // 更新实时指标
@@ -255,12 +303,12 @@ const updateMetrics = () => {
   // QPS
   realTimeMetrics[0].value = (data.currentQps || 0).toFixed(2)
   realTimeMetrics[0].status = data.currentQps && data.currentQps > 1000 ? 'warning' : 'success'
-  realTimeMetrics[0].statusText = data.currentQps && data.currentQps > 1000 ? '偏高' : '正常'
+  realTimeMetrics[0].statusText = data.currentQps && data.currentQps > 1000 ? '偏高' : '优异'
   
   // 平均响应时间
   realTimeMetrics[1].value = (data.todayAvgLatency || 0) + 'ms'
   realTimeMetrics[1].status = data.todayAvgLatency && data.todayAvgLatency > 500 ? 'warning' : 'success'
-  realTimeMetrics[1].statusText = data.todayAvgLatency && data.todayAvgLatency > 500 ? '偏高' : '正常'
+  realTimeMetrics[1].statusText = data.todayAvgLatency && data.todayAvgLatency > 500 ? '偏慢' : '极速'
   
   // 错误率
   const errorRate = data.todayTotalCount && data.todayTotalCount > 0 
@@ -268,22 +316,25 @@ const updateMetrics = () => {
     : 0
   realTimeMetrics[2].value = errorRate.toFixed(2) + '%'
   realTimeMetrics[2].status = errorRate > 1 ? 'danger' : errorRate > 0.5 ? 'warning' : 'success'
-  realTimeMetrics[2].statusText = errorRate > 1 ? '异常' : errorRate > 0.5 ? '偏高' : '正常'
+  realTimeMetrics[2].statusText = errorRate > 1 ? '异常' : errorRate > 0.5 ? '关注' : '稳定'
   
   // 今日调用
   realTimeMetrics[3].value = formatNumber(data.todayTotalCount || 0)
   realTimeMetrics[3].trend = data.dayOverDayRate || 0
-  realTimeMetrics[3].status = 'success'
-  realTimeMetrics[3].statusText = '正常'
+  // Handle trend for others if data available (mocking same trend for demo if API doesn't provide individual trends)
+  // realTimeMetrics[0].trend = ...
   
   // 更新状态分布
   const success = data.todaySuccessCount || 0
   const fail = data.todayFailCount || 0
+  // Mock distribution if fail > 0
+  const clientError = Math.round(fail * 0.7)
+  const serverError = Math.round(fail * 0.3)
   
   statusData.value = [
-    { name: '成功 (2xx)', value: success, itemStyle: { color: '#52c41a' } },
-    { name: '客户端错误 (4xx)', value: Math.round(fail * 0.7), itemStyle: { color: '#faad14' } },
-    { name: '服务端错误 (5xx)', value: Math.round(fail * 0.3), itemStyle: { color: '#ff4d4f' } }
+    { name: '成功 (2xx)', value: success, itemStyle: { color: '#10B981' } }, // Emerald 500
+    { name: '客户端错误 (4xx)', value: clientError, itemStyle: { color: '#F59E0B' } }, // Amber 500
+    { name: '服务端错误 (5xx)', value: serverError, itemStyle: { color: '#EF4444' } }  // Red 500
   ]
   
   renderStatusChart()
@@ -298,39 +349,50 @@ const renderStatusChart = () => {
   }
   
   const option: echarts.EChartsOption = {
+    backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
+      formatter: '{b}: {c} ({d}%)',
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      borderColor: '#eee',
+      textStyle: { color: '#333' }
     },
     legend: {
-      orient: 'vertical',
-      right: '10%',
-      top: 'center',
-      itemWidth: 12,
-      itemHeight: 12,
-      textStyle: { fontSize: 12 }
+      bottom: '0%',
+      left: 'center',
+      itemWidth: 10,
+      itemHeight: 10,
+      icon: 'circle',
+      textStyle: { fontSize: 12, color: '#666' }
     },
     series: [
       {
         name: '状态分布',
         type: 'pie',
-        radius: ['45%', '70%'],
-        center: ['35%', '50%'],
+        radius: ['50%', '70%'],
+        center: ['50%', '45%'],
         avoidLabelOverlap: false,
         itemStyle: {
-          borderRadius: 6,
+          borderRadius: 8,
           borderColor: '#fff',
-          borderWidth: 2
+          borderWidth: 3
         },
         label: {
-          show: false
+          show: false,
+          position: 'center'
         },
         emphasis: {
           label: {
             show: true,
-            fontSize: 14,
-            fontWeight: 'bold'
-          }
+            fontSize: 16,
+            fontWeight: 'bold',
+            color: '#333'
+          },
+          scale: true,
+          scaleSize: 5
+        },
+        labelLine: {
+          show: false
         },
         data: statusData.value
       }
@@ -360,7 +422,7 @@ const loadAlerts = async () => {
     if (res.code === 200 && res.data) {
       alerts.value = (res.data.records || []).map((record: AlertRecord) => ({
         id: record.id,
-        level: record.alertLevel || 'info',
+        level: record.alertLevel || 'info', 
         title: record.ruleName || '告警',
         description: record.alertMessage || '',
         time: formatAlertTime(record.firedAt)
@@ -374,14 +436,14 @@ const loadAlerts = async () => {
 // 加载最近日志
 const loadLogs = async () => {
   try {
-    const res = await getCallLogs({ page: 1, size: 10 })
+    const res = await getCallLogs({ page: 1, size: 20 })
     if (res.code === 200 && res.data) {
       const records = res.data.records || []
       // 更新实时日志显示
-      logs.value = records.slice(0, 5).map((log: CallLog, index: number) => ({
+      logs.value = records.map((log: CallLog, index: number) => ({
         id: index,
         time: formatLogTime(log.requestTime),
-        level: log.success ? 'info' : 'error',
+        level: log.success ? 'success' : 'error',
         message: `[${log.apiMethod}] ${log.apiPath} - ${log.statusCode} (${log.latency}ms)`
       }))
       // 更新最近调用表格
@@ -402,27 +464,6 @@ const loadTopApis = async () => {
   } catch (error) {
     console.error('加载 Top API 失败', error)
   }
-}
-
-// 获取成功率样式类
-const getSuccessRateClass = (row: TopApiStats) => {
-  if (!row.totalCount || row.totalCount === 0) return 'success-rate-high'
-  const rate = (row.successCount / row.totalCount) * 100
-  if (rate >= 99) return 'success-rate-high'
-  if (rate >= 95) return 'success-rate-mid'
-  return 'success-rate-low'
-}
-
-// 获取方法标签类型
-const getMethodTagType = (method: string) => {
-  const types: Record<string, string> = {
-    GET: 'success',
-    POST: 'primary',
-    PUT: 'warning',
-    DELETE: 'danger',
-    PATCH: 'info'
-  }
-  return types[method] || 'info'
 }
 
 // 格式化告警时间
@@ -515,16 +556,24 @@ const renderTrendChart = (data: StatsTrend) => {
   const option: echarts.EChartsOption = {
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'cross' }
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      borderColor: '#eee',
+      textStyle: { color: '#333' },
+      axisPointer: { type: 'cross', label: { backgroundColor: '#666' } }
     },
     legend: {
       data: ['调用量', '成功', '失败'],
-      top: 10
+      top: 0,
+       icon: 'circle',
+       itemWidth: 8,
+       itemHeight: 8,
+       textStyle: { color: '#666' }
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
+      left: '2%',
+      right: '2%',
+      bottom: '2%',
+      top: '12%',
       containLabel: true
     },
     xAxis: {
@@ -532,34 +581,47 @@ const renderTrendChart = (data: StatsTrend) => {
       boundaryGap: false,
       data: data.timePoints.map(t => {
         const date = new Date(t)
-        return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`
-      })
+        return `${date.getHours()}:00`
+      }),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#999' }
     },
     yAxis: {
-      type: 'value'
+      type: 'value',
+      splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+      axisLabel: { color: '#999' }
     },
     series: [
       {
         name: '调用量',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         data: data.totalCounts,
-        itemStyle: { color: '#667eea' },
-        areaStyle: { color: 'rgba(102, 126, 234, 0.1)' }
+        itemStyle: { color: '#3B82F6' },
+        areaStyle: { 
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(59, 130, 246, 0.2)' },
+                { offset: 1, color: 'rgba(59, 130, 246, 0.0)' }
+            ])
+        }
       },
       {
         name: '成功',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         data: data.successCounts,
-        itemStyle: { color: '#52c41a' }
+        itemStyle: { color: '#10B981' }
       },
       {
         name: '失败',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         data: data.failCounts,
-        itemStyle: { color: '#ff4d4f' }
+        itemStyle: { color: '#EF4444' }
       }
     ]
   }
@@ -584,7 +646,7 @@ watch(timeRange, () => {
 // 监听自动刷新开关
 watch(autoRefresh, (val) => {
   if (val) {
-    refreshTimer = window.setInterval(refreshData, 30000)
+    refreshTimer = window.setInterval(refreshData, 5000) // Increase frequency for "Real-time" feel
   } else if (refreshTimer) {
     clearInterval(refreshTimer)
     refreshTimer = null
@@ -601,7 +663,7 @@ onMounted(async () => {
   await loadApiList()
   refreshData()
   if (autoRefresh.value) {
-    refreshTimer = window.setInterval(refreshData, 30000)
+    refreshTimer = window.setInterval(refreshData, 5000)
   }
   window.addEventListener('resize', handleResize)
 })
@@ -619,48 +681,133 @@ onUnmounted(() => {
 <style scoped>
 .monitor-page {
   min-height: calc(100vh - 56px);
-  background: #f5f7fa;
+  background-color: #f3f4f6;
   padding: 24px;
 }
 
 .page-container {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 
+/* Page Header */
 .page-header {
+  margin-bottom: 24px;
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 16px;
 }
 
-.page-title {
+.title-section h1 {
   font-size: 24px;
-  font-weight: 600;
-  color: #1a1a1a;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.5px;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: #6b7280;
   margin: 0;
 }
 
 .header-actions {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 12px;
 }
 
-/* 指标卡片 */
-.metrics-row {
-  margin-bottom: 20px;
+.custom-radio-group :deep(.el-radio-button__inner) {
+  border: none;
+  background: white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  padding: 8px 16px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.custom-radio-group :deep(.el-radio-button:first-child .el-radio-button__inner) {
+  border-radius: 8px 0 0 8px;
+}
+
+.custom-radio-group :deep(.el-radio-button:last-child .el-radio-button__inner) {
+  border-radius: 0 8px 8px 0;
+}
+
+.custom-radio-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background-color: #3b82f6;
+  color: white;
+  box-shadow: none;
+}
+
+.refresh-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: white;
+  color: #6b7280;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: all 0.3s;
+}
+
+.refresh-btn:hover {
+  background: #eff6ff;
+  color: #3b82f6;
+  transform: rotate(180deg);
+}
+
+/* Metrics Cards */
+.metrics-row,
+.charts-row {
+  margin-bottom: 24px;
 }
 
 .metric-card {
-  margin-bottom: 16px;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid rgba(0,0,0,0.02);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  height: 100%;
 }
 
-.metric-content {
-  padding: 4px 0;
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.metric-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Gradient backgrounds for icons */
+.metric-card-0 .metric-icon-wrapper { background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); color: #3B82F6; }
+.metric-card-1 .metric-icon-wrapper { background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); color: #10B981; }
+.metric-card-2 .metric-icon-wrapper { background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); color: #EF4444; }
+.metric-card-3 .metric-icon-wrapper { background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%); color: #8B5CF6; }
+
+.metric-icon {
+  font-size: 24px;
+}
+
+.metric-info {
+  flex: 1;
 }
 
 .metric-header {
@@ -671,238 +818,328 @@ onUnmounted(() => {
 }
 
 .metric-title {
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
 }
 
+.metric-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.metric-status.success { background: #ECFDF5; color: #059669; }
+.metric-status.warning { background: #FFFBEB; color: #D97706; }
+.metric-status.danger { background: #FEF2F2; color: #DC2626; }
+
 .metric-value {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #111827;
+  line-height: 1.2;
   margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.metric-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #9ca3af;
 }
 
 .metric-trend {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
+  font-weight: 600;
 }
 
-.metric-trend.up {
-  color: #52c41a;
-}
+.metric-trend.up { color: #10B981; }
+.metric-trend.down { color: #EF4444; }
+.metric-trend.flat { color: #9ca3af; }
 
-.metric-trend.down {
-  color: #ff4d4f;
-}
-
-/* 图表卡片 */
-.chart-card {
-  height: 400px;
+/* Content Cards */
+.content-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(0,0,0,0.02);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.card-subtitle {
+  font-size: 10px;
   font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.chart-card {
+  min-height: 420px;
 }
 
 .chart-container {
-  height: 320px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chart-placeholder {
-  text-align: center;
-  color: #999;
-}
-
-.chart-placeholder p {
-  margin-top: 12px;
-}
-
-/* 状态分布 */
-.status-list {
-  width: 100%;
-  padding: 0 16px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.status-info {
-  width: 100px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-code {
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.status-code.success { color: #52c41a; }
-.status-code.info { color: #1890ff; }
-.status-code.warning { color: #faad14; }
-.status-code.danger { color: #ff4d4f; }
-
-.status-name {
-  font-size: 12px;
-  color: #999;
-}
-
-.status-bar-wrapper {
   flex: 1;
-  height: 8px;
-  background: #f0f0f0;
+  width: 100%;
+  min-height: 0; 
+}
+
+/* Tables & Logs */
+.table-card, .log-card {
+  height: 480px;
+}
+
+.table-container {
+   flex: 1;
+   overflow: hidden;
+}
+
+.custom-header th {
+  background-color: #f9fafb !important;
+  color: #4b5563;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.custom-row {
+  font-size: 13px;
+}
+
+.rank-badge {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.rank-1 { background: #FEF3C7; color: #D97706; }
+.rank-2 { background: #E5E7EB; color: #4B5563; }
+.rank-3 { background: #FFEDD5; color: #C2410C; }
+
+.api-path-text {
+  font-family: monospace;
+  color: #374151;
+  background: #f9fafb;
+  padding: 2px 6px;
   border-radius: 4px;
+}
+
+.count-text {
+  font-weight: 600;
+}
+
+.rate-text {
+  font-size: 12px;
+  color: #6b7280;
+  margin-left: 8px;
+}
+
+/* Log List */
+.log-list-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-.status-bar {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.3s;
+.list-header-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 4px;
 }
 
-.status-bar.success { background: #52c41a; }
-.status-bar.info { background: #1890ff; }
-.status-bar.warning { background: #faad14; }
-.status-bar.danger { background: #ff4d4f; }
+.log-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
 
-.status-value {
-  width: 80px;
-  text-align: right;
+.log-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+  position: relative;
+}
+
+.log-status-bar {
+  width: 3px;
+  height: 24px;
+  border-radius: 1.5px;
+  margin-right: 12px;
+  margin-top: 4px;
+  background: #d1d5db;
+}
+
+.log-status-bar.success { background: #10B981; }
+.log-status-bar.error { background: #EF4444; }
+
+.log-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.log-time {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.log-detail {
+  display: flex;
+  align-items: center;
+}
+
+.log-msg {
   font-size: 13px;
-  color: #666;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: monospace;
 }
 
-/* 告警卡片 */
-/* 表格卡片 */
-.table-card {
-  height: 360px;
+/* Alert List */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #9ca3af;
+  gap: 12px;
 }
 
-.success-rate-high { color: #52c41a; font-weight: 500; }
-.success-rate-mid { color: #faad14; font-weight: 500; }
-.success-rate-low { color: #ff4d4f; font-weight: 500; }
-
-.alert-card,
-.log-card {
-  height: 360px;
+.empty-icon {
+  font-size: 48px;
+  color: #10B981;
+  opacity: 0.2;
 }
 
 .alert-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding-bottom: 10px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .alert-item {
   display: flex;
   gap: 12px;
-  padding: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #FEF2F2;
+  border: 1px solid #FEE2E2;
+}
+
+.alert-item.warning { background: #FFFBEB; border-color: #FEF3C7; }
+.alert-item.info { background: #EFF6FF; border-color: #DBEAFE; }
+
+.alert-icon-box {
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
-  background: #fafafa;
+  background: rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #DC2626;
+  flex-shrink: 0;
 }
 
-.alert-item.critical {
-  background: #fff1f0;
-}
+.alert-item.warning .alert-icon-box { color: #D97706; }
+.alert-item.info .alert-icon-box { color: #3B82F6; }
 
-.alert-item.warning {
-  background: #fffbe6;
-}
-
-.alert-icon {
-  font-size: 20px;
-  margin-top: 2px;
-}
-
-.alert-item.critical .alert-icon { color: #ff4d4f; }
-.alert-item.warning .alert-icon { color: #faad14; }
-.alert-item.info .alert-icon { color: #1890ff; }
-
-.alert-content {
+.alert-info-box {
   flex: 1;
 }
 
-.alert-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1a1a1a;
+.alert-top {
+  display: flex;
+  justify-content: space-between;
   margin-bottom: 4px;
+}
+
+.alert-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #991B1B;
+}
+
+.alert-item.warning .alert-title { color: #92400E; }
+.alert-item.info .alert-title { color: #1E40AF; }
+
+.alert-time {
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 .alert-desc {
   font-size: 13px;
-  color: #666;
-  margin-bottom: 4px;
+  color: #4B5563;
+  margin: 0;
+  line-height: 1.4;
 }
 
-.alert-time {
-  font-size: 12px;
-  color: #999;
+/* Animations */
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.5s ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
 }
 
-/* 日志卡片 */
-.log-list {
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 12px;
-  background: #1e1e1e;
-  border-radius: 8px;
-  padding: 12px;
-  height: 260px;
-  overflow-y: auto;
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-
-.log-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid #333;
+::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 3px;
 }
-
-.log-item:last-child {
-  border-bottom: none;
-}
-
-.log-time {
-  color: #888;
-}
-
-.log-message {
-  color: #d4d4d4;
-  flex: 1;
-}
-
-/* 响应式 */
-@media (max-width: 768px) {
-  .monitor-page {
-    padding: 16px;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .chart-card,
-  .alert-card,
-  .log-card {
-    height: auto;
-    min-height: 300px;
-    margin-bottom: 16px;
-  }
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 </style>

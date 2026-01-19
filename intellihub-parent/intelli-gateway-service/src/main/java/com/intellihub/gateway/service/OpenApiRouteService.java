@@ -2,12 +2,15 @@ package com.intellihub.gateway.service;
 
 import com.intellihub.dubbo.ApiPlatformDubboService;
 import com.intellihub.dubbo.ApiRouteDTO;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.AntPathMatcher;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import javax.annotation.PostConstruct;
 import java.time.Duration;
@@ -37,16 +40,17 @@ public class OpenApiRouteService {
     /**
      * 本地路由缓存（path:method -> ApiRouteDTO）
      * 注意：path可能包含路径参数，如 /open/user/{id}
+     * 使用Caffeine缓存，支持自动过期和容量限制
      */
-    private final Map<String, ApiRouteDTO> localRouteCache = new ConcurrentHashMap<>();
+    private final Cache<String, ApiRouteDTO> localRouteCache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(10))
+            .maximumSize(10000)
+            .build();
 
     /**
      * API ID索引缓存（apiId -> cacheKey）
      */
     private final Map<String, String> apiIdIndex = new ConcurrentHashMap<>();
-
-    private static final String ROUTE_CACHE_PREFIX = "gateway:route:";
-    private static final Duration ROUTE_CACHE_TTL = Duration.ofMinutes(10);
 
     public OpenApiRouteService(ReactiveStringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
@@ -71,7 +75,7 @@ public class OpenApiRouteService {
     public void refreshAllRoutes() {
         try {
             List<ApiRouteDTO> routes = apiPlatformDubboService.getAllPublishedRoutes();
-            localRouteCache.clear();
+            localRouteCache.invalidateAll();
             apiIdIndex.clear();
 
             for (ApiRouteDTO route : routes) {
@@ -100,14 +104,14 @@ public class OpenApiRouteService {
     public Mono<ApiRouteDTO> matchRoute(String requestPath, String method) {
         // 1. 先尝试精确匹配
         String exactKey = buildCacheKey(requestPath, method);
-        ApiRouteDTO exactMatch = localRouteCache.get(exactKey);
+        ApiRouteDTO exactMatch = localRouteCache.getIfPresent(exactKey);
         if (exactMatch != null) {
             log.debug("精确匹配路由 - path: {}, method: {}", requestPath, method);
             return Mono.just(exactMatch);
         }
 
         // 2. 尝试通配符匹配（支持路径参数）
-        for (Map.Entry<String, ApiRouteDTO> entry : localRouteCache.entrySet()) {
+        for (Map.Entry<String, ApiRouteDTO> entry : localRouteCache.asMap().entrySet()) {
             ApiRouteDTO route = entry.getValue();
             // 方法必须匹配
             if (!method.equalsIgnoreCase(route.getMethod()) && !"ALL".equalsIgnoreCase(route.getMethod())) {
@@ -131,7 +135,9 @@ public class OpenApiRouteService {
                 apiIdIndex.put(route.getApiId(), cacheKey);
             }
             return route;
-        }).onErrorResume(e -> {
+        })
+        .subscribeOn(Schedulers.boundedElastic())
+        .onErrorResume(e -> {
             log.error("匹配路由配置失败 - path: {}, method: {}", requestPath, method, e);
             return Mono.empty();
         });
@@ -163,7 +169,9 @@ public class OpenApiRouteService {
                 localRouteCache.put(cacheKey, route);
             }
             return route;
-        }).onErrorResume(e -> {
+        })
+        .subscribeOn(Schedulers.boundedElastic())
+        .onErrorResume(e -> {
             log.error("获取路由配置失败 - path: {}, method: {}", path, method, e);
             return Mono.empty();
         });
@@ -197,7 +205,7 @@ public class OpenApiRouteService {
      */
     public void removeRoute(String path, String method) {
         String cacheKey = buildCacheKey(path, method);
-        localRouteCache.remove(cacheKey);
+        localRouteCache.invalidate(cacheKey);
         log.info("移除路由配置 - path: {}, method: {}", path, method);
     }
 
@@ -209,7 +217,8 @@ public class OpenApiRouteService {
     public void removeRouteByApiId(String apiId) {
         String cacheKey = apiIdIndex.remove(apiId);
         if (cacheKey != null) {
-            ApiRouteDTO removed = localRouteCache.remove(cacheKey);
+            ApiRouteDTO removed = localRouteCache.getIfPresent(cacheKey);
+            localRouteCache.invalidate(cacheKey);
             if (removed != null) {
                 log.info("移除路由配置 - apiId: {}, path: {}", apiId, removed.getPath());
             }
@@ -223,14 +232,14 @@ public class OpenApiRouteService {
      */
     public boolean hasRoute(String path, String method) {
         String cacheKey = buildCacheKey(path, method);
-        return localRouteCache.containsKey(cacheKey);
+        return localRouteCache.asMap().containsKey(cacheKey);
     }
 
     /**
      * 获取缓存的路由数量
      */
-    public int getRouteCacheSize() {
-        return localRouteCache.size();
+    public long getRouteCacheSize() {
+        return localRouteCache.estimatedSize();
     }
 
     private String buildCacheKey(String path, String method) {

@@ -88,6 +88,12 @@
             <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
         </dependency>
 
+        <!-- Caffeine 本地缓存 (带过期和容量限制) -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- Jackson JSR310 (日期时间支持) -->
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
