@@ -19,6 +19,8 @@
 
 IntelliHub 是一个面向企业与开发者的**智能 API 开放平台**，旨在以 **统一入口、统一安全、统一治理** 的方式对外开放企业内部微服务能力。
 
+![image-20260208103524986](D:\Develop\Code_github\intelli_hub\assets\image-20260208103524986.png)
+
 ### 🎯 核心价值
 
 **解决的问题**
@@ -134,6 +136,8 @@ graph TB
     style EVENT fill:#7ED321,color:#fff
     style AIGC fill:#7ED321,color:#fff
 ```
+
+
 
 ### 📦 模块架构
 
