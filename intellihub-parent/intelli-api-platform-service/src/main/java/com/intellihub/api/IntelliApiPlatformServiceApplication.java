@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableTransactionManagement
 @MapperScan("com.intellihub.api.mapper")
 public class IntelliApiPlatformServiceApplication {
+
     public static void main(String[] args) {
         SpringApplication.run(IntelliApiPlatformServiceApplication.class, args);
     }
