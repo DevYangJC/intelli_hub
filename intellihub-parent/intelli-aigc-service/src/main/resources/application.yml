@@ -90,7 +90,7 @@ logging:
 aigc:
   qianfan:
     # 从环境变量读取API Key，避免泄露敏感信息
-    api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    api-key: ${QIANFAN_API_KEY:}
     # API Base URL
     base-url: https://qianfan.baidubce.com
     # 默认模型
