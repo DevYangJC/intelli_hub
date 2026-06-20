@@ -930,8 +930,15 @@ watch(activeTab, (newTab) => {
   }
 })
 
+interface StatsCard {
+  title: string
+  value: string
+  color: string
+  trend?: number
+}
+
 // 统计卡片数据
-const statsCards = ref([
+const statsCards = ref<StatsCard[]>([
   { title: '今日调用', value: '0', color: '#1890ff', trend: 0 },
   { title: '总调用量', value: '0', color: '#52c41a', trend: 0 },
   { title: '平均响应', value: '0ms', color: '#722ed1', trend: 0 },
@@ -1173,7 +1180,8 @@ const goBack = () => {
 
 // 复制路径
 const copyPath = () => {
-  navigator.clipboard.writeText(apiDetail.fullPath)
+  const path = apiDetail.fullPath || apiDetail.path || ''
+  navigator.clipboard.writeText(path)
   ElMessage.success('已复制到剪贴板')
 }
 

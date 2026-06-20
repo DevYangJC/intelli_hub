@@ -213,8 +213,9 @@ const fetchRoleList = async () => {
   try {
     const res = await roleApi.list()
     roleList.value = res.data || []
-    if (roleList.value.length > 0 && !currentRole.value) {
-      selectRole(roleList.value[0])
+    const firstRole = roleList.value[0]
+    if (firstRole && !currentRole.value) {
+      selectRole(firstRole)
     }
   } catch (error: any) {
     console.error('获取角色列表失败:', error)

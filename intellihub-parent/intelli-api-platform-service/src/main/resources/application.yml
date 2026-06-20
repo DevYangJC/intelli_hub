@@ -44,9 +44,10 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: ASSIGN_ID
-      logic-delete-field: deletedAt
-      logic-delete-value: "NOW()"
-      logic-not-delete-value: "NULL"
+      # 逻辑删除字段，统一为 tinyint 类型：1-已删除，0-未删除
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
 
 # MyBatis-Plus 多租户配置
 intellihub:

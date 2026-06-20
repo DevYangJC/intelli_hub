@@ -181,10 +181,13 @@ const loadStats = async () => {
   try {
     const res = await getStatsOverview()
     if (res.code === 200 && res.data) {
-      platformStats.value[0].value = formatNumber(res.data.apiCount || 0)
-      platformStats.value[1].value = formatNumber(res.data.todayTotalCount || 0)
-      platformStats.value[2].value = formatNumber(res.data.appCount || 0)
-      // 可用性保持默认值
+      const [s0, s1, s2] = platformStats.value
+      if (s0 && s1 && s2) {
+        s0.value = formatNumber(res.data.apiCount || 0)
+        s1.value = formatNumber(res.data.todayTotalCount || 0)
+        s2.value = formatNumber(res.data.appCount || 0)
+        // 可用性保持默认值
+      }
     }
   } catch (error) {
     console.error('加载统计数据失败', error)

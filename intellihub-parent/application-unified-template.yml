@@ -229,11 +229,9 @@ mybatis-plus:
       id-type: ASSIGN_ID
 
       # 逻辑删除配置
-      # 字段名：deleted, deletedAt, isDeleted（不同服务可能不同）
+      # 统一使用 tinyint 类型字段 deleted：1-已删除，0-未删除
       logic-delete-field: deleted
-      # 删除值：1, "NOW()", 1（不同服务可能不同）
       logic-delete-value: 1
-      # 未删除值：0, "NULL", 0
       logic-not-delete-value: 0
 
 # ==================== IntelliHub 自定义配置 ====================

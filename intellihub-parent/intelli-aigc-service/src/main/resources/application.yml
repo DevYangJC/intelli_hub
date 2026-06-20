@@ -52,9 +52,7 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: ASSIGN_ID
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
+      # AIGC 服务实体暂无逻辑删除字段，暂不启用逻辑删除
 
 # MyBatis-Plus 多租户配置
 intellihub:
@@ -114,8 +112,7 @@ dubbo:
   protocol:
     name: dubbo
     port: 20884
-  scan:
-    base-packages: com.intellihub.aigc.dubbo
+  # AIGC 服务暂无 @DubboService 实现，不配置扫描包避免启动报错
   provider:
     group: ${DUBBO_GROUP:intellihub}
   consumer:

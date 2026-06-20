@@ -86,7 +86,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, FormInstance } from 'element-plus'
+import { ElMessage, type FormInstance } from 'element-plus'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -185,12 +185,13 @@ const handleMoveUp = (row: any) => {
   const index = pluginList.value.findIndex(p => p.id === row.id)
   if (index > 0) {
     const temp = pluginList.value[index - 1]
+    if (!temp) return
     pluginList.value[index - 1] = row
     pluginList.value[index] = temp
-    
+
     row.order = index
     temp.order = index + 1
-    
+
     ElMessage.success('调整成功')
   }
 }
@@ -199,12 +200,13 @@ const handleMoveDown = (row: any) => {
   const index = pluginList.value.findIndex(p => p.id === row.id)
   if (index < pluginList.value.length - 1) {
     const temp = pluginList.value[index + 1]
+    if (!temp) return
     pluginList.value[index + 1] = row
     pluginList.value[index] = temp
-    
+
     row.order = index + 2
     temp.order = index + 1
-    
+
     ElMessage.success('调整成功')
   }
 }

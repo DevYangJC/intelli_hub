@@ -179,7 +179,7 @@ SELECT * FROM api_info WHERE status = 'published' AND tenant_id = '1'
 
 ### 阶段一：完善 Starter 配置
 
-**模块**：`inner-intergration/mybatis-helper-spring-boot-starter`
+**模块**：`inner-integration/mybatis-helper-spring-boot-starter`
 
 #### Step 1.1：检查自动配置注册
 
@@ -214,7 +214,7 @@ private List<String> ignoreTables = new ArrayList<String>() {{
 
 ### 阶段二：创建 Web 配置类
 
-**模块**：`inner-intergration/common-helper`
+**模块**：`inner-integration/common-helper`
 
 #### Step 2.1：创建 WebMvcConfig
 

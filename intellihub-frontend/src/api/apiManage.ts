@@ -1,4 +1,4 @@
-import request from './request'
+import { request, type ApiResponse } from './request'
 
 // API信息响应
 export interface ApiInfoResponse {
@@ -12,6 +12,7 @@ export interface ApiInfoResponse {
   description: string
   method: string
   path: string
+  fullPath?: string
   protocol: string
   contentType: string
   status: string
@@ -23,7 +24,13 @@ export interface ApiInfoResponse {
   rateLimitEnabled: boolean
   rateLimitQps: number
   mockEnabled: boolean
-  mockResponse: string
+  mockResponse?: string
+  tags?: string
+  ipWhitelistEnabled?: boolean
+  ipWhitelist?: string
+  successResponse?: string
+  errorResponse?: string
+  avgLatency?: number
   todayCalls: number
   totalCalls: number
   createdBy: string
@@ -70,6 +77,14 @@ export interface ApiBackendResponse {
   path: string
   timeout: number
   connectTimeout: number
+  mockResponse?: string
+  mockDelay?: number
+  registry?: string
+  interfaceName?: string
+  methodName?: string
+  dubboVersion?: string
+  dubboGroup?: string
+  refApiId?: string
 }
 
 // API分组响应
@@ -85,6 +100,7 @@ export interface ApiGroupResponse {
   createdAt: string
   updatedAt: string
   apiCount: number
+  color?: string
 }
 
 // API查询请求
@@ -174,15 +190,6 @@ export interface PageData<T> {
   page: number
   capacity: number
   pageCount: number
-}
-
-// API响应包装
-export interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-  timestamp: number
-  success?: boolean
 }
 
 // API版本响应

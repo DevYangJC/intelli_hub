@@ -1,4 +1,4 @@
-import request from './request'
+import { request, type ApiResponse } from './request'
 
 // 事件定义
 export interface EventDefinition {
@@ -149,36 +149,36 @@ export function getEventDefinitions(params?: {
   status?: string
   page?: number
   size?: number
-}) {
-  return request.get<PageResult<EventDefinition>>('/event/v1/event-definitions/list', { params })
+}): Promise<ApiResponse<PageResult<EventDefinition>>> {
+  return request.get('/event/v1/event-definitions/list', { params })
 }
 
 /**
  * 获取事件定义详情
  */
-export function getEventDefinition(id: string) {
-  return request.get<EventDefinition>(`/event/v1/event-definitions/${id}`)
+export function getEventDefinition(id: string): Promise<ApiResponse<EventDefinition>> {
+  return request.get(`/event/v1/event-definitions/${id}`)
 }
 
 /**
  * 创建事件定义
  */
-export function createEventDefinition(data: EventDefinition) {
-  return request.post<string>('/event/v1/event-definitions/create', data)
+export function createEventDefinition(data: EventDefinition): Promise<ApiResponse<string>> {
+  return request.post('/event/v1/event-definitions/create', data)
 }
 
 /**
  * 更新事件定义
  */
-export function updateEventDefinition(id: string, data: EventDefinition) {
-  return request.post<void>(`/event/v1/event-definitions/${id}/update`, data)
+export function updateEventDefinition(id: string, data: EventDefinition): Promise<ApiResponse<void>> {
+  return request.post(`/event/v1/event-definitions/${id}/update`, data)
 }
 
 /**
  * 删除事件定义
  */
-export function deleteEventDefinition(id: string) {
-  return request.post<void>(`/event/v1/event-definitions/${id}/delete`)
+export function deleteEventDefinition(id: string): Promise<ApiResponse<void>> {
+  return request.post(`/event/v1/event-definitions/${id}/delete`)
 }
 
 // ==================== 事件订阅 API ====================
@@ -191,50 +191,50 @@ export function getEventSubscriptions(params?: {
   status?: string
   page?: number
   size?: number
-}) {
-  return request.get<PageResult<EventSubscription>>('/event/v1/event-subscriptions/list', { params })
+}): Promise<ApiResponse<PageResult<EventSubscription>>> {
+  return request.get('/event/v1/event-subscriptions/list', { params })
 }
 
 /**
  * 获取事件订阅详情
  */
-export function getEventSubscription(id: string) {
-  return request.get<EventSubscription>(`/event/v1/event-subscriptions/${id}`)
+export function getEventSubscription(id: string): Promise<ApiResponse<EventSubscription>> {
+  return request.get(`/event/v1/event-subscriptions/${id}`)
 }
 
 /**
  * 创建事件订阅
  */
-export function createEventSubscription(data: EventSubscription) {
-  return request.post<string>('/event/v1/event-subscriptions/create', data)
+export function createEventSubscription(data: EventSubscription): Promise<ApiResponse<string>> {
+  return request.post('/event/v1/event-subscriptions/create', data)
 }
 
 /**
  * 更新事件订阅
  */
-export function updateEventSubscription(id: string, data: EventSubscription) {
-  return request.post<void>(`/event/v1/event-subscriptions/${id}/update`, data)
+export function updateEventSubscription(id: string, data: EventSubscription): Promise<ApiResponse<void>> {
+  return request.post(`/event/v1/event-subscriptions/${id}/update`, data)
 }
 
 /**
  * 删除事件订阅
  */
-export function deleteEventSubscription(id: string) {
-  return request.post<void>(`/event/v1/event-subscriptions/${id}/delete`)
+export function deleteEventSubscription(id: string): Promise<ApiResponse<void>> {
+  return request.post(`/event/v1/event-subscriptions/${id}/delete`)
 }
 
 /**
  * 暂停事件订阅
  */
-export function pauseEventSubscription(id: string) {
-  return request.post<void>(`/event/v1/event-subscriptions/${id}/pause`)
+export function pauseEventSubscription(id: string): Promise<ApiResponse<void>> {
+  return request.post(`/event/v1/event-subscriptions/${id}/pause`)
 }
 
 /**
  * 恢复事件订阅
  */
-export function resumeEventSubscription(id: string) {
-  return request.post<void>(`/event/v1/event-subscriptions/${id}/resume`)
+export function resumeEventSubscription(id: string): Promise<ApiResponse<void>> {
+  return request.post(`/event/v1/event-subscriptions/${id}/resume`)
 }
 
 // ==================== 事件记录 API ====================
@@ -249,8 +249,8 @@ export function getPublishRecords(params?: {
   endTime?: string
   page?: number
   size?: number
-}) {
-  return request.get<PageResult<EventPublishRecord>>('/event/v1/records/publish', { params })
+}): Promise<ApiResponse<PageResult<EventPublishRecord>>> {
+  return request.get('/event/v1/records/publish', { params })
 }
 
 /**
@@ -264,8 +264,8 @@ export function getConsumeRecords(params?: {
   endTime?: string
   page?: number
   size?: number
-}) {
-  return request.get<PageResult<EventConsumeRecord>>('/event/v1/records/consume', { params })
+}): Promise<ApiResponse<PageResult<EventConsumeRecord>>> {
+  return request.get('/event/v1/records/consume', { params })
 }
 
 /**
@@ -275,8 +275,8 @@ export function getEventStatistics(params?: {
   eventCode?: string
   startDate?: string
   endDate?: string
-}) {
-  return request.get<EventStatistics[]>('/event/v1/statistics', { params })
+}): Promise<ApiResponse<EventStatistics[]>> {
+  return request.get('/event/v1/statistics', { params })
 }
 
 /**
@@ -286,6 +286,6 @@ export function publishEvent(data: {
   eventCode: string
   source?: string
   data: Record<string, unknown>
-}) {
-  return request.post<string>('/event/v1/events/publish', data)
+}): Promise<ApiResponse<string>> {
+  return request.post('/event/v1/events/publish', data)
 }

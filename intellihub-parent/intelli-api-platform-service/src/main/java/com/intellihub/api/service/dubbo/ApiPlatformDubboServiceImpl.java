@@ -54,7 +54,7 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
             queryWrapper.eq(ApiInfo::getPath, path)
                     .eq(ApiInfo::getMethod, method.toUpperCase())
                     .eq(ApiInfo::getStatus, STATUS_PUBLISHED)
-                    .isNull(ApiInfo::getDeletedAt);
+                    .eq(ApiInfo::getDeleted, 0);
 
             ApiInfo apiInfo = apiInfoMapper.selectOne(queryWrapper);
             if (apiInfo == null) {
@@ -78,7 +78,7 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
         try {
             LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(ApiInfo::getStatus, STATUS_PUBLISHED)
-                    .isNull(ApiInfo::getDeletedAt);
+                    .eq(ApiInfo::getDeleted, 0);
 
             List<ApiInfo> apiInfoList = apiInfoMapper.selectList(queryWrapper);
             List<ApiRouteDTO> routes = new ArrayList<>();
@@ -115,7 +115,7 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
         queryWrapper.eq(ApiInfo::getPath, path)
                 .eq(ApiInfo::getMethod, method.toUpperCase())
                 .eq(ApiInfo::getStatus, STATUS_PUBLISHED)
-                .isNull(ApiInfo::getDeletedAt);
+                .eq(ApiInfo::getDeleted, 0);
 
         return apiInfoMapper.selectCount(queryWrapper) > 0;
     }
@@ -140,7 +140,7 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
         try {
             LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(ApiInfo::getStatus, STATUS_PUBLISHED)
-                    .isNull(ApiInfo::getDeletedAt);
+                    .eq(ApiInfo::getDeleted, 0);
 
             // 方法匹配
             queryWrapper.and(w -> w.eq(ApiInfo::getMethod, method.toUpperCase())
@@ -273,7 +273,7 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
         log.info("[搜索同步] 获取所有API信息，tenantId={}", tenantId);
 
         LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.isNull(ApiInfo::getDeletedAt);
+        queryWrapper.eq(ApiInfo::getDeleted, 0);
         if (tenantId != null) {
             queryWrapper.eq(ApiInfo::getTenantId, tenantId);
         }
@@ -292,7 +292,7 @@ public class ApiPlatformDubboServiceImpl implements ApiPlatformDubboService {
         log.info("[搜索同步] 获取增量API信息，tenantId={}, lastSyncTime={}", tenantId, lastSyncTime);
 
         LambdaQueryWrapper<ApiInfo> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.isNull(ApiInfo::getDeletedAt);
+        queryWrapper.eq(ApiInfo::getDeleted, 0);
         if (tenantId != null) {
             queryWrapper.eq(ApiInfo::getTenantId, tenantId);
         }

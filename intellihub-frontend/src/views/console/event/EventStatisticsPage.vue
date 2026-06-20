@@ -395,8 +395,8 @@ onMounted(() => {
   const start = new Date()
   start.setDate(start.getDate() - 7)
   filterForm.dateRange = [
-    start.toISOString().split('T')[0],
-    end.toISOString().split('T')[0]
+    start.toISOString().split('T')[0] || '',
+    end.toISOString().split('T')[0] || ''
   ]
   
   initCharts()

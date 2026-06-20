@@ -1,4 +1,4 @@
-import request from './request'
+import { request, type ApiResponse } from './request'
 
 // 统计概览
 export interface StatsOverview {
@@ -102,15 +102,15 @@ export interface PageResult<T> {
 /**
  * 获取统计概览
  */
-export function getStatsOverview() {
-  return request.get<StatsOverview>('/governance/v1/stats/overview')
+export function getStatsOverview(): Promise<ApiResponse<StatsOverview>> {
+  return request.get('/governance/v1/stats/overview')
 }
 
 /**
  * 获取小时趋势
  */
-export function getHourlyTrend(startTime: string, endTime: string) {
-  return request.get<StatsTrend>('/governance/v1/stats/trend/hourly', {
+export function getHourlyTrend(startTime: string, endTime: string): Promise<ApiResponse<StatsTrend>> {
+  return request.get('/governance/v1/stats/trend/hourly', {
     params: { startTime, endTime }
   })
 }
@@ -118,8 +118,8 @@ export function getHourlyTrend(startTime: string, endTime: string) {
 /**
  * 获取天趋势
  */
-export function getDailyTrend(startDate: string, endDate: string) {
-  return request.get<StatsTrend>('/governance/v1/stats/trend/daily', {
+export function getDailyTrend(startDate: string, endDate: string): Promise<ApiResponse<StatsTrend>> {
+  return request.get('/governance/v1/stats/trend/daily', {
     params: { startDate, endDate }
   })
 }
@@ -127,10 +127,10 @@ export function getDailyTrend(startDate: string, endDate: string) {
 /**
  * 获取单个API趋势
  */
-export function getApiTrend(apiPath: string, startTime: string, endTime: string) {
+export function getApiTrend(apiPath: string, startTime: string, endTime: string): Promise<ApiResponse<StatsTrend>> {
   // 将路径中的/替换为_
   const encodedPath = apiPath.replace(/^\//, '').replace(/\//g, '_')
-  return request.get<StatsTrend>(`/governance/v1/stats/api/${encodedPath}`, {
+  return request.get(`/governance/v1/stats/api/${encodedPath}`, {
     params: { startTime, endTime }
   })
 }
@@ -138,8 +138,8 @@ export function getApiTrend(apiPath: string, startTime: string, endTime: string)
 /**
  * 获取Top N API
  */
-export function getTopApis(limit: number = 10) {
-  return request.get<TopApiStats[]>('/governance/v1/stats/top', {
+export function getTopApis(limit: number = 10): Promise<ApiResponse<TopApiStats[]>> {
+  return request.get('/governance/v1/stats/top', {
     params: { limit }
   })
 }
@@ -155,29 +155,29 @@ export function getCallLogs(params: {
   success?: boolean
   page?: number
   size?: number
-}) {
-  return request.get<PageResult<CallLog>>('/governance/v1/stats/logs', { params })
+}): Promise<ApiResponse<PageResult<CallLog>>> {
+  return request.get('/governance/v1/stats/logs', { params })
 }
 
 /**
  * 获取实时调用数
  */
-export function getRealtimeCount() {
-  return request.get<number>('/governance/v1/stats/realtime')
+export function getRealtimeCount(): Promise<ApiResponse<number>> {
+  return request.get('/governance/v1/stats/realtime')
 }
 
 /**
  * 获取单个API的统计详情（从治理服务）
  * @param apiId API ID
  */
-export function getApiStatsDetail(apiId: string) {
-  return request.get<ApiStatsDetail>(`/governance/v1/stats/api-detail/${apiId}`)
+export function getApiStatsDetail(apiId: string): Promise<ApiResponse<ApiStatsDetail>> {
+  return request.get(`/governance/v1/stats/api-detail/${apiId}`)
 }
 
 /**
  * 获取API实时统计数据（从API平台服务）
  * @param apiId API ID
  */
-export function getApiStats(apiId: string) {
+export function getApiStats(apiId: string): Promise<ApiResponse<any>> {
   return request.get(`/platform/v1/apis/${apiId}/stats`)
 }

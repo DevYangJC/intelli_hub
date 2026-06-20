@@ -1,4 +1,4 @@
-import { request } from './request'
+import { request, type ApiResponse } from './request'
 
 // 租户查询请求
 export interface TenantQueryRequest {
@@ -49,6 +49,7 @@ export interface TenantResponse {
   description?: string
   status: string
   quota?: TenantQuotaInfo
+  usage?: TenantUsageInfo
   createdAt?: string
   updatedAt?: string
 }
@@ -62,6 +63,14 @@ export interface TenantQuotaInfo {
   maxCallsPerMonth: number
 }
 
+// 租户用量信息
+export interface TenantUsageInfo {
+  apiCount?: number
+  userCount?: number
+  appCount?: number
+  apiUsagePercent?: number
+}
+
 // 分页数据
 export interface PageData<T> {
   records: T[]
@@ -69,14 +78,6 @@ export interface PageData<T> {
   page: number
   capacity: number
   pageCount: number
-}
-
-// API响应包装
-export interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-  timestamp: number
 }
 
 // 租户管理API

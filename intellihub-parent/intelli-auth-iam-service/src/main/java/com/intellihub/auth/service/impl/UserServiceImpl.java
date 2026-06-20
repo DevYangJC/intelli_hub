@@ -208,7 +208,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // 软删除
-        user.setDeletedAt(LocalDateTime.now());
+        user.setDeleted(1);
         userMapper.updateById(user);
 
         // 删除角色关联

@@ -50,7 +50,6 @@ public class RatelimitPolicyServiceImpl implements RatelimitPolicyService {
                     .or()
                     .like(RatelimitPolicy::getDescription, keyword)
                )
-               .isNull(RatelimitPolicy::getDeletedAt)
                .orderByDesc(RatelimitPolicy::getCreatedAt);
         
         Page<RatelimitPolicy> result = policyMapper.selectPage(pageParam, wrapper);
@@ -67,7 +66,7 @@ public class RatelimitPolicyServiceImpl implements RatelimitPolicyService {
     @Override
     public RatelimitPolicyResponse getPolicyById(String id) {
         RatelimitPolicy policy = policyMapper.selectById(id);
-        if (policy == null || policy.getDeletedAt() != null) {
+        if (policy == null || (policy.getDeleted() != null && policy.getDeleted() == 1)) {
             throw new RuntimeException("限流策略不存在");
         }
         return toResponse(policy);
@@ -98,7 +97,7 @@ public class RatelimitPolicyServiceImpl implements RatelimitPolicyService {
     @Transactional(rollbackFor = Exception.class)
     public void updatePolicy(String id, RatelimitPolicyCreateRequest request) {
         RatelimitPolicy policy = policyMapper.selectById(id);
-        if (policy == null || policy.getDeletedAt() != null) {
+        if (policy == null || (policy.getDeleted() != null && policy.getDeleted() == 1)) {
             throw new RuntimeException("限流策略不存在");
         }
         
@@ -121,9 +120,8 @@ public class RatelimitPolicyServiceImpl implements RatelimitPolicyService {
             throw new RuntimeException("限流策略不存在");
         }
         
-        // 软删除
-        policy.setDeletedAt(LocalDateTime.now());
-        policyMapper.updateById(policy);
+        // 软删除（MyBatis-Plus 逻辑删除）
+        policyMapper.deleteById(id);
         
         // 删除关联关系
         routeRatelimitMapper.deleteByPolicyId(id);
@@ -138,7 +136,7 @@ public class RatelimitPolicyServiceImpl implements RatelimitPolicyService {
     @Transactional(rollbackFor = Exception.class)
     public void applyPolicyToRoutes(String policyId, RatelimitPolicyApplyRequest request) {
         RatelimitPolicy policy = policyMapper.selectById(policyId);
-        if (policy == null || policy.getDeletedAt() != null) {
+        if (policy == null || (policy.getDeleted() != null && policy.getDeleted() == 1)) {
             throw new RuntimeException("限流策略不存在");
         }
         

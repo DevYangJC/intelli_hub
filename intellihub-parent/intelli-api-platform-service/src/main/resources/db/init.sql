@@ -24,7 +24,7 @@ CREATE TABLE `api_group` (
     `created_by` varchar(32) DEFAULT NULL COMMENT '创建人ID',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
+    `deleted` tinyint(1) DEFAULT 0 COMMENT '逻辑删除：0-未删除，1-已删除',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_tenant_code` (`tenant_id`, `code`),
     KEY `idx_tenant_id` (`tenant_id`)
@@ -67,7 +67,7 @@ CREATE TABLE `api_info` (
     `published_at` datetime DEFAULT NULL COMMENT '发布时间',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
+    `deleted` tinyint(1) DEFAULT 0 COMMENT '逻辑删除：0-未删除，1-已删除',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_tenant_code` (`tenant_id`, `code`),
     KEY `idx_tenant_id` (`tenant_id`),
@@ -231,7 +231,7 @@ CREATE TABLE IF NOT EXISTS `gateway_ratelimit_policy` (
   `created_by` varchar(32) DEFAULT NULL COMMENT '创建人',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
+  `deleted` tinyint(1) DEFAULT 0 COMMENT '逻辑删除：0-未删除，1-已删除',
   PRIMARY KEY (`id`),
   KEY `idx_tenant_id` (`tenant_id`),
   KEY `idx_status` (`status`)

@@ -195,7 +195,7 @@ public class TenantServiceImpl implements TenantService {
         }
 
         // 软删除
-        tenant.setDeletedAt(LocalDateTime.now());
+        tenant.setDeleted(1);
         tenantMapper.updateById(tenant);
     }
 

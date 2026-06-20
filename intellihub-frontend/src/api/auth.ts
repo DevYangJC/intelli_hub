@@ -1,4 +1,4 @@
-import { request } from './request'
+import { request, type ApiResponse } from './request'
 
 // 登录请求参数
 export interface LoginRequest {
@@ -56,14 +56,6 @@ export interface RegisterRequest {
   nickname?: string
   captchaKey?: string
   captcha?: string
-}
-
-// API响应包装
-export interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-  timestamp: number
 }
 
 // 认证相关API

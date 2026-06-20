@@ -104,7 +104,6 @@
                 <version>${spring-boot.version}</version>
                 <configuration>
                     <mainClass>com.intellihub.app.IntelliAppCenterServiceApplication</mainClass>
-                    <skip>true</skip>
                 </configuration>
                 <executions>
                     <execution>

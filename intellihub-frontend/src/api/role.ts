@@ -1,4 +1,4 @@
-import { request } from './request'
+import { request, type ApiResponse } from './request'
 
 // 创建角色请求
 export interface CreateRoleRequest {
@@ -57,14 +57,6 @@ export interface MenuResponse {
   visible: boolean
   sort: number
   children?: MenuResponse[]
-}
-
-// API响应包装
-export interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-  timestamp: number
 }
 
 // 角色权限管理API

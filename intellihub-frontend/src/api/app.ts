@@ -1,4 +1,4 @@
-import request from './request'
+import { request, type ApiResponse } from './request'
 
 /**
  * 应用信息响应
@@ -119,85 +119,85 @@ export const appApi = {
   /**
    * 获取应用列表
    */
-  list(params: AppQueryRequest) {
-    return request.get<any>('/app-center/v1/apps/list', { params })
+  list(params: AppQueryRequest): Promise<ApiResponse<any>> {
+    return request.get('/app-center/v1/apps/list', { params })
   },
 
   /**
    * 获取应用详情
    */
-  getById(id: string) {
-    return request.get<any>(`/app-center/v1/apps/${id}/detail`)
+  getById(id: string): Promise<ApiResponse<any>> {
+    return request.get(`/app-center/v1/apps/${id}/detail`)
   },
 
   /**
    * 根据AppKey获取应用
    */
-  getByAppKey(appKey: string) {
-    return request.get<any>('/app-center/v1/apps/by-appkey', { params: { appKey } })
+  getByAppKey(appKey: string): Promise<ApiResponse<any>> {
+    return request.get('/app-center/v1/apps/by-appkey', { params: { appKey } })
   },
 
   /**
    * 创建应用
    */
-  create(data: CreateAppRequest) {
-    return request.post<any>('/app-center/v1/apps/create', data)
+  create(data: CreateAppRequest): Promise<ApiResponse<any>> {
+    return request.post('/app-center/v1/apps/create', data)
   },
 
   /**
    * 更新应用
    */
-  update(id: string, data: UpdateAppRequest) {
-    return request.post<any>(`/app-center/v1/apps/${id}/update`, data)
+  update(id: string, data: UpdateAppRequest): Promise<ApiResponse<any>> {
+    return request.post(`/app-center/v1/apps/${id}/update`, data)
   },
 
   /**
    * 删除应用
    */
-  delete(id: string) {
-    return request.post<any>(`/app-center/v1/apps/${id}/delete`)
+  delete(id: string): Promise<ApiResponse<any>> {
+    return request.post(`/app-center/v1/apps/${id}/delete`)
   },
 
   /**
    * 启用应用
    */
-  enable(id: string) {
-    return request.post<any>(`/app-center/v1/apps/${id}/enable`)
+  enable(id: string): Promise<ApiResponse<any>> {
+    return request.post(`/app-center/v1/apps/${id}/enable`)
   },
 
   /**
    * 禁用应用
    */
-  disable(id: string) {
-    return request.post<any>(`/app-center/v1/apps/${id}/disable`)
+  disable(id: string): Promise<ApiResponse<any>> {
+    return request.post(`/app-center/v1/apps/${id}/disable`)
   },
 
   /**
    * 重置AppSecret
    */
-  resetSecret(id: string) {
-    return request.post<any>(`/app-center/v1/apps/${id}/reset-secret`)
+  resetSecret(id: string): Promise<ApiResponse<any>> {
+    return request.post(`/app-center/v1/apps/${id}/reset-secret`)
   },
 
   /**
    * 订阅API
    */
-  subscribe(id: string, data: SubscribeApiRequest) {
-    return request.post<any>(`/app-center/v1/apps/${id}/subscribe`, data)
+  subscribe(id: string, data: SubscribeApiRequest): Promise<ApiResponse<any>> {
+    return request.post(`/app-center/v1/apps/${id}/subscribe`, data)
   },
 
   /**
    * 取消订阅API
    */
-  unsubscribe(id: string, apiId: string) {
-    return request.post<any>(`/app-center/v1/apps/${id}/unsubscribe`, null, { params: { apiId } })
+  unsubscribe(id: string, apiId: string): Promise<ApiResponse<any>> {
+    return request.post(`/app-center/v1/apps/${id}/unsubscribe`, null, { params: { apiId } })
   },
 
   /**
    * 获取订阅列表
    */
-  listSubscriptions(id: string) {
-    return request.get<any>(`/app-center/v1/apps/${id}/subscriptions`)
+  listSubscriptions(id: string): Promise<ApiResponse<any>> {
+    return request.get(`/app-center/v1/apps/${id}/subscriptions`)
   },
 }
 

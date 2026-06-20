@@ -56,7 +56,8 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: ASSIGN_ID
-      logic-delete-field: isDeleted
+      # 逻辑删除字段，与实体 @TableLogic 字段名保持一致
+      logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
   mapper-locations: classpath*:mapper/**/*.xml

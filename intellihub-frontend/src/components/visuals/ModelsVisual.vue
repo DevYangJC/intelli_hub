@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import { shallowRef } from 'vue'
 
-const models = shallowRef([
+const models = shallowRef<Array<{ letter: string; color: string; icon?: any }>>([
   { letter: 'G', color: '#4285f4' },
   { letter: 'A', color: '#00a67e' },
   { letter: 'C', color: '#d97706' },

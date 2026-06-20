@@ -246,10 +246,10 @@ const overview = ref<StatsOverview>({
 
 // 实时指标
 const realTimeMetrics = reactive([
-  { title: '实时 QPS', value: '0', trend: 0, status: 'success' as const, statusText: '正常' },
-  { title: '平均响应时间', value: '0ms', trend: 0, status: 'success' as const, statusText: '正常' },
-  { title: '错误率', value: '0%', trend: 0, status: 'success' as const, statusText: '正常' },
-  { title: '今日总调用', value: '0', trend: 0, status: 'success' as const, statusText: '正常' },
+  { title: '实时 QPS', value: '0', trend: 0, status: 'success', statusText: '正常' },
+  { title: '平均响应时间', value: '0ms', trend: 0, status: 'success', statusText: '正常' },
+  { title: '错误率', value: '0%', trend: 0, status: 'success', statusText: '正常' },
+  { title: '今日总调用', value: '0', trend: 0, status: 'success', statusText: '正常' },
 ])
 
 const getMetricIcon = (index: number) => {
@@ -270,7 +270,7 @@ const statusData = ref([
 ])
 
 // 告警列表
-const alerts = ref<{ id: number; level: string; title: string; description: string; time: string }[]>([])
+const alerts = ref<{ id: number | string; level: string; title: string; description: string; time: string }[]>([])
 
 // 日志列表
 const logs = ref<{ id: number; time: string; level: string; message: string }[]>([])
@@ -299,44 +299,54 @@ const getSuccessRateColor = (percentage: number) => {
 // 更新实时指标
 const updateMetrics = () => {
   const data = overview.value
-  
+  const qpsMetric = realTimeMetrics[0]
+  const latencyMetric = realTimeMetrics[1]
+  const errorMetric = realTimeMetrics[2]
+  const totalMetric = realTimeMetrics[3]
+
   // QPS
-  realTimeMetrics[0].value = (data.currentQps || 0).toFixed(2)
-  realTimeMetrics[0].status = data.currentQps && data.currentQps > 1000 ? 'warning' : 'success'
-  realTimeMetrics[0].statusText = data.currentQps && data.currentQps > 1000 ? '偏高' : '优异'
-  
+  if (qpsMetric) {
+    qpsMetric.value = (data.currentQps || 0).toFixed(2)
+    qpsMetric.status = data.currentQps && data.currentQps > 1000 ? 'warning' : 'success'
+    qpsMetric.statusText = data.currentQps && data.currentQps > 1000 ? '偏高' : '优异'
+  }
+
   // 平均响应时间
-  realTimeMetrics[1].value = (data.todayAvgLatency || 0) + 'ms'
-  realTimeMetrics[1].status = data.todayAvgLatency && data.todayAvgLatency > 500 ? 'warning' : 'success'
-  realTimeMetrics[1].statusText = data.todayAvgLatency && data.todayAvgLatency > 500 ? '偏慢' : '极速'
-  
+  if (latencyMetric) {
+    latencyMetric.value = (data.todayAvgLatency || 0) + 'ms'
+    latencyMetric.status = data.todayAvgLatency && data.todayAvgLatency > 500 ? 'warning' : 'success'
+    latencyMetric.statusText = data.todayAvgLatency && data.todayAvgLatency > 500 ? '偏慢' : '极速'
+  }
+
   // 错误率
-  const errorRate = data.todayTotalCount && data.todayTotalCount > 0 
-    ? ((data.todayFailCount || 0) / data.todayTotalCount * 100) 
-    : 0
-  realTimeMetrics[2].value = errorRate.toFixed(2) + '%'
-  realTimeMetrics[2].status = errorRate > 1 ? 'danger' : errorRate > 0.5 ? 'warning' : 'success'
-  realTimeMetrics[2].statusText = errorRate > 1 ? '异常' : errorRate > 0.5 ? '关注' : '稳定'
-  
+  if (errorMetric) {
+    const errorRate = data.todayTotalCount && data.todayTotalCount > 0
+      ? ((data.todayFailCount || 0) / data.todayTotalCount * 100)
+      : 0
+    errorMetric.value = errorRate.toFixed(2) + '%'
+    errorMetric.status = errorRate > 1 ? 'danger' : errorRate > 0.5 ? 'warning' : 'success'
+    errorMetric.statusText = errorRate > 1 ? '异常' : errorRate > 0.5 ? '关注' : '稳定'
+  }
+
   // 今日调用
-  realTimeMetrics[3].value = formatNumber(data.todayTotalCount || 0)
-  realTimeMetrics[3].trend = data.dayOverDayRate || 0
-  // Handle trend for others if data available (mocking same trend for demo if API doesn't provide individual trends)
-  // realTimeMetrics[0].trend = ...
-  
+  if (totalMetric) {
+    totalMetric.value = formatNumber(data.todayTotalCount || 0)
+    totalMetric.trend = data.dayOverDayRate || 0
+  }
+
   // 更新状态分布
   const success = data.todaySuccessCount || 0
   const fail = data.todayFailCount || 0
   // Mock distribution if fail > 0
   const clientError = Math.round(fail * 0.7)
   const serverError = Math.round(fail * 0.3)
-  
+
   statusData.value = [
     { name: '成功 (2xx)', value: success, itemStyle: { color: '#10B981' } }, // Emerald 500
     { name: '客户端错误 (4xx)', value: clientError, itemStyle: { color: '#F59E0B' } }, // Amber 500
     { name: '服务端错误 (5xx)', value: serverError, itemStyle: { color: '#EF4444' } }  // Red 500
   ]
-  
+
   renderStatusChart()
 }
 

@@ -11,7 +11,7 @@
 
     <modules>
         <!-- 内部支撑模块 -->
-        <module>inner-intergration</module>
+        <module>inner-integration</module>
 
         <!-- SDK 模块 -->
         <module>intelli-sdk</module>
