@@ -1,4 +1,4 @@
-import request from './request'
+import { request, type ApiResponse } from './request'
 
 // 搜索类型
 export type SearchType = 'api' | 'app' | 'user' | 'audit' | 'alert'
@@ -105,14 +105,6 @@ export interface SearchResponse<T> {
   page: number
   size: number
   took: number
-}
-
-// API 响应包装
-export interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-  timestamp: number
 }
 
 // ES 健康状态

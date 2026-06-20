@@ -1,4 +1,4 @@
-import { request } from './request'
+import { request, type ApiResponse } from './request'
 
 // 问答请求参数
 export interface QaRequest {
@@ -34,13 +34,6 @@ export interface RelatedApi {
   path: string
   method: string
   description: string
-}
-
-// API 响应包装
-interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
 }
 
 /**

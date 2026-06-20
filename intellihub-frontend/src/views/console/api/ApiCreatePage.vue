@@ -502,7 +502,7 @@ const fetchApiDetail = async () => {
       formData.groupId = data.groupId || ''
       formData.version = data.version || 'v1.0'
       formData.description = data.description || ''
-      formData.tags = data.tags || []
+      formData.tags = data.tags ? data.tags.split(',').map(t => t.trim()) : []
       
       // 请求配置
       formData.method = data.method || 'GET'

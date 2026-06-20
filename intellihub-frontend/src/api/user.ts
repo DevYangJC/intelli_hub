@@ -1,4 +1,4 @@
-import { request } from './request'
+import { request, type ApiResponse } from './request'
 
 // 用户查询请求
 export interface UserQueryRequest {
@@ -58,14 +58,6 @@ export interface PageData<T> {
   page: number
   capacity: number
   pageCount: number
-}
-
-// API响应包装
-export interface ApiResponse<T> {
-  code: number
-  message: string
-  data: T
-  timestamp: number
 }
 
 // 用户管理API

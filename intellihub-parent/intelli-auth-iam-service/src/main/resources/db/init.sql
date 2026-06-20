@@ -29,7 +29,7 @@ CREATE TABLE `iam_tenant` (
     `contact_email` varchar(128) DEFAULT NULL COMMENT '联系邮箱',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
+    `deleted` tinyint(1) DEFAULT 0 COMMENT '逻辑删除：0-未删除，1-已删除',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_code` (`code`),
     KEY `idx_status` (`status`)
@@ -55,7 +55,7 @@ CREATE TABLE `iam_user` (
     `locked_until` datetime DEFAULT NULL COMMENT '锁定截止时间',
     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
+    `deleted` tinyint(1) DEFAULT 0 COMMENT '逻辑删除：0-未删除，1-已删除',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_tenant_username` (`tenant_id`, `username`),
     KEY `idx_tenant_id` (`tenant_id`),

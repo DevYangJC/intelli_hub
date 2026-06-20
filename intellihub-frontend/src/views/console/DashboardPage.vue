@@ -122,10 +122,13 @@ const loadStats = async () => {
     const res = await getStatsOverview()
     if (res.code === 200 && res.data) {
       const data = res.data
-      stats.value[0].value = formatNumber(data.apiCount || 0)
-      stats.value[1].value = formatNumber(data.appCount || 0)
-      stats.value[2].value = formatNumber(data.todayTotalCount || 0)
-      stats.value[3].value = (data.todaySuccessRate || 0).toFixed(1) + '%'
+      const [s0, s1, s2, s3] = stats.value
+      if (s0 && s1 && s2 && s3) {
+        s0.value = formatNumber(data.apiCount || 0)
+        s1.value = formatNumber(data.appCount || 0)
+        s2.value = formatNumber(data.todayTotalCount || 0)
+        s3.value = (data.todaySuccessRate || 0).toFixed(1) + '%'
+      }
     }
   } catch (error) {
     console.error('加载统计数据失败', error)

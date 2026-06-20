@@ -25,6 +25,6 @@ public interface IamTenantMapper extends BaseMapper<IamTenant> {
      * @return 租户信息
      */
     @InterceptorIgnore(tenantLine = "true")
-    @Select("SELECT * FROM iam_tenant WHERE code = #{code} AND deleted_at IS NULL")
+    @Select("SELECT * FROM iam_tenant WHERE code = #{code} AND deleted = 0")
     IamTenant selectByCode(String code);
 }

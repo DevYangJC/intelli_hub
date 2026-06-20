@@ -115,7 +115,7 @@ public class ApiVersionServiceImpl implements ApiVersionService {
             // 恢复字段（保留ID和时间戳）
             snapshotApi.setId(currentApi.getId());
             snapshotApi.setCreatedAt(currentApi.getCreatedAt());
-            snapshotApi.setDeletedAt(null);
+            snapshotApi.setDeleted(0);
             apiInfoMapper.updateById(snapshotApi);
 
             log.info("API {} 已回滚到版本 {}", apiId, version.getVersion());

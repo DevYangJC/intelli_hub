@@ -20,7 +20,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': {
+      // 只代理以 /api/ 开头的后端接口，避免 /api-market 等前端路由被误转发
+      '/api/': {
         target: 'http://localhost:8080',
         changeOrigin: true,
         rewrite: (path) => path,

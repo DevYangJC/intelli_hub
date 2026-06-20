@@ -42,6 +42,6 @@ public class Announcement {
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
 
-//    @TableLogic
+    @TableLogic
     private Integer deleted;
 }

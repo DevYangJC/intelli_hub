@@ -101,7 +101,6 @@
                 <version>${spring-boot.version}</version>
                 <configuration>
                     <mainClass>com.intellihub.IntelliGovernanceServiceApplication</mainClass>
-                    <skip>true</skip>
                 </configuration>
                 <executions>
                     <execution>

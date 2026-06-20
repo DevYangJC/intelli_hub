@@ -23,7 +23,7 @@ public interface ApiInfoMapper extends BaseMapper<ApiInfo> {
      * @return API数量
      */
     @InterceptorIgnore(tenantLine = "true")
-    @Select("SELECT COUNT(*) FROM api_info WHERE tenant_id = #{tenantId} AND deleted_at IS NULL")
+    @Select("SELECT COUNT(*) FROM api_info WHERE tenant_id = #{tenantId} AND deleted = 0")
     int countByTenantIdIgnoreTenant(@Param("tenantId") String tenantId);
 
     /**
@@ -33,6 +33,6 @@ public interface ApiInfoMapper extends BaseMapper<ApiInfo> {
      * @return 今日调用次数
      */
     @InterceptorIgnore(tenantLine = "true")
-    @Select("SELECT COALESCE(SUM(today_calls), 0) FROM api_info WHERE tenant_id = #{tenantId} AND deleted_at IS NULL")
+    @Select("SELECT COALESCE(SUM(today_calls), 0) FROM api_info WHERE tenant_id = #{tenantId} AND deleted = 0")
     long sumTodayCallsByTenantIdIgnoreTenant(@Param("tenantId") String tenantId);
 }

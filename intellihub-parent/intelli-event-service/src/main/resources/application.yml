@@ -86,8 +86,6 @@ spring:
 
 # -------------------- MyBatis-Plus 配置 --------------------
 mybatis-plus:
-  # Mapper XML 文件位置
-  mapper-locations: classpath*:mapper/**/*.xml
   # 实体类包路径
   type-aliases-package: com.intellihub.event.entity
   configuration:
@@ -103,10 +101,7 @@ mybatis-plus:
     db-config:
       # 主键策略：雪花算法自动生成
       id-type: ASSIGN_ID
-      # 逻辑删除字段
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
+      # 事件中心实体暂无逻辑删除字段，暂不启用逻辑删除
 
 # -------------------- IntelliHub 自定义配置 --------------------
 intellihub:

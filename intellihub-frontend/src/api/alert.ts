@@ -1,4 +1,4 @@
-import request from './request'
+import { request, type ApiResponse } from './request'
 
 // 告警规则
 export interface AlertRule {
@@ -119,49 +119,49 @@ export function getAlertRules(params?: {
   status?: string
   pageNum?: number
   pageSize?: number
-}) {
-  return request.get<PageResult<AlertRule>>('/governance/v1/alert/rules', { params })
+}): Promise<ApiResponse<PageResult<AlertRule>>> {
+  return request.get('/governance/v1/alert/rules', { params })
 }
 
 /**
  * 获取告警规则详情
  */
-export function getAlertRule(id: number | string) {
-  return request.get<AlertRule>(`/governance/v1/alert/rules/${id}`)
+export function getAlertRule(id: number | string): Promise<ApiResponse<AlertRule>> {
+  return request.get(`/governance/v1/alert/rules/${id}`)
 }
 
 /**
  * 创建告警规则
  */
-export function createAlertRule(data: AlertRule) {
-  return request.post<AlertRule>('/governance/v1/alert/rules', data)
+export function createAlertRule(data: AlertRule): Promise<ApiResponse<AlertRule>> {
+  return request.post('/governance/v1/alert/rules', data)
 }
 
 /**
  * 更新告警规则
  */
-export function updateAlertRule(id: number | string, data: AlertRule) {
-  return request.put<AlertRule>(`/governance/v1/alert/rules/${id}`, data)
+export function updateAlertRule(id: number | string, data: AlertRule): Promise<ApiResponse<AlertRule>> {
+  return request.put(`/governance/v1/alert/rules/${id}`, data)
 }
 
 /**
  * 删除告警规则
  */
-export function deleteAlertRule(id: number | string) {
+export function deleteAlertRule(id: number | string): Promise<ApiResponse<void>> {
   return request.delete(`/governance/v1/alert/rules/${id}`)
 }
 
 /**
  * 启用告警规则
  */
-export function enableAlertRule(id: number | string) {
+export function enableAlertRule(id: number | string): Promise<ApiResponse<void>> {
   return request.post(`/governance/v1/alert/rules/${id}/enable`)
 }
 
 /**
  * 禁用告警规则
  */
-export function disableAlertRule(id: number | string) {
+export function disableAlertRule(id: number | string): Promise<ApiResponse<void>> {
   return request.post(`/governance/v1/alert/rules/${id}/disable`)
 }
 
@@ -176,8 +176,8 @@ export function getAlertRecords(params?: {
   endTime?: string
   pageNum?: number
   pageSize?: number
-}) {
-  return request.get<PageResult<AlertRecord>>('/governance/v1/alert/records', { params })
+}): Promise<ApiResponse<PageResult<AlertRecord>>> {
+  return request.get('/governance/v1/alert/records', { params })
 }
 
 /**
@@ -186,20 +186,20 @@ export function getAlertRecords(params?: {
 export function getAlertStats(params?: {
   startTime?: string
   endTime?: string
-}) {
-  return request.get<AlertStats>('/governance/v1/alert/records/stats', { params })
+}): Promise<ApiResponse<AlertStats>> {
+  return request.get('/governance/v1/alert/records/stats', { params })
 }
 
 /**
  * 手动恢复告警
  */
-export function resolveAlert(id: number | string) {
+export function resolveAlert(id: number | string): Promise<ApiResponse<void>> {
   return request.post(`/governance/v1/alert/records/${id}/resolve`)
 }
 
 /**
  * 获取告警详情（包含触发告警的请求列表）
  */
-export function getAlertDetails(id: number | string) {
-  return request.get<AlertRecordDetail>(`/governance/v1/alert/records/${id}/details`)
+export function getAlertDetails(id: number | string): Promise<ApiResponse<AlertRecordDetail>> {
+  return request.get(`/governance/v1/alert/records/${id}/details`)
 }

@@ -16,8 +16,7 @@ spring:
         server-addr: 127.0.0.1:8848
         file-extension: yml
         namespace: 1744c84b-1d42-4adb-a68f-4beaa6d64a9a
-        group: DEFAU
-
+        group: DEFAULT_GROUP
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -59,9 +58,7 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: AUTO
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
+      # 治理中心实体暂无逻辑删除字段，暂不启用逻辑删除
 
 # MyBatis-Plus 多租户配置
 intellihub:

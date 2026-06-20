@@ -1,6 +1,15 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 
+// 后端统一响应结构
+export interface ApiResponse<T = any> {
+  code: number
+  message: string
+  data: T
+  timestamp?: number
+  success?: boolean
+}
+
 // 创建axios实例
 const service: AxiosInstance = axios.create({
   baseURL: '/api',
@@ -129,21 +138,23 @@ service.interceptors.response.use(
 )
 
 // 封装请求方法
+// 注意：拦截器已经把 response.data（即 ApiResponse<T>）返回给调用方，
+// 所以这里的泛型 T 表示业务 data 的类型，返回值统一为 Promise<ApiResponse<T>>。
 export const request = {
-  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return service.get(url, config)
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return service.get(url, config) as Promise<ApiResponse<T>>
   },
 
-  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    return service.post(url, data, config)
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return service.post(url, data, config) as Promise<ApiResponse<T>>
   },
 
-  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    return service.put(url, data, config)
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return service.put(url, data, config) as Promise<ApiResponse<T>>
   },
 
-  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return service.delete(url, config)
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return service.delete(url, config) as Promise<ApiResponse<T>>
   },
 }
 
